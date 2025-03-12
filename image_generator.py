@@ -5,6 +5,7 @@ from pathlib import Path
 import random
 
 from gemini_generator import generate_gemini
+from image_editor import process_image
 
 
 def image_generate_prompt_pollinations(video_description, api_key_gemini):
@@ -95,8 +96,11 @@ def main_image_function(video_description, testMode, api_key_gemini):
             image_prompt = image_generate_prompt_pollinations(video_description, api_key_gemini)
 
             generated_image_path = generate_image_pollinations_ai(image_prompt, testMode)
+            
+            # Process the image to remove the watermark
+            processed_image_path = process_image(generated_image_path)
 
-            return f"{generated_image_path}"
+            return f"{processed_image_path}"
 
         except Exception as e:
             print("Error in generating Image:", e)
