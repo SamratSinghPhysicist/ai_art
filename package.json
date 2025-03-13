@@ -1,0 +1,30 @@
+{
+  "name": "ai_thumbnail_generator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "npx tailwindcss -i ./static/css/tailwind.css -o ./static/css/styles.css --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SamratSinghPhysicist/ai_thumbnail_generator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SamratSinghPhysicist/ai_thumbnail_generator/issues"
+  },
+  "homepage": "https://github.com/SamratSinghPhysicist/ai_thumbnail_generator#readme",
+  "description": "",
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.0.13"
+  },
+  "dependencies": {
+    "npm": "^11.2.0",
+    "npx": "^10.2.2"
+  }
+}
