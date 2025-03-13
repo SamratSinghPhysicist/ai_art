@@ -109,9 +109,37 @@ class User:
     
     def save_thumbnail(self, image_path, description):
         """Save thumbnail to user's collection"""
+        # Read the image file and convert to base64
+        import base64
+        import os
+        from flask import current_app
+        
+        # Remove the leading slash if present
+        if image_path.startswith('/'):
+            image_path = image_path[1:]
+        
+        # Determine the full path to the image file
+        if 'test_assets' in image_path:
+            full_path = os.path.join(os.getcwd(), image_path)
+        elif 'processed_images' in image_path:
+            full_path = os.path.join(os.getcwd(), image_path)
+        else:  # images folder
+            full_path = os.path.join(os.getcwd(), image_path)
+        
+        # Read the image file and encode it as base64
+        try:
+            with open(full_path, 'rb') as img_file:
+                image_data = base64.b64encode(img_file.read()).decode('utf-8')
+        except Exception as e:
+            print(f"Error reading image file: {e}")
+            # If there's an error, store the path instead
+            image_data = None
+        
+        # Store both the image data and the path (for backward compatibility)
         thumbnail_data = {
             'user_id': self._id,
-            'image_path': image_path,
+            'image_path': image_path,  # Keep the path for backward compatibility
+            'image_data': image_data,  # Store the actual image data
             'description': description,
             'created_at': datetime.datetime.now()
         }

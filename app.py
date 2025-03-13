@@ -107,7 +107,13 @@ def delete_thumbnail(thumbnail_id):
         from bson.objectid import ObjectId
         thumbnail_id = ObjectId(thumbnail_id)
         
-        # Find and delete the thumbnail from the database
+        # Find the thumbnail before deleting it (to check if it has image_data)
+        thumbnail = db['thumbnails'].find_one({'_id': thumbnail_id, 'user_id': current_user._id})
+        
+        if not thumbnail:
+            return jsonify({'success': False, 'error': 'Thumbnail not found or you do not have permission to delete it'}), 404
+        
+        # Delete the thumbnail from the database
         result = db['thumbnails'].delete_one({'_id': thumbnail_id, 'user_id': current_user._id})
         
         if result.deleted_count > 0:
@@ -253,6 +259,7 @@ def enhance_prompt():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
 
 
 
