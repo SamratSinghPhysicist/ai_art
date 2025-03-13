@@ -8,10 +8,10 @@ from gemini_generator import generate_gemini
 from image_editor import process_image
 
 
-def image_generate_prompt_pollinations(video_description, api_key_gemini):
+def image_generate_prompt_pollinations(video_thumbnail_description, api_key_gemini):
     prompt = f"""You are an expert YouTube thumbnail designer and prompt engineer for Pollinations.ai. I need a prompt that will generate a realistic, eye-catching, and highly click-worthy YouTube thumbnail.
 
-    Here's the context for the video: [{video_description}]
+    Here's the context for the video thumbnail: [{video_thumbnail_description}]
 
     Key elements I want to emphasize in the thumbnail are: [List 2-3 key visual elements or emotions you want to convey. For example: "Success, a close-up of a giant pumpkin, and a surprised face," or "Sharp details, vibrant colors, and a sense of cutting-edge technology," or "Intricate details, a sense of fantasy, and a time-lapse effect."]
 
@@ -29,7 +29,13 @@ def image_generate_prompt_pollinations(video_description, api_key_gemini):
     Desired color palette and lighting effects.
     Any facial expressions that are needed.
     Instructions to make the image "click worthy"
-    Provide the Pollinations.ai prompt in a single, concise paragraph that can be directly copied and pasted."""
+
+    Pay special attention to: {video_thumbnail_description}
+
+    Provide the Pollinations.ai prompt in a single, concise paragraph that can be directly copied and pasted.
+
+    Don't say/write anything other than the prompt as I will directly give your response to pollinations.ai via code. So make sure that you just give the prompt.
+    """
 
     image_generate_prompt = generate_gemini(prompt, api_key_gemini)
 
