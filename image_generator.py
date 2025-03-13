@@ -44,7 +44,7 @@ def image_generate_prompt_pollinations(video_thumbnail_description, api_key_gemi
 
     return image_generate_prompt
 
-def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, seed=random.randint(1,100000), model='flux'):
+def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, seed=random.randint(1,100000), model='flux-realism'):
     if testMode == False:
         # Define the subfolder and filename
         subfolder = Path("images")
