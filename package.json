@@ -7,8 +7,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:css": "npx tailwindcss -i ./static/css/tailwind.css -o ./static/css/styles.css --watch",
-    "postinstall": "npm run build:css"
+    "build:css": "npx tailwindcss -i ./static/css/tailwind.css -o ./static/css/styles.css",
+    "postinstall": "echo 'Skipping automatic CSS build'"
   },
   "repository": {
     "type": "git",
