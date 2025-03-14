@@ -31,3 +31,6 @@ EXPOSE 8080
 
 # Command to run the application
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+
+# Make sure your Dockerfile includes this line to load environment variables
+ENV PYTHONUNBUFFERED=1
