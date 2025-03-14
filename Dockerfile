@@ -7,7 +7,7 @@ COPY . .
 # Install tailwindcss CLI globally to ensure it's available
 RUN npm install -g tailwindcss postcss autoprefixer
 # Run the build:css command explicitly
-RUN npx tailwindcss -i ./static/css/tailwind.css -o ./static/css/styles.css
+RUN npm tailwindcss -i ./static/css/tailwind.css -o ./static/css/styles.css
 
 FROM python:3.11-slim
 
