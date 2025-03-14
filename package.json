@@ -2,9 +2,13 @@
   "name": "ai_thumbnail_generator",
   "version": "1.0.0",
   "main": "index.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:css": "npx tailwindcss -i ./static/css/tailwind.css -o ./static/css/styles.css --watch"
+    "build:css": "npx tailwindcss -i ./static/css/tailwind.css -o ./static/css/styles.css --watch",
+    "postinstall": "npm run build:css"
   },
   "repository": {
     "type": "git",
@@ -24,7 +28,7 @@
     "tailwindcss": "^4.0.13"
   },
   "dependencies": {
-    "npm": "^11.2.0",
+    "npm": "^10.2.4",
     "npx": "^10.2.2"
   }
 }
