@@ -95,7 +95,7 @@ def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, se
         print("Path of placeholder.jpg: /test_assets/placeholder.jpg")
         return "test_assets/placeholder.jpg"
 
-def main_image_function(video_description, testMode, api_key_gemini):
+def main_image_function(video_description, testMode, api_key_gemini, reference_image_path=None):
 
     if testMode == False:
         try:

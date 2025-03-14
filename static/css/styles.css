@@ -188,6 +188,32 @@ textarea.form-input {
   resize: vertical;
 }
 
+/* File input styling */
+.file-input-container {
+  position: relative;
+}
+
+input[type="file"].form-input {
+  padding: 0.5rem;
+  background-color: #f9f9f9;
+  cursor: pointer;
+}
+
+input[type="file"].form-input::-webkit-file-upload-button {
+  background-color: var(--secondary);
+  color: var(--text);
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.25rem;
+  margin-right: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+input[type="file"].form-input::-webkit-file-upload-button:hover {
+  background-color: #e0e0e0;
+}
+
 /* Card */
 .card {
   background-color: var(--card-bg);

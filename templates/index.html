@@ -33,7 +33,7 @@
             <h1 class="text-3xl font-bold text-primary text-center mb-6">Create Eye-Catching Thumbnails</h1>
             <p class="text-center text-gray-700 mb-6">Generate professional YouTube thumbnails with AI in seconds</p>
             
-            <form id="thumbnail-form" class="my-6">
+            <form id="thumbnail-form" class="my-6" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="video-description" class="form-label">Enter a concise video description or thumbnail details:</label>
                     <div class="textarea-container">
@@ -43,6 +43,14 @@
                         <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
                         <button type="button" id="revert-prompt-btn" class="btn btn-secondary" title="Revert to Original" style="display: none;">↩️<span class="button-text">Revert</span></button>
                     </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="reference-image" class="form-label">Upload a reference image (optional):</label>
+                    <div class="file-input-container">
+                        <input type="file" id="reference-image" name="reference_image" class="form-input" accept="image/*">
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">Providing a reference image can help guide the AI in generating a thumbnail with similar style or elements.</p>
                 </div>
                 
                 <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
@@ -98,6 +106,12 @@ Content-Type: application/json
                 </div>
                 <div class="thumbnail-card">
                     <img src="/static/images/sample3.jpg" alt="Sample Thumbnail" onerror="this.src='/test_assets/placeholder.jpg'">
+                </div>
+                <div class="thumbnail-card">
+                    <img src="/static/images/sample4.jpg" alt="Sample Thumbnail" onerror="this.src='/test_assets/placeholder.jpg'">
+                </div>
+                <div class="thumbnail-card">
+                    <img src="/static/images/sample5.jpg" alt="Sample Thumbnail" onerror="this.src='/test_assets/placeholder.jpg'">
                 </div>
             </div>
         </div>
@@ -199,11 +213,17 @@ Content-Type: application/json
             // Get form data
             const description = document.getElementById('video-description').value;
             const testMode = document.getElementById('test-mode').checked;
+            const referenceImage = document.getElementById('reference-image').files[0];
             
             // Create form data object
             const formData = new FormData();
             formData.append('video_description', description);
             formData.append('test_mode', testMode ? 'true' : 'false');
+            
+            // Add reference image if selected
+            if (referenceImage) {
+                formData.append('reference_image', referenceImage);
+            }
             
             // Send request
             fetch('/generate', {

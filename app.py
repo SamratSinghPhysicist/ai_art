@@ -15,6 +15,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'images'
 app.config['TEST_ASSETS'] = 'test_assets'
 app.config['PROCESSED_FOLDER'] = 'processed_images'
+app.config['REFERENCE_IMAGES'] = 'reference_images'
 
 # Configure Flask-Login
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_secret_key')
@@ -28,6 +29,7 @@ GEMINI_API_KEY = "AIzaSyA0RYI9KRrNLi6KaX4g49UJD4G5YBEb6II"
 # Ensure the images directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROCESSED_FOLDER'], exist_ok=True)
+os.makedirs(app.config['REFERENCE_IMAGES'], exist_ok=True)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -135,9 +137,24 @@ def generate_thumbnail():
     if not video_description:
         return jsonify({'error': 'Video description is required'}), 400
     
+    # Handle reference image upload if provided
+    reference_image_path = None
+    if 'reference_image' in request.files:
+        reference_image = request.files['reference_image']
+        if reference_image and reference_image.filename != '':
+            # Secure the filename to prevent any security issues
+            from werkzeug.utils import secure_filename
+            filename = secure_filename(reference_image.filename)
+            # Create a unique filename to avoid overwriting
+            import uuid
+            unique_filename = f"{uuid.uuid4()}_{filename}"
+            # Save the file
+            reference_image_path = os.path.join(app.config['REFERENCE_IMAGES'], unique_filename)
+            reference_image.save(reference_image_path)
+    
     try:
-        # Generate the image
-        generated_image_path = main_image_function(video_description, test_mode, GEMINI_API_KEY)
+        # Generate the image with optional reference image
+        generated_image_path = main_image_function(video_description, test_mode, GEMINI_API_KEY, reference_image_path)
         
         # Process the image to remove the watermark if it's not a test asset
         generated_image_path = process_image(generated_image_path)
@@ -178,10 +195,11 @@ def api_generate_thumbnail():
     
     video_description = data['video_description']
     test_mode = data.get('test_mode', False)
+    reference_image_path = data.get('reference_image_path', None)
     
     try:
-        # Generate the image
-        generated_image_path = main_image_function(video_description, test_mode, GEMINI_API_KEY)
+        # Generate the image with optional reference image
+        generated_image_path = main_image_function(video_description, test_mode, GEMINI_API_KEY, reference_image_path)
         
         # Process the image to remove the watermark if it's not a test asset
         generated_image_path = process_image(generated_image_path)
@@ -221,6 +239,11 @@ def serve_test_asset(filename):
 def serve_processed_image(filename):
     """Serve the processed images"""
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
+
+@app.route('/reference_images/<filename>')
+def serve_reference_image(filename):
+    """Serve the reference images"""
+    return send_from_directory(app.config['REFERENCE_IMAGES'], filename)
 
 @app.route('/api/enhance-prompt', methods=['POST'])
 def enhance_prompt():
