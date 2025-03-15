@@ -51,6 +51,37 @@
                         <input type="file" id="reference-image" name="reference_image" class="form-input" accept="image/*">
                     </div>
                     <p class="text-sm text-gray-500 mt-2">Providing a reference image can help guide the AI in generating a thumbnail with similar style or elements.</p>
+                    <div class="button-container mt-4">
+                        <button type="button" id="analyze-image-btn" class="btn btn-secondary" title="Analyze Reference Image">🔍<span class="button-text">Analyze Image</span></button>
+                    </div>
+                </div>
+                
+                <div class="reference-analysis hidden" id="reference-analysis">
+                    <h3 class="text-xl font-semibold mb-2">Reference Image Analysis</h3>
+                    <div class="flex flex-wrap">
+                        <div class="w-full md:w-1/3 p-2">
+                            <img id="analyzed-image" src="" alt="Reference Image" class="w-full rounded-lg shadow-sm">
+                        </div>
+                        <div class="w-full md:w-2/3 p-2">
+                            <div class="analysis-results bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-semibold mb-2">Visual Elements</h4>
+                                <p id="ai-subject"></p>
+                                <div id="ai-objects" class="mt-2 flex flex-wrap"></div>
+                                
+                                <h4 class="font-semibold mt-4 mb-2">Style & Composition</h4>
+                                <p id="ai-style"></p>
+                                <p id="ai-composition" class="mt-2"></p>
+                                
+                                <h4 class="font-semibold mt-4 mb-2">Colors & Lighting</h4>
+                                <p id="ai-colors"></p>
+                                <p id="ai-lighting" class="mt-2"></p>
+                                
+                                <h4 class="font-semibold mt-4 mb-2">Thumbnail Effectiveness</h4>
+                                <p id="ai-effectiveness"></p>
+                                <p id="ai-suggestions" class="mt-2"></p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
@@ -201,6 +232,96 @@ Content-Type: application/json
             
             // Hide the revert button
             this.style.display = 'none';
+        });
+        
+        // Analyze reference image button click handler
+        document.getElementById('analyze-image-btn').addEventListener('click', function() {
+            const referenceImageInput = document.getElementById('reference-image');
+            
+            if (!referenceImageInput.files || referenceImageInput.files.length === 0) {
+                alert('Please select a reference image to analyze.');
+                return;
+            }
+            
+            // Show loading state on the button
+            this.innerHTML = '⏳';
+            this.disabled = true;
+            
+            // Create form data for the API request
+            const formData = new FormData();
+            formData.append('reference_image', referenceImageInput.files[0]);
+            formData.append('detailed_analysis', 'true');
+            
+            // Call the API to analyze the reference image
+            fetch('/api/analyze-reference-image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset button state
+                document.getElementById('analyze-image-btn').innerHTML = '🔍<span class="button-text">Analyze Image</span>';
+                document.getElementById('analyze-image-btn').disabled = false;
+                
+                if (data.success) {
+                    // Show the analysis section
+                    document.getElementById('reference-analysis').classList.remove('hidden');
+                    
+                    // Set the analyzed image
+                    document.getElementById('analyzed-image').src = data.image_path;
+                    
+                    // Display the insights
+                    const insights = data.insights;
+                    
+                    // Set subject description
+                    document.getElementById('ai-subject').textContent = insights.ai_subject_description || 'Not detected';
+                    
+                    // Set objects
+                    const objectsContainer = document.getElementById('ai-objects');
+                    objectsContainer.innerHTML = '';
+                    if (insights.ai_detected_objects && insights.ai_detected_objects.length > 0) {
+                        insights.ai_detected_objects.forEach(obj => {
+                            const tag = document.createElement('span');
+                            tag.className = 'bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded mr-2 mb-2';
+                            tag.textContent = obj;
+                            objectsContainer.appendChild(tag);
+                        });
+                    } else {
+                        objectsContainer.textContent = 'No specific objects detected';
+                    }
+                    
+                    // Set style
+                    document.getElementById('ai-style').textContent = insights.ai_style_description || 'Not detected';
+                    
+                    // Set composition
+                    document.getElementById('ai-composition').textContent = insights.ai_composition_insights || 'Not detected';
+                    
+                    // Set colors
+                    document.getElementById('ai-colors').textContent = insights.ai_color_analysis || 'Not detected';
+                    
+                    // Set lighting
+                    document.getElementById('ai-lighting').textContent = insights.ai_lighting || 'Not detected';
+                    
+                    // Set effectiveness
+                    document.getElementById('ai-effectiveness').textContent = insights.ai_thumbnail_effectiveness || 'Not analyzed';
+                    
+                    // Set suggestions
+                    document.getElementById('ai-suggestions').textContent = insights.ai_improvement_suggestions || 'No specific suggestions';
+                    
+                    // Scroll to the analysis section
+                    document.getElementById('reference-analysis').scrollIntoView({ behavior: 'smooth' });
+                } else {
+                    alert('Failed to analyze image: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                // Reset button state
+                document.getElementById('analyze-image-btn').innerHTML = '🔍<span class="button-text">Analyze Image</span>';
+                document.getElementById('analyze-image-btn').disabled = false;
+                
+                console.error('Error:', error);
+                alert('An error occurred while analyzing the reference image.');
+            });
         });
         
         // Form submission handler

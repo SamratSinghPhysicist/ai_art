@@ -245,6 +245,52 @@ def serve_reference_image(filename):
     """Serve the reference images"""
     return send_from_directory(app.config['REFERENCE_IMAGES'], filename)
 
+@app.route('/api/analyze-reference-image', methods=['POST'])
+def analyze_reference_image_api():
+    """API endpoint to analyze a reference image using Pollinations Vision API"""
+    # Check if a file was uploaded
+    if 'reference_image' not in request.files:
+        return jsonify({'error': 'No reference image provided'}), 400
+        
+    reference_image = request.files['reference_image']
+    if reference_image.filename == '':
+        return jsonify({'error': 'No reference image selected'}), 400
+        
+    try:
+        # Save the uploaded image temporarily
+        from werkzeug.utils import secure_filename
+        import uuid
+        
+        filename = secure_filename(reference_image.filename)
+        unique_filename = f"{uuid.uuid4()}_{filename}"
+        reference_image_path = os.path.join(app.config['REFERENCE_IMAGES'], unique_filename)
+        reference_image.save(reference_image_path)
+        
+        # Import the Pollinations Vision API functions
+        from pollinations_vision import analyze_image_with_pollinations, extract_ai_insights
+        
+        # Get detailed analysis from Pollinations Vision API
+        detailed_analysis = request.form.get('detailed_analysis', 'true').lower() == 'true'
+        ai_analysis = analyze_image_with_pollinations(reference_image_path, detailed_analysis)
+        
+        if not ai_analysis:
+            return jsonify({'error': 'Failed to analyze image with Pollinations Vision API'}), 500
+            
+        # Extract structured insights from the AI analysis
+        ai_insights = extract_ai_insights(ai_analysis)
+        
+        # Return the analysis results
+        return jsonify({
+            'success': True,
+            'message': 'Reference image analyzed successfully',
+            'image_path': f'/reference_images/{unique_filename}',
+            'analysis': ai_analysis,
+            'insights': ai_insights
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/enhance-prompt', methods=['POST'])
 def enhance_prompt():
     """API endpoint to enhance a prompt using Gemini"""
