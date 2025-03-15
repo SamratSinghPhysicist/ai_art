@@ -9,7 +9,11 @@ services:
       - MONGO_URI=${MONGO_URI}
       - SECRET_KEY=${SECRET_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}  # Added Gemini API key
+      - FLASK_ENV=production  # Added environment setting
     volumes:
       - ./images:/app/images
       - ./processed_images:/app/processed_images
+      - ./reference_images:/app/reference_images  # Added reference_images volume
+      - ./logs:/app/logs  # Added logs volume
+    restart: unless-stopped  # Added restart policy for production
     # Using Python 3.11 as specified in the Dockerfile

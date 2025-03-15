@@ -38,7 +38,7 @@ COPY static/ ./static/
 COPY test_assets/ ./test_assets/
 
 # Create necessary directories
-RUN mkdir -p images processed_images
+RUN mkdir -p images processed_images reference_images logs
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
