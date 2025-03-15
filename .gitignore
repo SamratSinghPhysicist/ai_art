@@ -1,2 +1,13 @@
 /__pycache__
 /node_modules
+/images/*
+!/images/.gitkeep
+/processed_images/*
+!/processed_images/.gitkeep
+/reference_images/*
+!/reference_images/.gitkeep
+/logs/*
+*.pyc
+*.pyo
+__pycache__/
+.DS_Store
