@@ -199,6 +199,39 @@ input[type="file"].form-input {
   cursor: pointer;
 }
 
+/* Drag and drop styling */
+.file-drop-area {
+  border: 2px dashed var(--border);
+  border-radius: 0.375rem;
+  padding: 2rem 1rem;
+  text-align: center;
+  background-color: #f9f9f9;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.file-drop-area.drag-over {
+  border-color: var(--primary);
+  background-color: rgba(255, 0, 0, 0.05);
+}
+
+.file-drop-area .drop-message {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.file-drop-area .file-info {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.file-drop-area .selected-file {
+  margin-top: 0.5rem;
+  font-weight: 500;
+  color: var(--primary);
+}
+
 input[type="file"].form-input::-webkit-file-upload-button {
   background-color: var(--secondary);
   color: var(--text);
