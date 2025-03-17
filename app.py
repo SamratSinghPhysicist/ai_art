@@ -343,6 +343,10 @@ def enhance_prompt():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/google4732be05fe4d2482.html')
+def google_verification():
+    return send_file('templates/google4732be05fe4d2482.html')
+
 if __name__ == '__main__':
     # Configure logging for production
     if not os.path.exists('logs'):
