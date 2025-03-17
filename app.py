@@ -42,6 +42,21 @@ def index():
     """Render the main page with the form"""
     return render_template('index.html')
 
+@app.route('/blog')
+def blog():
+    """Render the blog page with SEO-focused content"""
+    return render_template('blog.html')
+
+@app.route('/blog-ai-image-generation')
+def blog_ai_image_generation():
+    """Render the AI image generation blog page"""
+    return render_template('blog-ai-image-generation.html')
+
+@app.route('/sitemap-page')
+def sitemap_page():
+    """Render the human-readable sitemap page"""
+    return render_template('sitemap.html')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Handle user login"""

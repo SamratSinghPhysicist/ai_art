@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /static/css/
+Allow: /static/images/
+Allow: /static/favicon.svg
+Disallow: /login
+Disallow: /signup
+Disallow: /dashboard
+Disallow: /logout
+Disallow: /api/
+
+Sitemap: https://aiart-zroo.onrender.com/sitemap.xml 
