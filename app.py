@@ -58,6 +58,11 @@ def sitemap_page():
     """Render the human-readable sitemap page"""
     return render_template('sitemap.html')
 
+@app.route('/sitemap')
+def sitemap_page():
+    """sitemap file for google indexing"""
+    return send_file('static/sitemap.xml')
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Handle user login"""
