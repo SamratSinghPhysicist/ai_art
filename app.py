@@ -58,9 +58,9 @@ def sitemap_page():
     """Render the human-readable sitemap page"""
     return render_template('sitemap.html')
 
-@app.route('/sitemap')
-def sitemap_page():
-    """sitemap file for google indexing"""
+@app.route('/sitemap.xml')
+def serve_sitemap():
+    """Serve the XML sitemap file for search engines"""
     return send_file('static/sitemap.xml')
 
 @app.route('/login', methods=['GET', 'POST'])
