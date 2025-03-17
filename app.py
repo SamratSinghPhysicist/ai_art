@@ -7,6 +7,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
+from flask import send_file
 
 # Load environment variables
 load_dotenv()
