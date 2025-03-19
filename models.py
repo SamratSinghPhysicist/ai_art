@@ -11,7 +11,7 @@ load_dotenv()
 # MongoDB connection
 MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
 client = MongoClient(MONGO_URI)
-db = client['thumbnail_generator']
+db = client['ai_image_generator']
 users_collection = db['users']
 
 # Ensure indexes for email uniqueness
@@ -103,12 +103,12 @@ class User:
         return bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
     
     def get_thumbnails(self):
-        """Get all thumbnails created by this user"""
-        thumbnails = db['thumbnails'].find({'user_id': self._id})
-        return list(thumbnails)
+        """Get all images created by this user"""
+        images = db['images'].find({'user_id': self._id})
+        return list(images)
     
     def save_thumbnail(self, image_path, description):
-        """Save thumbnail to user's collection"""
+        """Save image to user's collection"""
         # Read the image file and convert to base64
         import base64
         import os
@@ -136,11 +136,11 @@ class User:
             image_data = None
         
         # Store both the image data and the path (for backward compatibility)
-        thumbnail_data = {
+        image_data_obj = {
             'user_id': self._id,
             'image_path': image_path,  # Keep the path for backward compatibility
             'image_data': image_data,  # Store the actual image data
             'description': description,
             'created_at': datetime.datetime.now()
         }
-        return db['thumbnails'].insert_one(thumbnail_data).inserted_id
+        return db['images'].insert_one(image_data_obj).inserted_id

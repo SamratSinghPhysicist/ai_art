@@ -119,50 +119,50 @@ def logout():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    """Display user's saved thumbnails"""
-    thumbnails = current_user.get_thumbnails()
-    return render_template('dashboard.html', user=current_user, thumbnails=thumbnails)
+    """Display user's saved images"""
+    images = current_user.get_thumbnails()
+    return render_template('dashboard.html', user=current_user, thumbnails=images)
 
-@app.route('/thumbnail/<thumbnail_id>/delete', methods=['POST'])
+@app.route('/image/<image_id>/delete', methods=['POST'])
 @login_required
-def delete_thumbnail(thumbnail_id):
-    """Delete a user's thumbnail"""
+def delete_image(image_id):
+    """Delete a user's image"""
     try:
         # Convert string ID to ObjectId
         from bson.objectid import ObjectId
-        thumbnail_id = ObjectId(thumbnail_id)
+        image_id = ObjectId(image_id)
         
-        # Find the thumbnail before deleting it (to check if it has image_data)
-        thumbnail = db['thumbnails'].find_one({'_id': thumbnail_id, 'user_id': current_user._id})
+        # Find the image before deleting it (to check if it has image_data)
+        image = db['images'].find_one({'_id': image_id, 'user_id': current_user._id})
         
-        if not thumbnail:
-            return jsonify({'success': False, 'error': 'Thumbnail not found or you do not have permission to delete it'}), 404
+        if not image:
+            return jsonify({'success': False, 'error': 'Image not found or you do not have permission to delete it'}), 404
         
-        # Delete the thumbnail from the database
-        result = db['thumbnails'].delete_one({'_id': thumbnail_id, 'user_id': current_user._id})
+        # Delete the image from the database
+        result = db['images'].delete_one({'_id': image_id, 'user_id': current_user._id})
         
         if result.deleted_count > 0:
             return jsonify({'success': True})
         else:
-            return jsonify({'success': False, 'error': 'Thumbnail not found or you do not have permission to delete it'}), 404
+            return jsonify({'success': False, 'error': 'Image not found or you do not have permission to delete it'}), 404
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/generate', methods=['POST'])
-def generate_thumbnail():
-    """Generate a thumbnail based on the description provided"""
-    # Get the video description from the form
-    video_description = request.form.get('video_description')
+def generate_image():
+    """Generate an image based on the description provided"""
+    # Get the image description from the form
+    image_description = request.form.get('video_description')
     
     # Check if test mode is enabled
     test_mode = request.form.get('test_mode') == 'true'
     
-    if not video_description:
-        return jsonify({'error': 'Video description is required'}), 400
+    if not image_description:
+        return jsonify({'error': 'Image description is required'}), 400
     
     try:
         # Generate the image
-        generated_image_path = main_image_function(video_description, test_mode, GEMINI_API_KEY)
+        generated_image_path = main_image_function(image_description, test_mode, GEMINI_API_KEY)
         
         # Process the image to remove the watermark if it's not a test asset
         generated_image_path = process_image(generated_image_path)
@@ -178,14 +178,14 @@ def generate_thumbnail():
         else:
             folder = app.config['UPLOAD_FOLDER']
         
-        # Save the thumbnail to the user's collection if logged in
+        # Save the image to the user's collection if logged in
         if current_user.is_authenticated:
-            current_user.save_thumbnail(f'/{folder}/{image_filename}', video_description)
+            current_user.save_thumbnail(f'/{folder}/{image_filename}', image_description)
         
         # Return the image path and success message
         return jsonify({
             'success': True,
-            'message': 'Thumbnail generated successfully',
+            'message': 'Image generated successfully',
             'image_path': f'/{folder}/{image_filename}'
         })
     
@@ -193,21 +193,21 @@ def generate_thumbnail():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate', methods=['POST'])
-def api_generate_thumbnail():
-    """API endpoint to generate a thumbnail"""
+def api_generate_image():
+    """API endpoint to generate an image"""
     # Get JSON data
     data = request.get_json()
     
     if not data or 'video_description' not in data:
-        return jsonify({'error': 'Video description is required'}), 400
+        return jsonify({'error': 'Image description is required'}), 400
     
-    video_description = data['video_description']
+    image_description = data['video_description']
     test_mode = data.get('test_mode', False)
     # No reference image handling in API endpoint
     
     try:
         # Generate the image
-        generated_image_path = main_image_function(video_description, test_mode, GEMINI_API_KEY)
+        generated_image_path = main_image_function(image_description, test_mode, GEMINI_API_KEY)
         
         # Process the image to remove the watermark if it's not a test asset
         generated_image_path = process_image(generated_image_path)
@@ -226,7 +226,7 @@ def api_generate_thumbnail():
         # Return the image URL and success message
         return jsonify({
             'success': True,
-            'message': 'Thumbnail generated successfully',
+            'message': 'Image generated successfully',
             'image_url': f'{request.host_url}{folder}/{image_filename}'
         })
     
@@ -248,61 +248,68 @@ def serve_processed_image(filename):
     """Serve the processed images"""
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
-
-
 @app.route('/api/enhance-prompt', methods=['POST'])
 def enhance_prompt():
-    """API endpoint to enhance a prompt using Gemini"""
-    # Get JSON data
+    """API endpoint to enhance the given image prompt with AI"""
+    # Get the prompt from the request
     data = request.get_json()
     
     if not data or 'prompt' not in data:
         return jsonify({'error': 'Prompt is required'}), 400
     
-    original_prompt = data['prompt']
+    user_prompt = data['prompt']
+    
+    # The prompt to send to the Gemini API
+    system_prompt = f"""You are an expert prompt engineer for AI image generation. Enhance the following image description to create a visually stunning AI-generated image. 
+    
+    User's original prompt: "{user_prompt}"
+    
+    Improve this prompt by:
+    1. Adding specific details about visual elements
+    2. Suggesting an artistic style if none is specified
+    3. Including composition details (lighting, perspective, framing)
+    4. Specifying mood or atmosphere
+    5. Adding any relevant technical aspects (like photo-realistic, cinematic, etc.)
+    
+    Keep your enhanced prompt focused on the same subject/theme the user wanted, but make it much more detailed for better results.
+    
+    Provide only the enhanced prompt, without explanations or formatting.
+    """
     
     try:
-        # Create a meta-prompt for enhancing the user's prompt
-        meta_prompt = f"""You are an expert YouTube thumbnail designer. Enhance the following basic prompt to create a more detailed, 
-        vivid, and engaging description for a YouTube thumbnail. Make it more specific, visual, and compelling, 
-        but keep it concise (maximum 2-3 sentences):
-        
-        "{original_prompt}"
-        
-        Provide only the enhanced prompt text without any explanations or additional formatting."""
-        
-        # Use the generate_gemini function to enhance the prompt
+        # Call Gemini API to enhance the prompt
         from gemini_generator import generate_gemini
-        enhanced_prompt = generate_gemini(meta_prompt, GEMINI_API_KEY)
+        enhanced_prompt = generate_gemini(system_prompt, GEMINI_API_KEY)
         
         # Return the enhanced prompt
         return jsonify({
             'success': True,
-            'original_prompt': original_prompt,
             'enhanced_prompt': enhanced_prompt
         })
-    
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/google4732be05fe4d2482.html')
 def google_verification():
-    return send_file('templates/google4732be05fe4d2482.html')
+    """Serve the Google verification file"""
+    return render_template('google4732be05fe4d2482.html')
 
 if __name__ == '__main__':
-    # Configure logging for production
+    # Configure logging
     if not os.path.exists('logs'):
-        os.mkdir('logs')
-    file_handler = RotatingFileHandler('logs/thumbnail_generator.log', maxBytes=10240, backupCount=10)
+        os.makedirs('logs')
+    
+    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))
     file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
-    app.logger.info('Thumbnail generator startup')
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.logger.info('AI Art startup')
+    
+    # Start the app in debug mode (development only)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)
 
 
 

@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Art - Create Professional YouTube Thumbnails with Artificial Intelligence | Free Online Generator</title>
-    <meta name="description" content="Create eye-catching, professional YouTube thumbnails in seconds with our AI-powered thumbnail generator. Boost your click-through rates with custom thumbnails.">
-    <meta name="keywords" content="AI thumbnail generator, YouTube thumbnails, AI art, video thumbnails, thumbnail creator, AI image generator, content creation tools">
+    <title>AI Art - Free Unlimited AI Image Generator | No Signup Required</title>
+    <meta name="description" content="Generate stunning AI images for free with our unlimited AI image generator. No signup required, instant results, and completely free to use.">
+    <meta name="keywords" content="AI image generator, free AI art, AI art generator, no signup, unlimited AI images, image generation, AI art creator">
     <meta name="robots" content="index, follow">
     <meta name="author" content="AI Art">
     <link rel="canonical" href="https://aiart-zroo.onrender.com/">
@@ -13,15 +13,15 @@
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://aiart-zroo.onrender.com/">
-    <meta property="og:title" content="AI Art - Create Professional YouTube Thumbnails with AI">
-    <meta property="og:description" content="Generate eye-catching YouTube thumbnails in seconds with our AI-powered thumbnail generator. Free to use!">
+    <meta property="og:title" content="AI Art - Free, Unlimited AI Image Generator | No Signup Required">
+    <meta property="og:description" content="Generate beautiful AI images for free. No limits, no signup required, and completely free to use!">
     <meta property="og:image" content="https://aiart-zroo.onrender.com/static/images/og-image.jpg">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://aiart-zroo.onrender.com/">
-    <meta property="twitter:title" content="AI Art - Create Professional YouTube Thumbnails with AI">
-    <meta property="twitter:description" content="Generate eye-catching YouTube thumbnails in seconds with our AI-powered thumbnail generator. Free to use!">
+    <meta property="twitter:title" content="AI Art - Free, Unlimited AI Image Generator | No Signup Required">
+    <meta property="twitter:description" content="Generate beautiful AI images for free. No limits, no signup required, and completely free to use!">
     <meta property="twitter:image" content="https://aiart-zroo.onrender.com/static/images/og-image.jpg">
     
     <!-- Structured Data / Schema.org -->
@@ -29,9 +29,9 @@
     {
       "@context": "https://schema.org",
       "@type": "WebApplication",
-      "name": "AI Art Thumbnail Generator",
+      "name": "AI Art Image Generator",
       "url": "https://aiart-zroo.onrender.com",
-      "description": "AI-powered tool for creating professional YouTube thumbnails instantly",
+      "description": "Free, unlimited AI image generator with no signup required",
       "applicationCategory": "DesignApplication",
       "offers": {
         "@type": "Offer",
@@ -57,7 +57,7 @@
                     <a href="/blog" class="nav-link">Blog</a>
                     <a href="#api-info" class="nav-link">API</a>
                     {% if current_user.is_authenticated %}
-                    <a href="/dashboard" class="nav-link">My Thumbnails</a>
+                    <a href="/dashboard" class="nav-link">My Images</a>
                     <a href="/logout" class="nav-link">Logout</a>
                     {% else %}
                     <a href="/login" class="nav-link">Login</a>
@@ -78,14 +78,14 @@
 
     <main class="container my-8">
         <div class="card p-6 shadow-lg">
-            <h1 class="text-3xl font-bold text-primary text-center mb-6">Create Eye-Catching Thumbnails</h1>
-            <p class="text-center text-gray-700 mb-6">Generate professional YouTube thumbnails with AI in seconds</p>
+            <h1 class="text-3xl font-bold text-primary text-center mb-6">Create Stunning AI Images</h1>
+            <p class="text-center text-gray-700 mb-6">Generate beautiful AI art in seconds - Free, Unlimited, No Signup Required</p>
             
-            <form id="thumbnail-form" class="my-6" enctype="multipart/form-data">
+            <form id="image-form" class="my-6" enctype="multipart/form-data">
                 <div class="form-group">
-                    <label for="video-description" class="form-label">Enter a concise video description or thumbnail details:</label>
+                    <label for="video-description" class="form-label">Describe the image you want to create:</label>
                     <div class="textarea-container">
-                        <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: 10 Amazing Space Facts That Will Blow Your Mind"></textarea>
+                        <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: A serene mountain landscape with a waterfall at sunset, photorealistic style"></textarea>
                     </div>
                     <div class="button-container mt-4">
                         <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
@@ -101,12 +101,12 @@
                 </div>
                 
                 <div class="text-center mt-6">
-                    <button type="submit" class="btn btn-primary px-8 py-3 text-lg">Generate Thumbnail</button>
+                    <button type="submit" class="btn btn-primary px-8 py-3 text-lg">Generate Image</button>
                 </div>
             </form>
             
             <div class="loading text-center my-8 hidden" id="loading">
-                <p class="mb-4">Generating your thumbnail... This may take up to a minute.</p>
+                <p class="mb-4">Generating your image... This may take up to a minute.</p>
                 <div class="loading-spinner"></div>
             </div>
             
@@ -115,12 +115,12 @@
             </div>
             
             <div class="result text-center my-8 hidden" id="result">
-                <h2 class="text-2xl font-semibold mb-4">Your Generated Thumbnail</h2>
-                <div class="thumbnail-card mx-auto" style="max-width: 640px;">
-                    <img id="thumbnail-image" src="" alt="Generated Thumbnail" class="w-full rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4">Your Generated Image</h2>
+                <div class="image-card mx-auto" style="max-width: 640px;">
+                    <img id="generated-image" src="" alt="Generated AI Image" class="w-full rounded-lg shadow-md">
                 </div>
                 <div class="mt-4">
-                    <button id="download-btn" class="btn btn-secondary" onclick="downloadImage()" disabled>Download Thumbnail</button>
+                    <button id="download-btn" class="btn btn-secondary" onclick="downloadImage()" disabled>Download Image</button>
                 </div>
             </div>
         </div>
@@ -150,32 +150,32 @@
 
         <div class="card p-6 shadow-md mt-8" id="api-info">
             <h2 class="text-2xl font-semibold mb-4">API Usage</h2>
-            <p class="mb-4">You can also use our API to generate thumbnails programmatically:</p>
+            <p class="mb-4">You can also use our API to generate images programmatically:</p>
             <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto">POST /api/generate
 Content-Type: application/json
 
 {
-    "video_description": "Your video description here",
+    "video_description": "Your image description here",
     "test_mode": false
 }</pre>
         </div>
 
         <section class="my-12">
-            <h2 class="text-2xl font-bold text-primary text-center mb-6">Learn From Our Experts</h2>
+            <h2 class="text-2xl font-bold text-primary text-center mb-6">AI Art Creation Tips</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="card p-4 shadow-md">
-                    <h3 class="text-xl font-semibold text-primary mb-2">YouTube Thumbnail Best Practices</h3>
-                    <p class="text-gray-700 mb-4">Learn how to create thumbnails that increase your click-through rates and grow your channel.</p>
+                    <h3 class="text-xl font-semibold text-primary mb-2">Prompt Engineering</h3>
+                    <p class="text-gray-700 mb-4">Learn techniques to craft the perfect prompts that generate exactly the images you want.</p>
                     <a href="/blog" class="text-primary font-medium">Read More →</a>
                 </div>
                 <div class="card p-4 shadow-md">
-                    <h3 class="text-xl font-semibold text-primary mb-2">AI in Content Creation</h3>
-                    <p class="text-gray-700 mb-4">Discover how AI tools are transforming the way creators work and produce content.</p>
+                    <h3 class="text-xl font-semibold text-primary mb-2">AI Art Styles</h3>
+                    <p class="text-gray-700 mb-4">Discover different artistic styles and techniques you can use in your AI art generation prompts.</p>
                     <a href="/blog" class="text-primary font-medium">Read More →</a>
                 </div>
                 <div class="card p-4 shadow-md">
-                    <h3 class="text-xl font-semibold text-primary mb-2">YouTube Growth Strategies</h3>
-                    <p class="text-gray-700 mb-4">Implement proven tactics to grow your YouTube channel faster and reach more viewers.</p>
+                    <h3 class="text-xl font-semibold text-primary mb-2">Using AI Art</h3>
+                    <p class="text-gray-700 mb-4">Explore creative ways to use your AI-generated images in projects, social media, and more.</p>
                     <a href="/blog" class="text-primary font-medium">Read More →</a>
                 </div>
             </div>
@@ -183,13 +183,13 @@ Content-Type: application/json
 
         <section id="api-info" class="my-12">
             <h2 class="text-2xl font-bold text-primary text-center mb-6">API Integration Available</h2>
-            <p class="text-center text-gray-700 mb-6">Integrate our thumbnail generator directly into your workflow with our easy-to-use API</p>
+            <p class="text-center text-gray-700 mb-6">Integrate our image generator directly into your workflow with our easy-to-use API</p>
             <div class="bg-gray-100 p-4 rounded">
                 <h3 class="text-xl font-semibold text-primary mb-2">Example API Request</h3>
                 <pre class="bg-gray-800 text-white p-4 rounded overflow-x-auto"><code>
 curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
     -H "Content-Type: application/json" \
-    -d '{"video_description": "10 Amazing Space Facts That Will Blow Your Mind"}'</code></pre>
+    -d '{"video_description": "A serene mountain landscape with a waterfall at sunset, photorealistic style"}'</code></pre>
             </div>
         </section>
 
@@ -197,24 +197,24 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
             <h2 class="text-2xl font-bold text-primary text-center mb-6">Frequently Asked Questions</h2>
             <div class="space-y-6">
                 <div class="card p-4 shadow-sm">
-                    <h3 class="text-xl font-semibold text-primary mb-2">How does the AI thumbnail generator work?</h3>
-                    <p>Our AI thumbnail generator uses advanced machine learning algorithms to create professional YouTube thumbnails based on your video description. The AI understands the context of your content and generates visually appealing images optimized for higher click-through rates.</p>
+                    <h3 class="text-xl font-semibold text-primary mb-2">How does the AI image generator work?</h3>
+                    <p>Our AI image generator uses advanced machine learning algorithms to create beautiful images based on your text description. The AI understands the context of your prompt and generates visually appealing images in various artistic styles.</p>
                 </div>
                 <div class="card p-4 shadow-sm">
                     <h3 class="text-xl font-semibold text-primary mb-2">Is this service free to use?</h3>
-                    <p>Yes, our basic thumbnail generation service is completely free to use. Create as many thumbnails as you need without any cost. For advanced features and higher resolution images, we offer premium plans.</p>
+                    <p>Yes, our image generation service is completely free to use with no limits. Create as many images as you need without any cost or signup requirements.</p>
                 </div>
                 <div class="card p-4 shadow-sm">
-                    <h3 class="text-xl font-semibold text-primary mb-2">Can I customize the generated thumbnails?</h3>
-                    <p>Absolutely! You can download the generated thumbnails and further edit them in your preferred image editing software to add your own personal touch and branding elements.</p>
+                    <h3 class="text-xl font-semibold text-primary mb-2">Can I customize the generated images?</h3>
+                    <p>Absolutely! You can download the generated images and further edit them in your preferred image editing software to add your own personal touch and artistic elements.</p>
                 </div>
                 <div class="card p-4 shadow-sm">
                     <h3 class="text-xl font-semibold text-primary mb-2">What image resolution do I get?</h3>
-                    <p>All thumbnails are generated at YouTube's recommended resolution of 1280x720 pixels (16:9 aspect ratio). This ensures your thumbnails look crisp and professional across all devices and screen sizes.</p>
+                    <p>All images are generated at a high resolution of 1920x1080 pixels. This ensures your AI art looks crisp and detailed across all devices and screen sizes.</p>
                 </div>
                 <div class="card p-4 shadow-sm">
-                    <h3 class="text-xl font-semibold text-primary mb-2">How do I integrate the thumbnail generator with my workflow?</h3>
-                    <p>For content creators who need automated solutions, we offer a simple API that allows you to generate thumbnails programmatically. Check our API documentation for details on how to integrate it into your content workflow.</p>
+                    <h3 class="text-xl font-semibold text-primary mb-2">How do I integrate the image generator with my workflow?</h3>
+                    <p>For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow.</p>
                 </div>
             </div>
         </section>
@@ -224,8 +224,8 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
         <div class="container mx-auto px-4">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div class="md:col-span-2">
-                    <h3 class="text-lg font-bold mb-4">AI Art Thumbnail Generator</h3>
-                    <p class="text-gray-600 mb-4">Create professional, eye-catching YouTube thumbnails in seconds with our AI-powered generator. Boost your video click-through rates with custom thumbnails.</p>
+                    <h3 class="text-lg font-bold mb-4">AI Art Image Generator</h3>
+                    <p class="text-gray-600 mb-4">Create beautiful, high-quality AI-generated images in seconds with our free, unlimited generator. No signup required.</p>
                     <p class="text-gray-600">&copy; 2023 AI Art. All rights reserved.</p>
                 </div>
                 <div>
@@ -243,7 +243,7 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
                         <li><a href="/login" class="text-primary hover:text-primary-dark">Login</a></li>
                         <li><a href="/signup" class="text-primary hover:text-primary-dark">Sign Up</a></li>
                         {% if current_user.is_authenticated %}
-                        <li><a href="/dashboard" class="text-primary hover:text-primary-dark">My Thumbnails</a></li>
+                        <li><a href="/dashboard" class="text-primary hover:text-primary-dark">My Images</a></li>
                         <li><a href="/logout" class="text-primary hover:text-primary-dark">Logout</a></li>
                         {% endif %}
                     </ul>
@@ -345,7 +345,7 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
         });
         
         // Form submission handler
-        document.getElementById('thumbnail-form').addEventListener('submit', function(e) {
+        document.getElementById('image-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
             // Show loading, hide results and errors
@@ -376,7 +376,7 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
                     // Show result
                     document.getElementById('result').style.display = 'block';
                     // Add a timestamp parameter to prevent browser caching
-                    document.getElementById('thumbnail-image').src = data.image_path + '?t=' + new Date().getTime();
+                    document.getElementById('generated-image').src = data.image_path + '?t=' + new Date().getTime();
                     // Enable download button
                     document.getElementById('download-btn').disabled = false;
                 } else {
@@ -395,11 +395,11 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
         
         // Download image function
         function downloadImage() {
-            const img = document.getElementById('thumbnail-image');
+            const img = document.getElementById('generated-image');
             if (img.src) {
                 const a = document.createElement('a');
                 a.href = img.src;
-                a.download = 'youtube-thumbnail.jpg';
+                a.download = 'ai-image.jpg';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
@@ -415,10 +415,10 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
       "mainEntity": [
         {
           "@type": "Question",
-          "name": "How does the AI thumbnail generator work?",
+          "name": "How does the AI image generator work?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Our AI thumbnail generator uses advanced machine learning algorithms to create professional YouTube thumbnails based on your video description. The AI understands the context of your content and generates visually appealing images optimized for higher click-through rates."
+            "text": "Our AI image generator uses advanced machine learning algorithms to create beautiful images based on your text description. The AI understands the context of your prompt and generates visually appealing images in various artistic styles."
           }
         },
         {
@@ -426,15 +426,15 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
           "name": "Is this service free to use?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Yes, our basic thumbnail generation service is completely free to use. Create as many thumbnails as you need without any cost. For advanced features and higher resolution images, we offer premium plans."
+            "text": "Yes, our image generation service is completely free to use with no limits. Create as many images as you need without any cost or signup requirements."
           }
         },
         {
           "@type": "Question",
-          "name": "Can I customize the generated thumbnails?",
+          "name": "Can I customize the generated images?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Absolutely! You can download the generated thumbnails and further edit them in your preferred image editing software to add your own personal touch and branding elements."
+            "text": "Absolutely! You can download the generated images and further edit them in your preferred image editing software to add your own personal touch and artistic elements."
           }
         },
         {
@@ -442,15 +442,15 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
           "name": "What image resolution do I get?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "All thumbnails are generated at YouTube's recommended resolution of 1280x720 pixels (16:9 aspect ratio). This ensures your thumbnails look crisp and professional across all devices and screen sizes."
+            "text": "All images are generated at a high resolution of 1920x1080 pixels. This ensures your AI art looks crisp and detailed across all devices and screen sizes."
           }
         },
         {
           "@type": "Question",
-          "name": "How do I integrate the thumbnail generator with my workflow?",
+          "name": "How do I integrate the image generator with my workflow?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "For content creators who need automated solutions, we offer a simple API that allows you to generate thumbnails programmatically. Check our API documentation for details on how to integrate it into your content workflow."
+            "text": "For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow."
           }
         }
       ]

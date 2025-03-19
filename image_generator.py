@@ -12,30 +12,29 @@ from image_editor import process_image
 # Note: image_analyzer is imported dynamically in main_image_function when needed
 
 
-def image_generate_prompt_pollinations(video_thumbnail_description, api_key_gemini):
+def image_generate_prompt_pollinations(image_description, api_key_gemini):
     # Base prompt
-    prompt = f"""You are an expert YouTube thumbnail designer and prompt engineer for Pollinations.ai. I need a prompt that will generate a realistic, eye-catching, and highly click-worthy YouTube thumbnail.
+    prompt = f"""You are an expert AI image generation prompt engineer for Pollinations.ai. I need a prompt that will generate a beautiful, high-quality AI image.
 
-    Here's the context for the video thumbnail: [{video_thumbnail_description}]
+    Here's the description for the image: [{image_description}]
 
-    Key elements I want to emphasize in the thumbnail are: [List 2-3 key visual elements or emotions you want to convey. For example: "Success, a close-up of a giant pumpkin, and a surprised face," or "Sharp details, vibrant colors, and a sense of cutting-edge technology," or "Intricate details, a sense of fantasy, and a time-lapse effect."]
+    Key elements to consider:
 
-    Consider these factors for a clicky thumbnail:
+    Style: Consider what style would best suit this image (photorealistic, artistic, abstract, surreal, etc.)
+    Detail: Include specific visual elements that should appear in the image
+    Composition: Describe how elements should be arranged in the scene
+    Lighting: Specify the lighting conditions (soft, dramatic, natural, etc.)
+    Color: Suggest a color palette that would enhance the image
 
-    Realism: Aim for a photorealistic or highly detailed style.
-    Eye-Catching: Use vibrant colors, strong contrasts, and compelling compositions.
-    Click-Worthy: Evoke curiosity, excitement, or a sense of urgency.
-    Clarity: Ensure the main subject is clear and easily recognizable.
     Generate a detailed prompt for Pollinations.ai that includes:
 
-    A clear description of the subject matter.
-    Specific keywords related to the desired style (e.g., photorealistic, hyperrealistic, cinematic lighting, dramatic shadows).
-    Instructions for composition (e.g., close-up, wide shot, rule of thirds).
-    Desired color palette and lighting effects.
-    Any facial expressions that are needed.
-    Instructions to make the image "click worthy"
+    A clear description of the subject matter
+    Specific keywords related to the desired style
+    Instructions for composition
+    Desired color palette and lighting effects
+    Any specific artistic influences that might enhance the image
 
-    Pay special attention to: {video_thumbnail_description}
+    Pay special attention to: {image_description}
     """
     prompt += """
 
@@ -106,11 +105,11 @@ def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, se
         print("Path of placeholder.jpg: /test_assets/placeholder.jpg")
         return "test_assets/placeholder.jpg"
 
-def main_image_function(video_description, testMode, api_key_gemini):
+def main_image_function(image_description, testMode, api_key_gemini):
     if testMode == False:
         try:
             # Generate the prompt
-            image_prompt = image_generate_prompt_pollinations(video_description, api_key_gemini)
+            image_prompt = image_generate_prompt_pollinations(image_description, api_key_gemini)
             
             generated_image_path = generate_image_pollinations_ai(image_prompt, testMode)
             
