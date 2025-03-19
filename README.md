@@ -35,27 +35,28 @@ npm install
 ```
 MONGO_URI=your_mongodb_connection_string
 SECRET_KEY=your_secret_key
-CLICKSFLY_API_KEY=your_clicksfly_api_key
+SHRINKEARN_API_KEY=your_shrinkearn_api_key
 ```
 
-## Monetization with Clicksfly
+## Monetization with Shrinkearn
 
-This application includes integration with Clicksfly URL shortener service to monetize download links. When users click on the download button for generated images, they'll be redirected through a Clicksfly monetized link.
+This application includes integration with Shrinkearn URL shortener service to monetize download links. When users click on the download button for generated images, they'll be redirected through a Shrinkearn monetized link.
 
 ### Setup Instructions
 
-1. Create an account on [Clicksfly.com](https://clicksfly.com/)
+1. Create an account on [Shrinkearn.com](https://shrinkearn.com/)
 2. Complete account verification and setup PayPal payment method
-3. Generate your API key from your Clicksfly dashboard
+3. Generate your API key from your Shrinkearn dashboard
 4. Add your API key to the `.env` file
 5. Restart the application
 
 ### How It Works
 
-- Each time a user generates an image, the direct download link is automatically converted to a Clicksfly shortened URL
-- When users click the download button, they are redirected through the Clicksfly link, generating ad revenue
-- You earn money from each download link click through Clicksfly's advertising system
-- Minimum payout is $3, which is processed via PayPal (available in India)
+- Each time a user generates an image, the direct download link is automatically converted to a Shrinkearn shortened URL
+- When users click the download button, they are redirected through the Shrinkearn link, generating ad revenue
+- You earn money from each download link click through Shrinkearn's advertising system
+- Minimum payout is just $4, which is processed via PayPal (available in India)
+- Earn up to $20 per 1000 views, making it one of the highest paying URL shortening services
 
 ## Running the Application
 

@@ -29,8 +29,8 @@ login_manager.login_view = 'login'
 
 # API key
 GEMINI_API_KEY = "AIzaSyA0RYI9KRrNLi6KaX4g49UJD4G5YBEb6II"
-# Clicksfly API key
-CLICKSFLY_API_KEY = os.getenv('CLICKSFLY_API_KEY', '2efd34faac8996601a6017d05d8f2c7e8c8a8d5e')
+# Shrinkearn API key
+SHRINKEARN_API_KEY = os.getenv('SHRINKEARN_API_KEY', '229cd899f7265729506ef7abd124f781bddf2b64')
 
 # Ensure the images directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -159,22 +159,27 @@ def delete_image(image_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 def shorten_url(long_url):
-    """Shorten a URL using the Clicksfly API"""
+    """Shorten a URL using the Shrinkearn API"""
     try:
-        # API endpoint for Clicksfly
-        api_url = 'https://clicksfly.com/api'
+        # If API key is not set, return the original URL
+        if not SHRINKEARN_API_KEY:
+            print("Shrinkearn API key not set, using original URL")
+            return long_url
+            
+        # API endpoint for Shrinkearn
+        api_url = 'https://shrinkearn.com/api'
         
         # Parameters for the API request
         params = {
-            'api': CLICKSFLY_API_KEY,
+            'api': SHRINKEARN_API_KEY,
             'url': long_url
         }
         
-        # Make the API request - Clicksfly uses GET method
-        print(f"Sending request to Clicksfly API for URL: {long_url}")
+        # Make the API request - Shrinkearn uses GET method
+        print(f"Sending request to Shrinkearn API for URL: {long_url}")
         response = requests.get(api_url, params=params, timeout=10)
         response_text = response.text
-        print(f"Clicksfly API response: {response_text}")
+        print(f"Shrinkearn API response: {response_text}")
         
         try:
             data = response.json()
@@ -182,9 +187,10 @@ def shorten_url(long_url):
             # Check if the request was successful
             if data.get('status') == 'success':
                 shortened_url = data.get('shortenedUrl')
-                # Remove any escape characters from the URL
+                # Remove any escape characters from the URL - Shrinkearn returns URL with escaped quotes and slashes
                 if shortened_url:
-                    shortened_url = shortened_url.replace('\\', '')
+                    # Remove extra quotes and escape characters
+                    shortened_url = shortened_url.replace('"', '').replace('\\/', '/')
                     print(f"URL shortened successfully: {shortened_url}")
                     return shortened_url
                 else:
@@ -197,12 +203,12 @@ def shorten_url(long_url):
                 return long_url
         except ValueError:
             # If the response is not valid JSON
-            print(f"Invalid JSON response from Clicksfly: {response_text}")
+            print(f"Invalid JSON response from Shrinkearn: {response_text}")
             return long_url
             
     except requests.exceptions.RequestException as e:
         # Log the exception and return the original URL
-        print(f"Error making request to Clicksfly: {str(e)}")
+        print(f"Error making request to Shrinkearn: {str(e)}")
         return long_url
     except Exception as e:
         # Log the exception and return the original URL
@@ -246,7 +252,7 @@ def generate_image():
         # Generate the full download URL
         download_url = request.host_url.rstrip('/') + f'/{folder}/{image_filename}'
         
-        # Shorten the download URL using Clicksfly
+        # Shorten the download URL using Shrinkearn
         shortened_url = shorten_url(download_url)
         
         # Return the image path, shortened URL, and success message
@@ -294,7 +300,7 @@ def api_generate_image():
         # Generate the full download URL
         download_url = request.host_url.rstrip('/') + f'/{folder}/{image_filename}'
         
-        # Shorten the download URL using Clicksfly
+        # Shorten the download URL using Shrinkearn
         shortened_url = shorten_url(download_url)
         
         # Return the image URL, shortened URL, and success message
@@ -333,7 +339,7 @@ def download_image(folder, filename):
     # Check if we should use URL shortening
     use_shortening = request.args.get('monetize', 'true').lower() == 'true'
     
-    if use_shortening and CLICKSFLY_API_KEY:
+    if use_shortening and SHRINKEARN_API_KEY:
         # Shorten the URL and redirect to it
         shortened_url = shorten_url(full_url)
         if shortened_url != full_url:  # Only redirect if shortening was successful
