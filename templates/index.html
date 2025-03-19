@@ -377,8 +377,16 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
                     document.getElementById('result').style.display = 'block';
                     // Add a timestamp parameter to prevent browser caching
                     document.getElementById('generated-image').src = data.image_path + '?t=' + new Date().getTime();
-                    // Enable download button
-                    document.getElementById('download-btn').disabled = false;
+                    // Enable download button and set the shortened URL as data attribute
+                    const downloadBtn = document.getElementById('download-btn');
+                    downloadBtn.disabled = false;
+                    
+                    // Set the download URL and log for debugging
+                    const downloadUrl = data.download_url || data.image_path;
+                    console.log('Download URL:', downloadUrl);
+                    console.log('Is shortened URL:', downloadUrl !== data.image_path);
+                    
+                    downloadBtn.setAttribute('data-url', downloadUrl);
                 } else {
                     // Show error
                     document.getElementById('error').style.display = 'block';
@@ -395,15 +403,21 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
         
         // Download image function
         function downloadImage() {
-            const img = document.getElementById('generated-image');
-            if (img.src) {
-                const a = document.createElement('a');
-                a.href = img.src;
-                a.download = 'ai-image.jpg';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
+            // Get the image path from the src attribute
+            const imgSrc = document.getElementById('generated-image').src;
+            
+            // Parse the image path to get the folder and filename
+            // The src will be something like: /processed_images/filename.jpg?t=123456
+            const urlParts = imgSrc.split('?')[0].split('/');
+            const filename = urlParts[urlParts.length - 1];
+            const folder = urlParts[urlParts.length - 2];
+            
+            // Create the download URL
+            const downloadUrl = `/download/${folder}/${filename}`;
+            console.log('Download URL:', downloadUrl);
+            
+            // Navigate to the download URL which will handle monetization and download
+            window.location.href = downloadUrl;
         }
     </script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"

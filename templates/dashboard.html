@@ -53,7 +53,10 @@
                                     {% if thumbnail.image_data %}
                                         <a href="data:image/jpeg;base64,{{ thumbnail.image_data }}" download="ai-image-{{ thumbnail._id }}.jpg" class="btn btn-secondary btn-sm">Download</a>
                                     {% else %}
-                                        <a href="{{ thumbnail.image_path }}" download class="btn btn-secondary btn-sm">Download</a>
+                                        {% set path_parts = thumbnail.image_path.split('/') %}
+                                        {% set folder = path_parts[-2] %}
+                                        {% set filename = path_parts[-1] %}
+                                        <a href="/download/{{ folder }}/{{ filename }}" class="btn btn-secondary btn-sm">Download</a>
                                     {% endif %}
                                     <button class="btn btn-danger btn-sm" onclick="deleteImage('{{ thumbnail._id }}')">Delete</button>
                                 </div>
@@ -120,6 +123,10 @@
                     alert('An error occurred while deleting the image.');
                 });
             }
+        }
+
+        function openShortLink(url) {
+            window.open(url, '_blank');
         }
     </script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
