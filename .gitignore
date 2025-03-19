@@ -4,9 +4,8 @@
 !/images/.gitkeep
 /processed_images/*
 !/processed_images/.gitkeep
-/reference_images/*
-!/reference_images/.gitkeep
 /logs/*
+!/logs/.gitkeep
 *.pyc
 *.pyo
 __pycache__/
