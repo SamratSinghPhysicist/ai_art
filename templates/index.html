@@ -117,7 +117,10 @@
             <div class="result text-center my-8 hidden" id="result">
                 <h2 class="text-2xl font-semibold mb-4">Your Generated Image</h2>
                 <div class="image-card mx-auto" style="max-width: 640px;">
-                    <img id="generated-image" src="" alt="Generated AI Image" class="w-full rounded-lg shadow-md">
+                    <div class="image-container" style="position: relative;">
+                        <img id="generated-image" src="" alt="Generated AI Image" class="w-full rounded-lg shadow-md" style="-webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -o-user-select: none; user-select: none;" draggable="false" oncontextmenu="return false;">
+                        <div class="image-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; cursor: not-allowed;"></div>
+                    </div>
                 </div>
                 <div class="mt-4">
                     <button id="download-btn" class="btn btn-secondary" onclick="downloadImage()" disabled>Download Image</button>
