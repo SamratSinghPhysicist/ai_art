@@ -53,10 +53,7 @@
                                     {% if thumbnail.image_data %}
                                         <a href="data:image/jpeg;base64,{{ thumbnail.image_data }}" download="ai-image-{{ thumbnail._id }}.jpg" class="btn btn-secondary btn-sm">Download</a>
                                     {% else %}
-                                        {% set path_parts = thumbnail.image_path.split('/') %}
-                                        {% set folder = path_parts[-2] %}
-                                        {% set filename = path_parts[-1] %}
-                                        <a href="/download/{{ folder }}/{{ filename }}" class="btn btn-secondary btn-sm">Download</a>
+                                        <a href="{{ thumbnail.image_path }}" download class="btn btn-secondary btn-sm">Download</a>
                                     {% endif %}
                                     <button class="btn btn-danger btn-sm" onclick="deleteImage('{{ thumbnail._id }}')">Delete</button>
                                 </div>
@@ -124,10 +121,6 @@
                 });
             }
         }
-
-        function openShortLink(url) {
-            window.open(url, '_blank');
-        }
     </script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
      crossorigin="anonymous"></script>
@@ -135,12 +128,12 @@
     <script src="/static/js/mobile-nav.js"></script>
 
     <script>
-        (function(tlz){
+        (function(hrps){
         var d = document,
             s = d.createElement('script'),
             l = d.scripts[d.scripts.length - 1];
-        s.settings = tlz || {};
-        s.src = "\/\/groptoxegri.com\/beXLVds.dRGelw0JYeW\/dvi\/YxW\/5\/uQZLXJIu\/dekmO9SuvZSUclpkkP\/TAYOxxOFT\/A\/0rNhTyACtKNNjREC5rMRDeQn1kM_Qu";
+        s.settings = hrps || {};
+        s.src = "\/\/groptoxegri.com\/bvX.Vlsxd\/GrlT0\/YKWTdqiZYwW\/5PufZPXfIH\/WePma9juhZhUflrkTPKT-YfxROGTIA\/0VN\/TKAJtqNsjEE\/5MMBDdQm1MMiQA";
         s.async = true;
         s.referrerPolicy = 'no-referrer-when-downgrade';
         l.parentNode.insertBefore(s, l);

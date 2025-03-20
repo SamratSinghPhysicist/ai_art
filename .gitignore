@@ -10,4 +10,3 @@
 *.pyo
 __pycache__/
 .DS_Store
-/venv_new

@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
 from flask import send_file
-import requests
 
 # Load environment variables
 load_dotenv()
@@ -29,8 +28,6 @@ login_manager.login_view = 'login'
 
 # API key
 GEMINI_API_KEY = "AIzaSyA0RYI9KRrNLi6KaX4g49UJD4G5YBEb6II"
-# Shrinkearn API key
-SHRINKEARN_API_KEY = os.getenv('SHRINKEARN_API_KEY', '229cd899f7265729506ef7abd124f781bddf2b64')
 
 # Ensure the images directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -124,13 +121,6 @@ def logout():
 def dashboard():
     """Display user's saved images"""
     images = current_user.get_thumbnails()
-    
-    # Generate shortened URLs for each image if they don't have image_data
-    for image in images:
-        if not image.get('image_data') and image.get('image_path'):
-            full_url = request.host_url.rstrip('/') + image['image_path']
-            image['shortened_url'] = shorten_url(full_url)
-    
     return render_template('dashboard.html', user=current_user, thumbnails=images)
 
 @app.route('/image/<image_id>/delete', methods=['POST'])
@@ -157,63 +147,6 @@ def delete_image(image_id):
             return jsonify({'success': False, 'error': 'Image not found or you do not have permission to delete it'}), 404
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
-def shorten_url(long_url):
-    """Shorten a URL using the Shrinkearn API"""
-    try:
-        # If API key is not set, return the original URL
-        if not SHRINKEARN_API_KEY:
-            print("Shrinkearn API key not set, using original URL")
-            return long_url
-            
-        # API endpoint for Shrinkearn
-        api_url = 'https://shrinkearn.com/api'
-        
-        # Parameters for the API request
-        params = {
-            'api': SHRINKEARN_API_KEY,
-            'url': long_url
-        }
-        
-        # Make the API request - Shrinkearn uses GET method
-        print(f"Sending request to Shrinkearn API for URL: {long_url}")
-        response = requests.get(api_url, params=params, timeout=10)
-        response_text = response.text
-        print(f"Shrinkearn API response: {response_text}")
-        
-        try:
-            data = response.json()
-            
-            # Check if the request was successful
-            if data.get('status') == 'success':
-                shortened_url = data.get('shortenedUrl')
-                # Remove any escape characters from the URL - Shrinkearn returns URL with escaped quotes and slashes
-                if shortened_url:
-                    # Remove extra quotes and escape characters
-                    shortened_url = shortened_url.replace('"', '').replace('\\/', '/')
-                    print(f"URL shortened successfully: {shortened_url}")
-                    return shortened_url
-                else:
-                    print("Shortened URL not found in response")
-                    return long_url
-            else:
-                # Log the error and return the original URL
-                error_msg = data.get('message', 'Unknown error')
-                print(f"URL shortening failed: {error_msg}")
-                return long_url
-        except ValueError:
-            # If the response is not valid JSON
-            print(f"Invalid JSON response from Shrinkearn: {response_text}")
-            return long_url
-            
-    except requests.exceptions.RequestException as e:
-        # Log the exception and return the original URL
-        print(f"Error making request to Shrinkearn: {str(e)}")
-        return long_url
-    except Exception as e:
-        # Log the exception and return the original URL
-        print(f"Unexpected error shortening URL: {str(e)}")
-        return long_url
 
 @app.route('/generate', methods=['POST'])
 def generate_image():
@@ -249,18 +182,11 @@ def generate_image():
         if current_user.is_authenticated:
             current_user.save_thumbnail(f'/{folder}/{image_filename}', image_description)
         
-        # Generate the full download URL
-        download_url = request.host_url.rstrip('/') + f'/{folder}/{image_filename}'
-        
-        # Shorten the download URL using Shrinkearn
-        shortened_url = shorten_url(download_url)
-        
-        # Return the image path, shortened URL, and success message
+        # Return the image path and success message
         return jsonify({
             'success': True,
             'message': 'Image generated successfully',
-            'image_path': f'/{folder}/{image_filename}',
-            'download_url': shortened_url
+            'image_path': f'/{folder}/{image_filename}'
         })
     
     except Exception as e:
@@ -297,18 +223,11 @@ def api_generate_image():
         else:
             folder = app.config['UPLOAD_FOLDER']
         
-        # Generate the full download URL
-        download_url = request.host_url.rstrip('/') + f'/{folder}/{image_filename}'
-        
-        # Shorten the download URL using Shrinkearn
-        shortened_url = shorten_url(download_url)
-        
-        # Return the image URL, shortened URL, and success message
+        # Return the image URL and success message
         return jsonify({
             'success': True,
             'message': 'Image generated successfully',
-            'image_url': f'{request.host_url}{folder}/{image_filename}',
-            'download_url': shortened_url
+            'image_url': f'{request.host_url}{folder}/{image_filename}'
         })
     
     except Exception as e:
@@ -328,47 +247,6 @@ def serve_test_asset(filename):
 def serve_processed_image(filename):
     """Serve the processed images"""
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
-
-@app.route('/download/<path:folder>/<filename>')
-def download_image(folder, filename):
-    """Handle image downloads - either redirect to shortened URL or force download"""
-    # Build the original image URL
-    original_url = f"/{folder}/{filename}"
-    full_url = request.host_url.rstrip('/') + original_url
-    
-    # Check if we should use URL shortening
-    use_shortening = request.args.get('monetize', 'true').lower() == 'true'
-    
-    if use_shortening and SHRINKEARN_API_KEY:
-        # Shorten the URL and redirect to it
-        shortened_url = shorten_url(full_url)
-        if shortened_url != full_url:  # Only redirect if shortening was successful
-            return redirect(shortened_url)
-    
-    # If shortening is disabled or failed, serve the file with download headers
-    if folder == app.config['UPLOAD_FOLDER']:
-        return send_from_directory(
-            app.config['UPLOAD_FOLDER'], 
-            filename, 
-            as_attachment=True,
-            download_name=f"ai-image-{filename}"
-        )
-    elif folder == app.config['PROCESSED_FOLDER']:
-        return send_from_directory(
-            app.config['PROCESSED_FOLDER'],
-            filename,
-            as_attachment=True,
-            download_name=f"ai-image-{filename}"
-        )
-    elif folder == app.config['TEST_ASSETS']:
-        return send_from_directory(
-            app.config['TEST_ASSETS'],
-            filename,
-            as_attachment=True,
-            download_name=f"ai-image-{filename}"
-        )
-    else:
-        return jsonify({'error': 'Invalid folder path'}), 400
 
 @app.route('/api/enhance-prompt', methods=['POST'])
 def enhance_prompt():
