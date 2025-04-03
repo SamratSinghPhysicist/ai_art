@@ -294,6 +294,16 @@ def google_verification():
     """Serve the Google verification file"""
     return render_template('google4732be05fe4d2482.html')
 
+@app.route('/ads.txt')
+def serve_ads_txt():
+    """Serve the ads.txt file"""
+    return send_from_directory('static', 'ads.txt')
+
+@app.route('/robots.txt')
+def serve_ads_txt():
+    """Serve the robots.txt file"""
+    return send_from_directory('static', 'robots.txt')
+
 if __name__ == '__main__':
     # Configure logging
     if not os.path.exists('logs'):
@@ -310,7 +320,3 @@ if __name__ == '__main__':
     
     # Start the app in debug mode (development only)
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)
-
-
-
-
