@@ -300,7 +300,7 @@ def serve_ads_txt():
     return send_from_directory('static', 'ads.txt')
 
 @app.route('/robots.txt')
-def serve_ads_txt():
+def serve_robots_txt():
     """Serve the robots.txt file"""
     return send_from_directory('static', 'robots.txt')
 
