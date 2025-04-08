@@ -1,0 +1,15 @@
+__pycache__/
+node_modules/
+.git/
+.env
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+images/*
+!images/.gitkeep
+processed_images/*
+!processed_images/.gitkeep

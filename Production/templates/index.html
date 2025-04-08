@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Art - Free Unlimited AI Image Generator | No Signup Required</title>
+    <meta name="description" content="Generate stunning AI images for free with our unlimited AI image generator. No signup required, instant results, and completely free to use.">
+    <meta name="keywords" content="AI image generator, free AI art, AI art generator, no signup, unlimited AI images, image generation, AI art creator">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="AI Art">
+
+    <meta name="5a8137c2095fcc91c57a307bc77230856293ef66" content="5a8137c2095fcc91c57a307bc77230856293ef66" />
+    
+	
+    <link rel="canonical" href="https://aiart-zroo.onrender.com/">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiart-zroo.onrender.com/">
+    <meta property="og:title" content="AI Art - Free, Unlimited AI Image Generator | No Signup Required">
+    <meta property="og:description" content="Generate beautiful AI images for free. No limits, no signup required, and completely free to use!">
+    <meta property="og:image" content="https://aiart-zroo.onrender.com/static/images/og-image.jpg">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://aiart-zroo.onrender.com/">
+    <meta property="twitter:title" content="AI Art - Free, Unlimited AI Image Generator | No Signup Required">
+    <meta property="twitter:description" content="Generate beautiful AI images for free. No limits, no signup required, and completely free to use!">
+    <meta property="twitter:image" content="https://aiart-zroo.onrender.com/static/images/og-image.jpg">
+    
+    <!-- Structured Data / Schema.org -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "AI Art Image Generator",
+      "url": "https://aiart-zroo.onrender.com",
+      "description": "Free, unlimited AI image generator with no signup required",
+      "applicationCategory": "DesignApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "operatingSystem": "Web Browser"
+    }
+    </script>
+
+    
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="nav-logo">AI Art</a>
+                <button class="mobile-menu-btn">☰</button>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/blog" class="nav-link">Blog</a>
+                    <a href="#api-info" class="nav-link">API</a>
+                    {% if current_user.is_authenticated %}
+                    <a href="/dashboard" class="nav-link">My Images</a>
+                    <a href="/logout" class="nav-link">Logout</a>
+                    {% else %}
+                    <a href="/login" class="nav-link">Login</a>
+                    <a href="/signup" class="nav-link">Sign Up</a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="breadcrumbs container py-2 text-sm">
+        <nav aria-label="breadcrumb">
+            <ol class="flex">
+                <li class="breadcrumb-item active" aria-current="page">Home</li>
+            </ol>
+        </nav>
+    </div>
+
+    <main class="container my-8">
+        <div class="card p-6 shadow-lg">
+            <h1 class="text-3xl font-bold text-primary text-center mb-6">Create Stunning AI Images</h1>
+            <p class="text-center text-gray-700 mb-6">Generate beautiful AI art in seconds - Free, Unlimited, No Signup Required</p>
+            
+            <form id="image-form" class="my-6" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="video-description" class="form-label">Describe the image you want to create:</label>
+                    <div class="textarea-container">
+                        <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: A serene mountain landscape with a waterfall at sunset, photorealistic style"></textarea>
+                    </div>
+                    <div class="button-container mt-4">
+                        <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
+                        <button type="button" id="revert-prompt-btn" class="btn btn-secondary" title="Revert to Original" style="display: none;">↩️<span class="button-text">Revert</span></button>
+                    </div>
+                </div>
+                
+
+                
+                <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
+                    <input type="checkbox" id="test-mode" name="test_mode">
+                    <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
+                </div>
+                
+                <div class="text-center mt-6">
+                    <button type="submit" class="btn btn-primary px-8 py-3 text-lg">Generate Image</button>
+                </div>
+            </form>
+            
+            <div class="loading text-center my-8 hidden" id="loading">
+                <p class="mb-4">Generating your image... This may take up to a minute.</p>
+                <div class="loading-spinner"></div>
+            </div>
+            
+            <div class="error text-center my-6 hidden" id="error">
+                <p class="text-primary-dark">An error occurred. Please try again.</p>
+            </div>
+            
+            <div class="result text-center my-8 hidden" id="result">
+                <h2 class="text-2xl font-semibold mb-4">Your Generated Image</h2>
+                <div class="image-card mx-auto" style="max-width: 640px;">
+                    <img id="generated-image" src="" alt="Generated AI Image" class="w-full rounded-lg shadow-md">
+                </div>
+                <div class="mt-4">
+                    <button id="download-btn" class="btn btn-secondary" onclick="downloadImage()" disabled>Download Image</button>
+                </div>
+            </div>
+        </div>
+        
+        
+
+        <div class="card p-6 shadow-md mt-8">
+            <h2 class="text-2xl font-semibold mb-4">Sample Thumbnails</h2>
+            <div class="gallery-grid">
+                <div class="thumbnail-card">
+                    <img src="/static/images/sample1.jpg" alt="AI-generated YouTube thumbnail example showing space facts" onerror="this.src='/test_assets/placeholder.jpg'">
+                </div>
+                <div class="thumbnail-card">
+                    <img src="/static/images/sample2.jpg" alt="Professional YouTube thumbnail created with AI for gaming video" onerror="this.src='/test_assets/placeholder.jpg'">
+                </div>
+                <div class="thumbnail-card">
+                    <img src="/static/images/sample3.jpg" alt="Engaging YouTube thumbnail design for technology tutorial" onerror="this.src='/test_assets/placeholder.jpg'">
+                </div>
+                <div class="thumbnail-card">
+                    <img src="/static/images/sample4.jpg" alt="Eye-catching YouTube thumbnail for travel vlog generated by AI" onerror="this.src='/test_assets/placeholder.jpg'">
+                </div>
+                <div class="thumbnail-card">
+                    <img src="/static/images/sample5.jpg" alt="High-quality AI art thumbnail for educational YouTube video" onerror="this.src='/test_assets/placeholder.jpg'">
+                </div>
+            </div>
+        </div>
+
+        <div class="card p-6 shadow-md mt-8" id="api-info">
+            <h2 class="text-2xl font-semibold mb-4">API Usage</h2>
+            <p class="mb-4">You can also use our API to generate images programmatically:</p>
+            <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto">POST /api/generate
+Content-Type: application/json
+
+{
+    "video_description": "Your image description here",
+    "test_mode": false
+}</pre>
+        </div>
+
+        <section class="my-12">
+            <h2 class="text-2xl font-bold text-primary text-center mb-6">AI Art Creation Tips</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="card p-4 shadow-md">
+                    <h3 class="text-xl font-semibold text-primary mb-2">Prompt Engineering</h3>
+                    <p class="text-gray-700 mb-4">Learn techniques to craft the perfect prompts that generate exactly the images you want.</p>
+                    <a href="/blog" class="text-primary font-medium">Read More →</a>
+                </div>
+                <div class="card p-4 shadow-md">
+                    <h3 class="text-xl font-semibold text-primary mb-2">AI Art Styles</h3>
+                    <p class="text-gray-700 mb-4">Discover different artistic styles and techniques you can use in your AI art generation prompts.</p>
+                    <a href="/blog" class="text-primary font-medium">Read More →</a>
+                </div>
+                <div class="card p-4 shadow-md">
+                    <h3 class="text-xl font-semibold text-primary mb-2">Using AI Art</h3>
+                    <p class="text-gray-700 mb-4">Explore creative ways to use your AI-generated images in projects, social media, and more.</p>
+                    <a href="/blog" class="text-primary font-medium">Read More →</a>
+                </div>
+            </div>
+        </section>
+
+        <section id="api-info" class="my-12">
+            <h2 class="text-2xl font-bold text-primary text-center mb-6">API Integration Available</h2>
+            <p class="text-center text-gray-700 mb-6">Integrate our image generator directly into your workflow with our easy-to-use API</p>
+            <div class="bg-gray-100 p-4 rounded">
+                <h3 class="text-xl font-semibold text-primary mb-2">Example API Request</h3>
+                <pre class="bg-gray-800 text-black p-4 rounded overflow-x-auto"><code>
+curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
+    -H "Content-Type: application/json" \
+    -d '{"video_description": "A serene mountain landscape with a waterfall at sunset, photorealistic style"}'</code></pre>
+            </div>
+        </section>
+
+        <section id="faq" class="my-12">
+            <h2 class="text-2xl font-bold text-primary text-center mb-6">Frequently Asked Questions</h2>
+            <div class="space-y-6">
+                <div class="card p-4 shadow-sm">
+                    <h3 class="text-xl font-semibold text-primary mb-2">How does the AI image generator work?</h3>
+                    <p>Our AI image generator uses advanced machine learning algorithms to create beautiful images based on your text description. The AI understands the context of your prompt and generates visually appealing images in various artistic styles.</p>
+                </div>
+                <div class="card p-4 shadow-sm">
+                    <h3 class="text-xl font-semibold text-primary mb-2">Is this service free to use?</h3>
+                    <p>Yes, our image generation service is completely free to use with no limits. Create as many images as you need without any cost or signup requirements.</p>
+                </div>
+                <div class="card p-4 shadow-sm">
+                    <h3 class="text-xl font-semibold text-primary mb-2">Can I customize the generated images?</h3>
+                    <p>Absolutely! You can download the generated images and further edit them in your preferred image editing software to add your own personal touch and artistic elements.</p>
+                </div>
+                <div class="card p-4 shadow-sm">
+                    <h3 class="text-xl font-semibold text-primary mb-2">What image resolution do I get?</h3>
+                    <p>All images are generated at a high resolution of 1920x1080 pixels. This ensures your AI art looks crisp and detailed across all devices and screen sizes.</p>
+                </div>
+                <div class="card p-4 shadow-sm">
+                    <h3 class="text-xl font-semibold text-primary mb-2">How do I integrate the image generator with my workflow?</h3>
+                    <p>For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer bg-gray-100 mt-12 py-8">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div class="md:col-span-2">
+                    <h3 class="text-lg font-bold mb-4">AI Art Image Generator</h3>
+                    <p class="text-gray-600 mb-4">Create beautiful, high-quality AI-generated images in seconds with our free, unlimited generator. No signup required.</p>
+                    <p class="text-gray-600">&copy; 2023 AI Art. All rights reserved.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="/" class="text-primary hover:text-primary-dark">Home</a></li>
+                        <li><a href="/blog" class="text-primary hover:text-primary-dark">Blog</a></li>
+                        <li><a href="#api-info" class="text-primary hover:text-primary-dark">API Documentation</a></li>
+                        <li><a href="/sitemap-page" class="text-primary hover:text-primary-dark">Sitemap</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Account</h3>
+                    <ul class="space-y-2">
+                        <li><a href="/login" class="text-primary hover:text-primary-dark">Login</a></li>
+                        <li><a href="/signup" class="text-primary hover:text-primary-dark">Sign Up</a></li>
+                        {% if current_user.is_authenticated %}
+                        <li><a href="/dashboard" class="text-primary hover:text-primary-dark">My Images</a></li>
+                        <li><a href="/logout" class="text-primary hover:text-primary-dark">Logout</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-gray-200 text-sm text-gray-500">
+                <div class="flex flex-wrap justify-between">
+                    <div class="w-full md:w-auto mb-4 md:mb-0">
+                        <a href="/sitemap-page" class="mr-4">Sitemap</a>
+                        <a href="/sitemap.xml" class="mr-4">XML Sitemap</a>
+                        <a href="/blog" class="mr-4">Blog</a>
+                    </div>
+                    <div>
+                        <a href="https://aiart-zroo.onrender.com" class="text-primary">aiart-zroo.onrender.com</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+    
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script>
+        // Store the original prompt when the user clicks enhance
+        let originalPrompt = '';
+        
+        // Developer mode toggle with keyboard shortcut (Ctrl+Shift+D)
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+                const testModeContainer = document.getElementById('test-mode-container');
+                if (testModeContainer.style.display === 'none') {
+                    testModeContainer.style.display = 'flex';
+                    console.log('Developer mode activated');
+                } else {
+                    testModeContainer.style.display = 'none';
+                    console.log('Developer mode deactivated');
+                }
+            }
+        });
+        
+        // Enhance prompt button click handler
+        document.getElementById('enhance-prompt-btn').addEventListener('click', function() {
+            const promptTextarea = document.getElementById('video-description');
+            const prompt = promptTextarea.value.trim();
+            
+            if (!prompt) {
+                alert('Please enter a prompt before enhancing.');
+                return;
+            }
+            
+            // Store the original prompt for reverting later
+            originalPrompt = prompt;
+            
+            // Show loading state on the button
+            this.innerHTML = '⏳';
+            this.disabled = true;
+            
+            // Call the API to enhance the prompt
+            fetch('/api/enhance-prompt', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ prompt: prompt })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset button state
+                document.getElementById('enhance-prompt-btn').innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
+                document.getElementById('enhance-prompt-btn').disabled = false;
+                
+                if (data.success) {
+                    // Update the textarea with the enhanced prompt
+                    promptTextarea.value = data.enhanced_prompt;
+                    
+                    // Show the revert button
+                    document.getElementById('revert-prompt-btn').style.display = 'flex';
+                } else {
+                    alert('Failed to enhance prompt: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                // Reset button state
+                document.getElementById('enhance-prompt-btn').innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance</span>';
+                document.getElementById('enhance-prompt-btn').disabled = false;
+                
+                console.error('Error:', error);
+                alert('An error occurred while enhancing the prompt.');
+            });
+        });
+        
+        // Revert prompt button click handler
+        document.getElementById('revert-prompt-btn').addEventListener('click', function() {
+            // Restore the original prompt
+            document.getElementById('video-description').value = originalPrompt;
+            
+            // Hide the revert button
+            this.style.display = 'none';
+        });
+        
+        // Form submission handler
+        document.getElementById('image-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading, hide results and errors
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            // Get form data
+            const description = document.getElementById('video-description').value;
+            const testMode = document.getElementById('test-mode').checked;
+            
+            // Create form data object
+            const formData = new FormData();
+            formData.append('video_description', description);
+            formData.append('test_mode', testMode ? 'true' : 'false');
+            
+            // Send request
+            fetch('/generate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.success) {
+                    // Show result
+                    document.getElementById('result').style.display = 'block';
+                    // Add a timestamp parameter to prevent browser caching
+                    document.getElementById('generated-image').src = data.image_path + '?t=' + new Date().getTime();
+                    // Enable download button
+                    document.getElementById('download-btn').disabled = false;
+                } else {
+                    // Show error
+                    document.getElementById('error').style.display = 'block';
+                    document.getElementById('error').textContent = data.error || 'An error occurred';
+                }
+            })
+            .catch(error => {
+                // Hide loading, show error
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                console.error('Error:', error);
+            });
+        });
+        
+        // Download image function
+        function downloadImage() {
+            const img = document.getElementById('generated-image');
+            if (img.src) {
+                const a = document.createElement('a');
+                a.href = img.src;
+                a.download = 'ai-image.jpg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        }
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
+     crossorigin="anonymous"></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How does the AI image generator work?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Our AI image generator uses advanced machine learning algorithms to create beautiful images based on your text description. The AI understands the context of your prompt and generates visually appealing images in various artistic styles."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is this service free to use?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes, our image generation service is completely free to use with no limits. Create as many images as you need without any cost or signup requirements."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I customize the generated images?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Absolutely! You can download the generated images and further edit them in your preferred image editing software to add your own personal touch and artistic elements."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What image resolution do I get?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "All images are generated at a high resolution of 1920x1080 pixels. This ensures your AI art looks crisp and detailed across all devices and screen sizes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I integrate the image generator with my workflow?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow."
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Google Adsense Ads -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
+    crossorigin="anonymous"></script>
+
+</body>
+</html>

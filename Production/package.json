@@ -1,0 +1,33 @@
+{
+  "name": "ai_thumbnail_generator",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite",
+    "build": "vite build",
+    "build:css": "tailwindcss -i ./static/css/tailwind.css -o ./static/css/styles.css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SamratSinghPhysicist/ai_thumbnail_generator.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SamratSinghPhysicist/ai_thumbnail_generator/issues"
+  },
+  "homepage": "https://github.com/SamratSinghPhysicist/ai_thumbnail_generator#readme",
+  "description": "",
+  "devDependencies": {
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.3.2",
+    "vite": "^4.3.9"
+  }
+}

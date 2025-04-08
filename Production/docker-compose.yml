@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - MONGO_URI=${MONGO_URI}
+      - SECRET_KEY=${SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}  # Added Gemini API key
+      - FLASK_ENV=production  # Added environment setting
+    volumes:
+      - ./images:/app/images
+      - ./processed_images:/app/processed_images
+      - ./logs:/app/logs
+    restart: unless-stopped  # Added restart policy for production
+    # Using Python 3.11 as specified in the Dockerfile

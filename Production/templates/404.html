@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found - AI Art Thumbnail Generator</title>
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://aiart-zroo.onrender.com/404">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="nav-logo">AI Art</a>
+                <button class="mobile-menu-btn">☰</button>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/blog" class="nav-link">Blog</a>
+                    <a href="/#api-info" class="nav-link">API</a>
+                    {% if current_user.is_authenticated %}
+                    <a href="/dashboard" class="nav-link">My Thumbnails</a>
+                    <a href="/logout" class="nav-link">Logout</a>
+                    {% else %}
+                    <a href="/login" class="nav-link">Login</a>
+                    <a href="/signup" class="nav-link">Sign Up</a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container my-8 text-center">
+        <div class="card p-6 shadow-lg">
+            <h1 class="text-3xl font-bold text-primary mb-6">Page Not Found</h1>
+            <p class="text-gray-700 mb-6">Oops! The page you're looking for doesn't exist.</p>
+            <p class="text-gray-700 mb-8">Try one of these popular pages instead:</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-2xl mx-auto">
+                <a href="/" class="btn btn-primary">Create Thumbnails</a>
+                <a href="/login" class="btn btn-secondary">Login</a>
+                <a href="/signup" class="btn btn-secondary">Sign Up</a>
+            </div>
+        </div>
+    </main>
+    
+    <footer class="footer bg-gray-100 mt-12 py-8">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-lg font-bold mb-4">AI Art Thumbnail Generator</h3>
+                    <p class="text-gray-600 mb-4">Create professional, eye-catching YouTube thumbnails in seconds with our AI-powered generator.</p>
+                    <p class="text-gray-600">&copy; 2023 AI Art. All rights reserved.</p>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold mb-4">Quick Links</h3>
+                    <ul class="space-y-2">
+                        <li><a href="/" class="text-primary hover:text-primary-dark">Home</a></li>
+                        <li><a href="#api-info" class="text-primary hover:text-primary-dark">API Documentation</a></li>
+                        <li><a href="/login" class="text-primary hover:text-primary-dark">Login</a></li>
+                        <li><a href="/signup" class="text-primary hover:text-primary-dark">Sign Up</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+
+    <!-- Google Adsense Ads -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
+    crossorigin="anonymous"></script>
+
+</body>
+</html> 
