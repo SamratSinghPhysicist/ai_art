@@ -16,3 +16,5 @@ scipy==1.11.3
 scikit-image==0.22.0
 # Added for enhanced image analysis
 json5==0.9.14
+# Added for Stability AI integration
+argparse==1.4.0

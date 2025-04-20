@@ -86,29 +86,78 @@
             <h1 class="text-3xl font-bold text-primary text-center mb-6">Create Stunning AI Images</h1>
             <p class="text-center text-gray-700 mb-6">Generate beautiful AI art in seconds - Free, Unlimited, No Signup Required</p>
             
-            <form id="image-form" class="my-6" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="video-description" class="form-label">Describe the image you want to create:</label>
-                    <div class="textarea-container">
-                        <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: A serene mountain landscape with a waterfall at sunset, photorealistic style"></textarea>
-                    </div>
-                    <div class="button-container mt-4">
-                        <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
-                        <button type="button" id="revert-prompt-btn" class="btn btn-secondary" title="Revert to Original" style="display: none;">↩️<span class="button-text">Revert</span></button>
-                    </div>
+            <div class="tabs-container mb-6">
+                <div class="tab-buttons">
+                    <button id="text-to-image-tab" class="tab-button active">Text to Image</button>
+                    <button id="image-to-image-tab" class="tab-button">Image to Image</button>
                 </div>
                 
-
-                
-                <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
-                    <input type="checkbox" id="test-mode" name="test_mode">
-                    <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
+                <div id="text-to-image-content" class="tab-content active">
+                    <form id="image-form" class="my-6" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="video-description" class="form-label">Describe the image you want to create:</label>
+                            <div class="textarea-container">
+                                <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: A serene mountain landscape with a waterfall at sunset, photorealistic style"></textarea>
+                            </div>
+                            <div class="button-container mt-4">
+                                <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
+                                <button type="button" id="revert-prompt-btn" class="btn btn-secondary" title="Revert to Original" style="display: none;">↩️<span class="button-text">Revert</span></button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
+                            <input type="checkbox" id="test-mode" name="test_mode">
+                            <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
+                        </div>
+                        
+                        <div class="text-center mt-6">
+                            <button type="submit" class="btn btn-primary px-8 py-3 text-lg">Generate Image</button>
+                        </div>
+                    </form>
                 </div>
                 
-                <div class="text-center mt-6">
-                    <button type="submit" class="btn btn-primary px-8 py-3 text-lg">Generate Image</button>
+                <div id="image-to-image-content" class="tab-content">
+                    <form id="img2img-form" class="my-6" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="image-upload" class="form-label">Upload your image:</label>
+                            <div class="file-upload-container">
+                                <input type="file" id="image-upload" name="image" class="form-input-file" accept="image/*" required>
+                                <div id="preview-container" class="hidden mt-4">
+                                    <img id="image-preview" class="max-w-full max-h-64 mx-auto rounded-md" alt="Image preview">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <label for="img2img-prompt" class="form-label">Describe how you want to transform the image:</label>
+                            <div class="textarea-container">
+                                <textarea id="img2img-prompt" name="prompt" class="form-input" required placeholder="Example: Convert this photo into an oil painting with vibrant colors"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <label for="negative-prompt" class="form-label">Negative prompt (optional - what to avoid):</label>
+                            <div class="textarea-container">
+                                <textarea id="negative-prompt" name="negative_prompt" class="form-input" placeholder="Example: blurry, distorted, low quality"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <label for="strength-slider" class="form-label">Transformation strength: <span id="strength-value">0.7</span></label>
+                            <input type="range" id="strength-slider" name="strength" min="0.1" max="0.9" step="0.1" value="0.7" class="form-slider">
+                            <div class="slider-labels">
+                                <span>Subtle</span>
+                                <span>Balanced</span>
+                                <span>Strong</span>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center mt-6">
+                            <button type="submit" class="btn btn-primary px-8 py-3 text-lg">Transform Image</button>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
             
             <div class="loading text-center my-8 hidden" id="loading">
                 <p class="mb-4">Generating your image... This may take up to a minute.</p>
@@ -225,34 +274,31 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
         </section>
     </main>
 
-    <footer class="footer bg-gray-100 mt-12 py-8">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div class="md:col-span-2">
-                    <h3 class="text-lg font-bold mb-4">AI Art Image Generator</h3>
-                    <p class="text-gray-600 mb-4">Create beautiful, high-quality AI-generated images in seconds with our free, unlimited generator. No signup required.</p>
-                    <p class="text-gray-600">&copy; 2023 AI Art. All rights reserved.</p>
+    <footer class="footer py-8">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-logo">
+                    <h2 class="text-xl font-bold">AI Art</h2>
+                    <p class="text-sm">Free AI Image Generation</p>
                 </div>
-                <div>
-                    <h3 class="text-lg font-bold mb-4">Quick Links</h3>
-                    <ul class="space-y-2">
-                        <li><a href="/" class="text-primary hover:text-primary-dark">Home</a></li>
-                        <li><a href="/blog" class="text-primary hover:text-primary-dark">Blog</a></li>
-                        <li><a href="#api-info" class="text-primary hover:text-primary-dark">API Documentation</a></li>
-                        <li><a href="/sitemap-page" class="text-primary hover:text-primary-dark">Sitemap</a></li>
+                <div class="footer-links">
+                    <h3 class="text-md font-semibold">Navigation</h3>
+                    <ul>
+                        <li><a href="/">Home</a></li>
+                        <li><a href="/blog">Blog</a></li>
+                        <li><a href="/sitemap-page">Sitemap</a></li>
                     </ul>
                 </div>
-                <div>
-                    <h3 class="text-lg font-bold mb-4">Account</h3>
-                    <ul class="space-y-2">
-                        <li><a href="/login" class="text-primary hover:text-primary-dark">Login</a></li>
-                        <li><a href="/signup" class="text-primary hover:text-primary-dark">Sign Up</a></li>
-                        {% if current_user.is_authenticated %}
-                        <li><a href="/dashboard" class="text-primary hover:text-primary-dark">My Images</a></li>
-                        <li><a href="/logout" class="text-primary hover:text-primary-dark">Logout</a></li>
-                        {% endif %}
+                <div class="footer-links">
+                    <h3 class="text-md font-semibold">Resources</h3>
+                    <ul>
+                        <li><a href="/blog-ai-image-generation">AI Image Guide</a></li>
+                        <li><a href="#api-info">API</a></li>
                     </ul>
                 </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2023 AI Art. All rights reserved.</p>
             </div>
             <div class="mt-8 pt-8 border-t border-gray-200 text-sm text-gray-500">
                 <div class="flex flex-wrap justify-between">
@@ -466,5 +512,133 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
     crossorigin="anonymous"></script>
 
+    <script>
+        // Add the new img2img functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Existing variables
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const result = document.getElementById('result');
+            const generatedImage = document.getElementById('generated-image');
+            const downloadBtn = document.getElementById('download-btn');
+            
+            // Tab switching functionality
+            const textToImageTab = document.getElementById('text-to-image-tab');
+            const imageToImageTab = document.getElementById('image-to-image-tab');
+            const textToImageContent = document.getElementById('text-to-image-content');
+            const imageToImageContent = document.getElementById('image-to-image-content');
+            
+            if (textToImageTab && imageToImageTab) {
+                textToImageTab.addEventListener('click', function() {
+                    textToImageTab.classList.add('active');
+                    imageToImageTab.classList.remove('active');
+                    textToImageContent.classList.add('active');
+                    imageToImageContent.classList.remove('active');
+                    // Hide results when switching tabs
+                    result.classList.add('hidden');
+                });
+                
+                imageToImageTab.addEventListener('click', function() {
+                    imageToImageTab.classList.add('active');
+                    textToImageTab.classList.remove('active');
+                    imageToImageContent.classList.add('active');
+                    textToImageContent.classList.remove('active');
+                    // Hide results when switching tabs
+                    result.classList.add('hidden');
+                });
+            }
+            
+            // Image upload preview
+            const imageUpload = document.getElementById('image-upload');
+            const imagePreview = document.getElementById('image-preview');
+            const previewContainer = document.getElementById('preview-container');
+            
+            if (imageUpload) {
+                imageUpload.addEventListener('change', function() {
+                    const file = this.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            imagePreview.src = e.target.result;
+                            previewContainer.classList.remove('hidden');
+                        }
+                        reader.readAsDataURL(file);
+                    } else {
+                        previewContainer.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // Strength slider
+            const strengthSlider = document.getElementById('strength-slider');
+            const strengthValue = document.getElementById('strength-value');
+            
+            if (strengthSlider) {
+                strengthSlider.addEventListener('input', function() {
+                    strengthValue.textContent = this.value;
+                });
+            }
+            
+            // Image-to-image form handling
+            const img2imgForm = document.getElementById('img2img-form');
+            
+            if (img2imgForm) {
+                img2imgForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Validate form
+                    if (!imageUpload.files[0]) {
+                        alert('Please upload an image to transform');
+                        return;
+                    }
+                    
+                    const img2imgPrompt = document.getElementById('img2img-prompt').value;
+                    if (!img2imgPrompt) {
+                        alert('Please enter a prompt for the transformation');
+                        return;
+                    }
+                    
+                    // Show loading
+                    loading.classList.remove('hidden');
+                    result.classList.add('hidden');
+                    error.classList.add('hidden');
+                    
+                    // Submit the form via AJAX
+                    const formData = new FormData(img2imgForm);
+                    
+                    fetch('/img2img', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        loading.classList.add('hidden');
+                        
+                        if (data.success) {
+                            // Show the result
+                            result.classList.remove('hidden');
+                            generatedImage.src = data.image_path;
+                            generatedImage.alt = 'Transformed image based on input';
+                            
+                            // Enable download button
+                            downloadBtn.disabled = false;
+                            
+                            // Save the current URL for download
+                            window.currentImagePath = data.image_path;
+                        } else {
+                            // Show error
+                            error.classList.remove('hidden');
+                            error.querySelector('p').textContent = data.error || 'An error occurred during image transformation';
+                        }
+                    })
+                    .catch(err => {
+                        loading.classList.add('hidden');
+                        error.classList.remove('hidden');
+                        error.querySelector('p').textContent = 'Network error: ' + err.message;
+                    });
+                });
+            }
+        });
+    </script>
 </body>
 </html>
