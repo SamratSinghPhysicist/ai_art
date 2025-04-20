@@ -151,6 +151,60 @@
                                 <span>Strong</span>
                             </div>
                         </div>
+
+                        <div class="form-group mt-4">
+                            <label for="style-preset" class="form-label">Style Preset:</label>
+                            <select id="style-preset" name="style_preset" class="form-select">
+                                <option value="">None (Default)</option>
+                                <option value="3d-model">3D Model</option>
+                                <option value="analog-film">Analog Film</option>
+                                <option value="anime">Anime</option>
+                                <option value="cinematic">Cinematic</option>
+                                <option value="comic-book">Comic Book</option>
+                                <option value="digital-art">Digital Art</option>
+                                <option value="enhance">Enhance</option>
+                                <option value="fantasy-art">Fantasy Art</option>
+                                <option value="isometric">Isometric</option>
+                                <option value="line-art">Line Art</option>
+                                <option value="low-poly">Low Poly</option>
+                                <option value="modeling-compound">Modeling Compound</option>
+                                <option value="neon-punk">Neon Punk</option>
+                                <option value="origami">Origami</option>
+                                <option value="photographic">Photographic</option>
+                                <option value="pixel-art">Pixel Art</option>
+                                <option value="tile-texture">Tile Texture</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <label for="aspect-ratio" class="form-label">Aspect Ratio:</label>
+                            <select id="aspect-ratio" name="aspect_ratio" class="form-select">
+                                <option value="1:1">1:1 (Square)</option>
+                                <option value="16:9">16:9 (Landscape)</option>
+                                <option value="9:16">9:16 (Portrait)</option>
+                                <option value="4:5">4:5 (Portrait)</option>
+                                <option value="5:4">5:4 (Landscape)</option>
+                                <option value="2:3">2:3 (Portrait)</option>
+                                <option value="3:2">3:2 (Landscape)</option>
+                                <option value="21:9">21:9 (Ultrawide)</option>
+                                <option value="9:21">9:21 (Tall)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <label for="output-format" class="form-label">Output Format:</label>
+                            <select id="output-format" name="output_format" class="form-select">
+                                <option value="png">PNG (Best quality)</option>
+                                <option value="jpeg">JPEG (Smaller file size)</option>
+                                <option value="webp">WebP (Web optimized)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <label for="seed" class="form-label">Seed (0 for random):</label>
+                            <input type="number" id="seed" name="seed" class="form-input" min="0" max="4294967295" value="0" placeholder="Enter a seed number for reproducible results">
+                            <div class="help-text text-sm text-gray-500 mt-1">Use the same seed to get consistent results or 0 for random generation</div>
+                        </div>
                         
                         <div class="text-center mt-6">
                             <button type="submit" class="btn btn-primary px-8 py-3 text-lg">Transform Image</button>
@@ -204,7 +258,7 @@
 
         <div class="card p-6 shadow-md mt-8" id="api-info">
             <h2 class="text-2xl font-semibold mb-4">API Usage</h2>
-            <p class="mb-4">You can also use our API to generate images programmatically:</p>
+            <p class="mb-4">You can use our API to generate images programmatically:</p>
             <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto">POST /api/generate
 Content-Type: application/json
 
@@ -212,6 +266,21 @@ Content-Type: application/json
     "video_description": "Your image description here",
     "test_mode": false
 }</pre>
+            
+            <h3 class="text-xl font-semibold mt-6 mb-2">Image-to-Image API</h3>
+            <p class="mb-4">You can also transform existing images using our image-to-image API:</p>
+            <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto">POST /api/img2img
+Content-Type: multipart/form-data
+
+Form parameters:
+- image: (file) The image file to transform
+- prompt: (string) Description of the transformation to apply
+- negative_prompt: (string, optional) What to avoid in the image
+- strength: (float, optional, default: 0.7) Transformation strength (0.1-0.9)
+- style_preset: (string, optional) Style preset (e.g., "digital-art", "anime")
+- aspect_ratio: (string, optional, default: "1:1") Aspect ratio of output image
+- output_format: (string, optional, default: "png") Output format (png, jpeg, webp)
+- seed: (integer, optional, default: 0) Seed for reproducibility (0 = random)</pre>
         </div>
 
         <section class="my-12">
@@ -269,6 +338,22 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
                 <div class="card p-4 shadow-sm">
                     <h3 class="text-xl font-semibold text-primary mb-2">How do I integrate the image generator with my workflow?</h3>
                     <p>For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow.</p>
+                </div>
+                <div class="card p-4 shadow-sm">
+                    <h3 class="text-xl font-semibold text-primary mb-2">How do I customize the generated images?</h3>
+                    <p>You can customize your generated images by using detailed prompts and specific keywords. Additionally, for image-to-image transformations, you can control the strength, style preset, aspect ratio, and seed to fine-tune the results.</p>
+                </div>
+                <div class="card p-4 shadow-sm">
+                    <h3 class="text-xl font-semibold text-primary mb-2">What are the advanced options in image-to-image transformation?</h3>
+                    <p>The image-to-image feature allows you to transform existing images with several options:
+                        <ul class="list-disc ml-6 mt-2">
+                            <li><strong>Style Preset:</strong> Choose artistic styles like anime, cinematic, digital art, etc.</li>
+                            <li><strong>Aspect Ratio:</strong> Control the dimensions of your output image</li>
+                            <li><strong>Output Format:</strong> Select PNG for best quality or other formats for smaller file sizes</li>
+                            <li><strong>Seed:</strong> Use a specific seed number to make transformations reproducible</li>
+                            <li><strong>Strength:</strong> Control how much the original image influences the result</li>
+                        </ul>
+                    </p>
                 </div>
             </div>
         </section>
@@ -503,6 +588,22 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
             "@type": "Answer",
             "text": "For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow."
           }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I customize the generated images?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can customize your generated images by using detailed prompts and specific keywords. Additionally, for image-to-image transformations, you can control the strength, style preset, aspect ratio, and seed to fine-tune the results."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are the advanced options in image-to-image transformation?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The image-to-image feature allows you to transform existing images with several options: Style Preset, Aspect Ratio, Output Format, Seed, and Strength."
+          }
         }
       ]
     }
@@ -603,8 +704,14 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
                     result.classList.add('hidden');
                     error.classList.add('hidden');
                     
-                    // Submit the form via AJAX
+                    // Prepare form data with all parameters
                     const formData = new FormData(img2imgForm);
+                    
+                    // Add seed parameter (if random seed is requested, let server handle it)
+                    const seedValue = parseInt(document.getElementById('seed').value);
+                    if (isNaN(seedValue) || seedValue < 0) {
+                        formData.set('seed', '0');
+                    }
                     
                     fetch('/img2img', {
                         method: 'POST',
@@ -625,6 +732,11 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
                             
                             // Save the current URL for download
                             window.currentImagePath = data.image_path;
+                            
+                            // Update the seed field with the used seed for reproducibility
+                            if (data.seed && document.getElementById('seed')) {
+                                document.getElementById('seed').value = data.seed;
+                            }
                         } else {
                             // Show error
                             error.classList.remove('hidden');

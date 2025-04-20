@@ -260,6 +260,20 @@ def img2img_transform():
     negative_prompt = request.form.get('negative_prompt', '')
     strength = float(request.form.get('strength', 0.7))
     
+    # Get the new parameters
+    style_preset = request.form.get('style_preset', None)
+    if style_preset == '':
+        style_preset = None
+    
+    aspect_ratio = request.form.get('aspect_ratio', '1:1')
+    output_format = request.form.get('output_format', 'png')
+    
+    # Get seed (0 means random)
+    try:
+        seed = int(request.form.get('seed', 0))
+    except ValueError:
+        seed = 0
+    
     # Validate the file
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
@@ -284,12 +298,16 @@ def img2img_transform():
                 prompt=prompt,
                 image_path=temp_image_path,
                 negative_prompt=negative_prompt,
-                strength=strength
+                strength=strength,
+                aspect_ratio=aspect_ratio,
+                seed=seed,
+                style_preset=style_preset,
+                output_format=output_format
             )
             
             # Generate output filename based on prompt
             safe_prompt = ''.join(c if c.isalnum() else '_' for c in prompt)[:25]
-            output_filename = f"img2img_{safe_prompt}_{result_info['seed']}.png"
+            output_filename = f"img2img_{safe_prompt}_{result_info['seed']}.{output_format}"
             output_path = os.path.join(app.config['PROCESSED_FOLDER'], output_filename)
             
             # Save the generated image
@@ -336,6 +354,20 @@ def api_img2img_transform():
     negative_prompt = request.form.get('negative_prompt', '')
     strength = float(request.form.get('strength', 0.7))
     
+    # Get the new parameters
+    style_preset = request.form.get('style_preset', None)
+    if style_preset == '':
+        style_preset = None
+    
+    aspect_ratio = request.form.get('aspect_ratio', '1:1')
+    output_format = request.form.get('output_format', 'png')
+    
+    # Get seed (0 means random)
+    try:
+        seed = int(request.form.get('seed', 0))
+    except ValueError:
+        seed = 0
+    
     # Validate the file
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
@@ -360,12 +392,16 @@ def api_img2img_transform():
                 prompt=prompt,
                 image_path=temp_image_path,
                 negative_prompt=negative_prompt,
-                strength=strength
+                strength=strength,
+                aspect_ratio=aspect_ratio,
+                seed=seed,
+                style_preset=style_preset,
+                output_format=output_format
             )
             
             # Generate output filename
             safe_prompt = ''.join(c if c.isalnum() else '_' for c in prompt)[:25]
-            output_filename = f"img2img_{safe_prompt}_{result_info['seed']}.png"
+            output_filename = f"img2img_{safe_prompt}_{result_info['seed']}.{output_format}"
             output_path = os.path.join(app.config['PROCESSED_FOLDER'], output_filename)
             
             # Save the generated image
