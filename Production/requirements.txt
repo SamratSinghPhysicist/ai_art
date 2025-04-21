@@ -23,4 +23,4 @@ selenium==4.16.0
 webdriver-manager==4.0.1
 pyperclip==1.8.2
 # Custom temp_mail module - install from local path
--e Development/StabilityApiGenerator
+-e Production/StabilityApiGenerator
