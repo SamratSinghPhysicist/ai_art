@@ -594,17 +594,50 @@ Content-Type: application/json
             });
         });
         
-        // Download image function
+        // Function to handle download button clicks
         function downloadImage() {
-            const img = document.getElementById('generated-image');
-            if (img.src) {
-                const a = document.createElement('a');
-                a.href = img.src;
-                a.download = 'ai-image.jpg';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+            const imagePath = window.currentImagePath;
+            if (!imagePath) {
+                console.error('No image path found for download');
+                return;
             }
+            
+            console.log('Downloading image from:', imagePath);
+            
+            // Create a filename from the path
+            const pathParts = imagePath.split('/');
+            const filename = pathParts[pathParts.length - 1];
+            
+            // Fetch the image as a blob
+            fetch(imagePath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Create a URL for the blob
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    // Create a temporary link element
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename; // Set the filename
+                    
+                    // Add to document, click it, and remove it
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Clean up
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    console.error('Error downloading image:', error);
+                    alert('Failed to download image. Please try again later.');
+                });
         }
 
         // FAQ accordion
@@ -865,11 +898,35 @@ Content-Type: application/json
                     .then(data => {
                         loading.classList.add('hidden');
                         
+                        // Debug: Log the full response data
+                        console.log('Server response:', data);
+                        
                         if (data.success) {
+                            // Debug: Log the image path
+                            console.log('Image path from server:', data.image_path);
+                            
                             // Show the result
                             result.classList.remove('hidden');
+                            
+                            // Set the image source and log it
                             generatedImage.src = data.image_path;
+                            console.log('Set image src to:', generatedImage.src);
+                            
                             generatedImage.alt = 'Transformed image based on input';
+                            
+                            // Debug: Add an onload event to confirm the image loads correctly
+                            generatedImage.onload = function() {
+                                console.log('Image loaded successfully');
+                            };
+                            
+                            // Debug: Add an onerror event to catch loading errors
+                            generatedImage.onerror = function() {
+                                console.error('Failed to load image from:', generatedImage.src);
+                                // Try an alternate approach: add a timestamp to avoid caching
+                                const cacheBuster = '?t=' + new Date().getTime();
+                                console.log('Trying with cache buster:', data.image_path + cacheBuster);
+                                generatedImage.src = data.image_path + cacheBuster;
+                            };
                             
                             // Enable download button
                             downloadBtn.disabled = false;

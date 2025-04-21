@@ -149,10 +149,9 @@ class User:
 class StabilityApiKey:
     """Model for managing Stability API keys"""
     
-    def __init__(self, api_key, usage_count=0, last_used=None, is_active=True, _id=None):
+    def __init__(self, api_key, created_at=None, is_active=True, _id=None):
         self.api_key = api_key
-        self.usage_count = usage_count  # Track usage count instead of credits
-        self.last_used = last_used or datetime.datetime.now()
+        self.created_at = created_at or datetime.datetime.now()
         self.is_active = is_active
         self._id = _id
     
@@ -163,8 +162,7 @@ class StabilityApiKey:
         
         api_key_data = {
             'api_key': self.api_key,
-            'usage_count': self.usage_count,
-            'last_used': self.last_used,
+            'created_at': self.created_at,
             'is_active': self.is_active
         }
         
@@ -188,8 +186,7 @@ class StabilityApiKey:
             if api_key_data:
                 return StabilityApiKey(
                     api_key=api_key_data['api_key'],
-                    usage_count=api_key_data.get('usage_count', 0),
-                    last_used=api_key_data.get('last_used', datetime.datetime.now()),
+                    created_at=api_key_data.get('created_at', datetime.datetime.now()),
                     is_active=api_key_data['is_active'],
                     _id=api_key_data['_id']
                 )
@@ -198,72 +195,47 @@ class StabilityApiKey:
         return None
     
     @staticmethod
-    def find_usable_key(max_uses=3):
-        """Find the oldest API key with at most max_uses usage count"""
+    def find_oldest_key():
+        """Find the oldest API key available"""
         try:
-            # Find keys with usage count less than or equal to max_uses that are active
-            usable_keys = db['stability_api_keys'].find({
-                'usage_count': {'$lte': max_uses},
+            # Find active keys sorted by creation date (oldest first)
+            oldest_key = db['stability_api_keys'].find({
                 'is_active': True
-            }).sort('last_used', 1)  # Sort by oldest used first
+            }).sort('created_at', 1).limit(1)
             
             # Return the first one if available
-            api_key_data = next(usable_keys, None)
+            api_key_data = next(oldest_key, None)
             if api_key_data:
                 return StabilityApiKey(
                     api_key=api_key_data['api_key'],
-                    usage_count=api_key_data.get('usage_count', 0),
-                    last_used=api_key_data.get('last_used', datetime.datetime.now()),
+                    created_at=api_key_data.get('created_at', datetime.datetime.now()),
                     is_active=api_key_data['is_active'],
                     _id=api_key_data['_id']
                 )
         except Exception as e:
-            print(f"Error finding usable API key: {e}")
+            print(f"Error finding oldest API key: {e}")
         return None
     
     @staticmethod
-    def increment_usage(api_key_str):
-        """Increment the usage count for a specific API key"""
+    def delete_key(api_key_str):
+        """Delete an API key from the database after it's been used"""
         try:
-            result = db['stability_api_keys'].update_one(
-                {'api_key': api_key_str},
-                {
-                    '$inc': {'usage_count': 1},
-                    '$set': {'last_used': datetime.datetime.now()}
-                }
-            )
-            return result.modified_count > 0
+            result = db['stability_api_keys'].delete_one({'api_key': api_key_str})
+            if result.deleted_count > 0:
+                print(f"Deleted API key: {api_key_str[:5]}...{api_key_str[-4:]}")
+                return True
+            else:
+                print(f"API key not found: {api_key_str[:5]}...{api_key_str[-4:]}")
+                return False
         except Exception as e:
-            print(f"Error updating API key usage count: {e}")
+            print(f"Error deleting API key: {e}")
             return False
     
     @staticmethod
-    def check_credits(api_key_str):
-        """
-        This method is maintained for backward compatibility.
-        Instead of checking credits (which isn't reliable), it now just
-        ensures the key exists and updates its last used timestamp.
-        """
+    def count_keys():
+        """Count the number of active API keys in the database"""
         try:
-            # Check if the key exists in our database
-            api_key_data = db['stability_api_keys'].find_one({'api_key': api_key_str})
-            
-            if api_key_data:
-                # Key exists, return its current usage count
-                # We return 25 - usage_count to simulate "credits" for backward compatibility
-                usage_count = api_key_data.get('usage_count', 0)
-                remaining = max(0, 25 - usage_count)  # Simulate "credits" based on usage
-                
-                # Update the last_used timestamp
-                db['stability_api_keys'].update_one(
-                    {'api_key': api_key_str},
-                    {'$set': {'last_used': datetime.datetime.now()}}
-                )
-                
-                return remaining
-            else:
-                # Key doesn't exist
-                return None
+            return db['stability_api_keys'].count_documents({'is_active': True})
         except Exception as e:
-            print(f"Error checking API key: {e}")
-            return None
+            print(f"Error counting API keys: {e}")
+            return 0

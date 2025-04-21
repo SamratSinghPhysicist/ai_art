@@ -6,6 +6,7 @@ import logging
 import sys
 import traceback
 import platform
+import datetime
 
 # Print system information for debugging in CI
 print(f"Python version: {sys.version}")
@@ -1186,10 +1187,10 @@ class StabilityApiGenerator:
         
         # Save to database
         try:
-            # Create a new StabilityApiKey object with usage_count=0
+            # Create a new StabilityApiKey object
             stability_api_key = StabilityApiKey(
                 api_key=self.api_key,
-                usage_count=0,  # New key starts with 0 usage
+                created_at=datetime.datetime.now(),
                 is_active=True
             )
             
@@ -1197,11 +1198,10 @@ class StabilityApiGenerator:
             stability_api_key.save()
             logger.info("API key saved to database")
             
-            # For backward compatibility, we'll still call check_credits
-            # but it now returns simulated credits based on usage count
-            remaining = StabilityApiKey.check_credits(self.api_key)
-            if remaining is not None:
-                logger.info(f"API key has {remaining} simulated credits remaining (based on usage)")
+            # Count keys in database
+            from models import db
+            key_count = db['stability_api_keys'].count_documents({'is_active': True})
+            logger.info(f"Total active API keys in database: {key_count}")
             
             return True
         except Exception as e:

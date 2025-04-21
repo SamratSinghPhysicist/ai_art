@@ -8,28 +8,22 @@ import argparse
 from models import StabilityApiKey
 
 
-def get_api_key(max_uses=3):
+def get_api_key():
     """
-    Get a valid API key from the database that has been used at most max_uses times.
-    
-    Parameters:
-    - max_uses (int): Maximum number of times the key can have been used
+    Get the oldest API key from the database.
     
     Returns:
-    - str: A valid API key or None if no suitable key is found
+    - str: A valid API key or None if no key is found
     """
-    # Find a key with usage count less than or equal to max_uses
-    api_key_obj = StabilityApiKey.find_usable_key(max_uses)
+    # Find the oldest available key
+    api_key_obj = StabilityApiKey.find_oldest_key()
     
     if api_key_obj:
-        # For backward compatibility, we'll display "simulated credits"
-        # This is calculated as 25 minus the usage count
-        simulated_credits = max(0, 25 - api_key_obj.usage_count)
-        print(f"Using API key with usage count {api_key_obj.usage_count} (simulated credits: {simulated_credits})")
+        print(f"Using API key: {api_key_obj.api_key[:5]}...{api_key_obj.api_key[-4:]}")
         return api_key_obj.api_key
     
-    # If we got here, no suitable key was found
-    print(f"No suitable API key found with usage count ≤ {max_uses}")
+    # If we got here, no key was found
+    print("No API keys available in the database")
     return None
 
 
@@ -87,7 +81,7 @@ def img2img(api_key,
     if api_key is None:
         api_key = get_api_key()
         if api_key is None:
-            raise ValueError("No valid API key available with acceptable usage count")
+            raise ValueError("No API keys available in the database")
     
     # Read and encode the image
     with open(image_path, "rb") as img_file:
@@ -148,15 +142,18 @@ def img2img(api_key,
     if result_info["finish_reason"] == "CONTENT_FILTERED":
         raise Exception("Generation failed due to content filtering")
     
-    # After successful generation, increment usage count for the used API key
-    try:
-        # Increment the usage count
-        StabilityApiKey.increment_usage(api_key)
-        print(f"Incremented usage count for API key")
-    except Exception as e:
-        print(f"Error updating API key usage count: {e}")
+    # Get the image data first
+    image_data = response.content
     
-    return response.content, result_info
+    # After successful generation and data retrieval, delete the API key from the database
+    try:
+        # Delete the key
+        StabilityApiKey.delete_key(api_key)
+        print(f"API key used and deleted from database")
+    except Exception as e:
+        print(f"Error deleting API key: {e}")
+    
+    return image_data, result_info
 
 
 def save_image(image_data, output_path=None, seed=None):
@@ -219,8 +216,6 @@ def main():
                         help="How much influence the input image has (0-1)")
     parser.add_argument("--output", help="Path to save the output image")
     parser.add_argument("--display", action="store_true", help="Display the generated image")
-    parser.add_argument("--max-uses", type=int, default=3, 
-                        help="Maximum number of times the key can have been used")
     
     args = parser.parse_args()
     
@@ -231,9 +226,9 @@ def main():
         # If API key is provided, use it; otherwise get one from the database
         api_key = args.api_key
         if not api_key:
-            api_key = get_api_key(args.max_uses)
+            api_key = get_api_key()
             if not api_key:
-                print("Error: No valid API key with acceptable usage count found")
+                print("Error: No API keys available in the database")
                 return
         
         image_data, result_info = img2img(

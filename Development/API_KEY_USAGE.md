@@ -1,46 +1,44 @@
 # Stability AI API Key Management System
 
 ## Overview
-This documentation explains how the Stability AI API key management system works. The system has been updated from tracking "credits" to tracking "usage count" for more reliable API key management.
+This documentation explains how the Stability AI API key management system works. The system has been simplified to use a "use once and delete" approach for API keys.
 
 ## How It Works
 
-### API Key Usage Tracking
-- Each API key starts with a usage count of 0
-- Every time the API key is used successfully, its usage count is incremented by 1
-- API keys with a usage count of 3 or less are considered "usable"
-- When selecting an API key, the system prioritizes the least recently used key with a usage count ≤ 3
+### API Key Management
+- Each API key is stored in the database with a creation timestamp
+- When an API key is needed, the system selects the oldest key available
+- After each successful API request, the used key is deleted from the database
+- New API keys can be generated and added to the database as needed
 
-### Migration from Credits System
-The system previously tracked "credits" for each API key, assuming each key starts with 25 credits. The new system calculates usage count from the old credits value using the formula:
-```
-usage_count = max(0, 25 - credits_left)
-```
+### Benefits of This Approach
+- Simple management: no need to track usage count or credits
+- Guaranteed fresh keys for each request
+- Easy to troubleshoot: just add more keys to the pool when needed
 
 ## How to Use
 
-### Finding a Usable API Key
+### Finding an API Key
 ```python
 from models import StabilityApiKey
 
-# Get an API key that has been used at most 3 times
-api_key_obj = StabilityApiKey.find_usable_key(max_uses=3)
+# Get the oldest API key from the database
+api_key_obj = StabilityApiKey.find_oldest_key()
 
 if api_key_obj:
     # Use the API key
     api_key = api_key_obj.api_key
-    print(f"Using API key with usage count: {api_key_obj.usage_count}")
+    print(f"Using API key: {api_key[:5]}...{api_key[-4:]}")
 else:
-    print("No usable API key found")
+    print("No API keys available in the database")
 ```
 
-### Incrementing API Key Usage
-After using an API key successfully, increment its usage count:
+### Deleting an API Key After Use
 ```python
 from models import StabilityApiKey
 
-# After successful API use
-StabilityApiKey.increment_usage(api_key)
+# After using an API key, delete it from the database
+StabilityApiKey.delete_key(api_key)
 ```
 
 ### Generating New API Keys
@@ -58,7 +56,7 @@ if success:
 ## Utilities
 
 ### Scripts
-- `migrate_api_keys.py`: Converts existing API keys from the credits system to the usage count system
+- `migrate_to_simple_keys.py`: Converts existing API keys to the new simpler model
 - `test_stability_api_key.py`: Tests API key functionality and lists available keys
 - `update_api_keys.sh`: Runs migration and displays current API keys
 
@@ -68,9 +66,9 @@ List all API keys:
 python Development/test_stability_api_key.py --list
 ```
 
-Find a usable API key:
+Find the oldest API key:
 ```
-python Development/test_stability_api_key.py --find --max-uses=3
+python Development/test_stability_api_key.py --find
 ```
 
 Generate a new API key:
@@ -78,13 +76,34 @@ Generate a new API key:
 python Development/test_stability_api_key.py --generate
 ```
 
+Delete the oldest API key:
+```
+python Development/test_stability_api_key.py --delete
+```
+
+Delete a specific API key:
+```
+python Development/test_stability_api_key.py --delete-key "sk-your-key-here"
+```
+
 ## Troubleshooting
+
+### Running Out of API Keys
+If you're running out of API keys, generate more using:
+```
+python Development/test_stability_api_key.py --generate
+```
+
+You can also check how many keys are available:
+```
+python Development/test_stability_api_key.py --check
+```
 
 ### API Key Generation Issues
 If the TempMail module is not available, the system will use a fallback mechanism. However, this fallback won't receive verification emails, so manual verification is required.
 
 ### Migration Issues
-If migration fails, you can manually set the usage_count in the database:
+If migration fails, you can manually update the database with:
 ```
-db.stability_api_keys.updateMany({}, {$set: {usage_count: 0, last_used: new Date()}})
+db.stability_api_keys.updateMany({}, {$set: {created_at: new Date(), is_active: true}})
 ``` 

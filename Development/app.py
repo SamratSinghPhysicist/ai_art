@@ -284,13 +284,16 @@ def img2img_transform():
         file.save(temp_image_path)
         
         try:
-            # Import the img2img function from img2img_stability
+            # Import the img2img function and StabilityApiKey from models
             from img2img_stability import img2img
+            from models import StabilityApiKey
             
-            # Get API key for Stability AI
-            stability_api_key = os.getenv('STABILITY_API_KEY', '')
-            if not stability_api_key:
-                return jsonify({'error': 'Stability AI API key not configured'}), 500
+            # Get API key from the database (oldest available key)
+            api_key_obj = StabilityApiKey.find_oldest_key()
+            if not api_key_obj:
+                return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
+                
+            stability_api_key = api_key_obj.api_key
             
             # Perform the image transformation
             image_data, result_info = img2img(
@@ -314,6 +317,17 @@ def img2img_transform():
             with open(output_path, 'wb') as f:
                 f.write(image_data)
             
+            # Check if file was saved successfully and log info
+            if os.path.exists(output_path):
+                print(f"Image saved successfully at: {output_path}")
+                print(f"File size: {os.path.getsize(output_path)} bytes")
+            else:
+                print(f"WARNING: File was not saved at: {output_path}")
+            
+            # Print current working directory and absolute path
+            print(f"Current working directory: {os.getcwd()}")
+            print(f"Absolute path to saved image: {os.path.abspath(output_path)}")
+            
             # Clean up the temporary file
             os.remove(temp_image_path)
             
@@ -321,15 +335,20 @@ def img2img_transform():
             if current_user.is_authenticated:
                 current_user.save_thumbnail(f'/{app.config["PROCESSED_FOLDER"]}/{output_filename}', prompt)
             
+            # Construct the URL that will be used in the frontend
+            image_url = url_for('serve_processed_image', filename=output_filename)
+            print(f"Returning image URL to frontend: {image_url}")
+            
             # Return success response
             return jsonify({
                 'success': True,
                 'message': 'Image transformed successfully',
-                'image_path': f'/{app.config["PROCESSED_FOLDER"]}/{output_filename}',
+                'image_path': image_url,
                 'seed': result_info['seed']
             })
             
         except Exception as e:
+            print(f"Error in img2img_transform: {str(e)}")
             # Clean up temporary file in case of error
             if os.path.exists(temp_image_path):
                 os.remove(temp_image_path)
@@ -378,13 +397,16 @@ def api_img2img_transform():
         file.save(temp_image_path)
         
         try:
-            # Import the img2img function from img2img_stability
+            # Import the img2img function and StabilityApiKey
             from img2img_stability import img2img
+            from models import StabilityApiKey
             
-            # Get API key for Stability AI
-            stability_api_key = os.getenv('STABILITY_API_KEY', '')
-            if not stability_api_key:
-                return jsonify({'error': 'Stability AI API key not configured'}), 500
+            # Get API key from the database (oldest available key)
+            api_key_obj = StabilityApiKey.find_oldest_key()
+            if not api_key_obj:
+                return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
+                
+            stability_api_key = api_key_obj.api_key
             
             # Perform the image transformation
             image_data, result_info = img2img(
@@ -415,7 +437,7 @@ def api_img2img_transform():
             return jsonify({
                 'success': True,
                 'message': 'Image transformed successfully',
-                'image_url': f'{request.host_url}{app.config["PROCESSED_FOLDER"]}/{output_filename}',
+                'image_url': url_for('serve_processed_image', filename=output_filename, _external=True),
                 'seed': result_info['seed']
             })
             
@@ -482,6 +504,45 @@ def serve_ads_txt():
 def serve_robots_txt():
     """Serve the robots.txt file"""
     return send_from_directory('static', 'robots.txt')
+
+@app.route('/test-processed-folder')
+def test_processed_folder():
+    """Test endpoint to check if the processed_images folder is accessible"""
+    processed_dir = app.config['PROCESSED_FOLDER']
+    absolute_path = os.path.abspath(processed_dir)
+    
+    # Create a simple test file
+    test_file = "test_access.txt"
+    test_path = os.path.join(processed_dir, test_file)
+    
+    try:
+        # Write a test file
+        with open(test_path, 'w') as f:
+            f.write("This is a test file to check folder access")
+        
+        # Check if the file was created
+        file_exists = os.path.exists(test_path)
+        
+        # List all files in the directory
+        dir_contents = os.listdir(processed_dir)
+        
+        # Return diagnostic information
+        return jsonify({
+            'success': file_exists,
+            'processed_dir': processed_dir,
+            'absolute_path': absolute_path,
+            'file_created': file_exists,
+            'url_path': f'/{processed_dir}/{test_file}',
+            'dir_contents': dir_contents,
+            'test_access_url': url_for('serve_processed_image', filename=test_file, _external=True)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'processed_dir': processed_dir,
+            'absolute_path': absolute_path
+        }), 500
 
 if __name__ == '__main__':
     # Configure logging
