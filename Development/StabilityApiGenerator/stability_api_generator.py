@@ -118,7 +118,7 @@ class StabilityApiGenerator:
             # Use webdriver-manager for automatic ChromeDriver management
             logger.info("Using webdriver-manager for ChromeDriver management")
             from webdriver_manager.chrome import ChromeDriverManager
-            from webdriver_manager.core.utils import ChromeType
+            # ChromeType is no longer available in webdriver-manager 4.0.1+
             
             try:
                 # Check Chrome version to use specific driver version if needed
