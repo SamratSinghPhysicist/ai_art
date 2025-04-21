@@ -46,7 +46,8 @@ jobs:
       
       - name: Run Chrome Debug Script
         run: |
-          python debug_chrome.py
+          # Correct the path to the script
+          python Development/debug_chrome.py
       
       - name: Verify directory structure
         run: |
@@ -99,4 +100,4 @@ jobs:
         if: steps.run_generator.outcome == 'success'
         run: |
           cd Development
-          python test_stability_api_key.py --refresh 
+          python test_stability_api_key.py --refresh
