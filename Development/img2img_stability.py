@@ -8,33 +8,28 @@ import argparse
 from models import StabilityApiKey
 
 
-def get_api_key(min_credits=8):
+def get_api_key(max_uses=3):
     """
-    Get a valid API key from the database that has at least min_credits left.
+    Get a valid API key from the database that has been used at most max_uses times.
     
     Parameters:
-    - min_credits (int): Minimum credits required
+    - max_uses (int): Maximum number of times the key can have been used
     
     Returns:
     - str: A valid API key or None if no suitable key is found
     """
-    # First, try to find a key with sufficient credits
-    api_key_obj = StabilityApiKey.find_usable_key(min_credits)
+    # Find a key with usage count less than or equal to max_uses
+    api_key_obj = StabilityApiKey.find_usable_key(max_uses)
     
     if api_key_obj:
-        # Re-check actual credits to ensure it's still valid
-        actual_credits = StabilityApiKey.check_credits(api_key_obj.api_key)
-        
-        if actual_credits is not None and actual_credits >= min_credits:
-            print(f"Using API key with {actual_credits} credits")
-            return api_key_obj.api_key
-        elif actual_credits is not None:
-            print(f"API key has only {actual_credits} credits, which is below the required {min_credits}")
-            # Update credits in the database
-            StabilityApiKey.update_credits(api_key_obj.api_key, actual_credits)
+        # For backward compatibility, we'll display "simulated credits"
+        # This is calculated as 25 minus the usage count
+        simulated_credits = max(0, 25 - api_key_obj.usage_count)
+        print(f"Using API key with usage count {api_key_obj.usage_count} (simulated credits: {simulated_credits})")
+        return api_key_obj.api_key
     
-    # If we got here, no suitable key was found or available key has insufficient credits
-    print("No suitable API key found with sufficient credits")
+    # If we got here, no suitable key was found
+    print(f"No suitable API key found with usage count ≤ {max_uses}")
     return None
 
 
@@ -92,7 +87,7 @@ def img2img(api_key,
     if api_key is None:
         api_key = get_api_key()
         if api_key is None:
-            raise ValueError("No valid API key available with sufficient credits")
+            raise ValueError("No valid API key available with acceptable usage count")
     
     # Read and encode the image
     with open(image_path, "rb") as img_file:
@@ -153,14 +148,13 @@ def img2img(api_key,
     if result_info["finish_reason"] == "CONTENT_FILTERED":
         raise Exception("Generation failed due to content filtering")
     
-    # After successful generation, decrement credits for the used API key
+    # After successful generation, increment usage count for the used API key
     try:
-        # Check current credits and update
-        current_credits = StabilityApiKey.check_credits(api_key)
-        if current_credits is not None:
-            print(f"API key now has {current_credits} credits remaining")
+        # Increment the usage count
+        StabilityApiKey.increment_usage(api_key)
+        print(f"Incremented usage count for API key")
     except Exception as e:
-        print(f"Error updating API key credits: {e}")
+        print(f"Error updating API key usage count: {e}")
     
     return response.content, result_info
 
@@ -225,8 +219,8 @@ def main():
                         help="How much influence the input image has (0-1)")
     parser.add_argument("--output", help="Path to save the output image")
     parser.add_argument("--display", action="store_true", help="Display the generated image")
-    parser.add_argument("--min-credits", type=int, default=8, 
-                        help="Minimum credits required when using API key from database")
+    parser.add_argument("--max-uses", type=int, default=3, 
+                        help="Maximum number of times the key can have been used")
     
     args = parser.parse_args()
     
@@ -237,9 +231,9 @@ def main():
         # If API key is provided, use it; otherwise get one from the database
         api_key = args.api_key
         if not api_key:
-            api_key = get_api_key(args.min_credits)
+            api_key = get_api_key(args.max_uses)
             if not api_key:
-                print("Error: No valid API key with sufficient credits found")
+                print("Error: No valid API key with acceptable usage count found")
                 return
         
         image_data, result_info = img2img(

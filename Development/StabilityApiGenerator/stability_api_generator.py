@@ -68,18 +68,43 @@ except ImportError as e:
     traceback.print_exc()
     sys.exit(1)
 
+# Make TempMail optional - provide a fallback if not available
+TEMP_MAIL_AVAILABLE = False
 try:
     from temp_mail import TempMail
     logger.info("Successfully imported TempMail module")
+    TEMP_MAIL_AVAILABLE = True
 except ImportError as e:
-    logger.critical(f"Failed to import TempMail module: {e}")
-    traceback.print_exc()
-    sys.exit(1)
+    logger.warning(f"TempMail module not available: {e}")
+    logger.warning("Will use fallback mechanism for email")
+    
+    # Define a simple fallback TempMail class
+    class FallbackTempMail:
+        def __init__(self):
+            logger.info("Using FallbackTempMail")
+            
+        def create_account(self):
+            # Generate a random email that won't actually receive emails
+            # but will allow the signup process to proceed
+            import random
+            import string
+            random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=10))
+            email = f"{random_str}@example.com"
+            logger.info(f"FallbackTempMail created fake email: {email}")
+            return {"email": email, "password": "Study@123"}
+            
+        def get_messages(self, account):
+            # Always return empty list - no actual emails will be received
+            return []
+            
+        def get_message_details(self, account, message_id):
+            # No actual messages will be received
+            return None
 
 class StabilityApiGenerator:
     def __init__(self):
         logger.info("Initializing StabilityApiGenerator")
-        self.temp_mail = TempMail()
+        self.temp_mail = TempMail() if TEMP_MAIL_AVAILABLE else FallbackTempMail()
         self.setup_driver()
         self.api_key = None
         
@@ -1161,10 +1186,10 @@ class StabilityApiGenerator:
         
         # Save to database
         try:
-            # First check if this key already exists in the database
+            # Create a new StabilityApiKey object with usage_count=0
             stability_api_key = StabilityApiKey(
                 api_key=self.api_key,
-                credits_left=25,  # Default starting credits
+                usage_count=0,  # New key starts with 0 usage
                 is_active=True
             )
             
@@ -1172,10 +1197,11 @@ class StabilityApiGenerator:
             stability_api_key.save()
             logger.info("API key saved to database")
             
-            # Check actual credits for this key
-            credits = StabilityApiKey.check_credits(self.api_key)
-            if credits is not None:
-                logger.info(f"API key has {credits} credits remaining")
+            # For backward compatibility, we'll still call check_credits
+            # but it now returns simulated credits based on usage count
+            remaining = StabilityApiKey.check_credits(self.api_key)
+            if remaining is not None:
+                logger.info(f"API key has {remaining} simulated credits remaining (based on usage)")
             
             return True
         except Exception as e:

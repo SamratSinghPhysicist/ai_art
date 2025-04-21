@@ -5,21 +5,24 @@ from models import StabilityApiKey
 from StabilityApiGenerator.stability_api_generator import StabilityApiGenerator
 
 def list_all_keys():
-    """List all API keys stored in the database with their credit status"""
+    """List all API keys stored in the database with their usage count"""
     from pymongo import MongoClient
     from models import db
     
     print("\n===== STABILITY API KEYS IN DATABASE =====")
-    keys = db['stability_api_keys'].find().sort('last_checked', 1)
+    keys = db['stability_api_keys'].find().sort('last_used', 1)
     
     found = False
     for idx, key in enumerate(keys, 1):
         found = True
         print(f"Key #{idx}:")
         print(f"  API Key: {key['api_key'][:5]}...{key['api_key'][-4:]}")
-        print(f"  Credits: {key['credits_left']}")
-        print(f"  Last Checked: {key['last_checked']}")
+        print(f"  Usage Count: {key.get('usage_count', 0)}")
+        print(f"  Last Used: {key.get('last_used', 'Never')}")
         print(f"  Active: {key['is_active']}")
+        # For backward compatibility, show simulated credits
+        simulated_credits = max(0, 25 - key.get('usage_count', 0))
+        print(f"  Simulated Credits: {simulated_credits}")
         print("-" * 40)
     
     if not found:
@@ -27,12 +30,12 @@ def list_all_keys():
     
     print("=========================================\n")
 
-def refresh_credits():
-    """Check and update credits for all API keys in the database"""
+def update_usage_info():
+    """Update the last_used timestamp for all API keys in the database"""
     from pymongo import MongoClient
     from models import db
     
-    print("\n===== REFRESHING CREDITS FOR ALL KEYS =====")
+    print("\n===== UPDATING USAGE INFO FOR ALL KEYS =====")
     keys = db['stability_api_keys'].find({'is_active': True})
     
     count = 0
@@ -41,14 +44,16 @@ def refresh_credits():
         api_key = key['api_key']
         print(f"Checking key {api_key[:5]}...{api_key[-4:]}")
         
-        old_credits = key['credits_left']
-        new_credits = StabilityApiKey.check_credits(api_key)
+        # For each key, check if it exists and update the last_used timestamp
+        result = StabilityApiKey.check_credits(api_key)
         
-        if new_credits is not None:
-            print(f"  Credits updated: {old_credits} -> {new_credits}")
+        if result is not None:
+            usage_count = key.get('usage_count', 0)
+            simulated_credits = max(0, 25 - usage_count)
+            print(f"  Current usage count: {usage_count} (simulated credits: {simulated_credits})")
         else:
-            print(f"  Failed to check credits. Key might be invalid.")
-            # Mark as inactive if we couldn't check credits
+            print(f"  Failed to check key. Key might be invalid.")
+            # Mark as inactive if we couldn't check
             db['stability_api_keys'].update_one(
                 {'_id': key['_id']},
                 {'$set': {'is_active': False}}
@@ -84,24 +89,21 @@ def generate_new_key():
     
     print("===========================================\n")
 
-def find_usable_key(min_credits=8):
-    """Find a usable API key with sufficient credits"""
-    print(f"\n===== FINDING USABLE KEY (MIN CREDITS: {min_credits}) =====")
+def find_usable_key(max_uses=3):
+    """Find a usable API key with acceptable usage count"""
+    print(f"\n===== FINDING USABLE KEY (MAX USES: {max_uses}) =====")
     
-    key = StabilityApiKey.find_usable_key(min_credits)
+    key = StabilityApiKey.find_usable_key(max_uses)
     if key:
         print(f"Found usable key: {key.api_key[:5]}...{key.api_key[-4:]}")
-        print(f"Credits: {key.credits_left}")
-        print(f"Last Checked: {key.last_checked}")
+        print(f"Usage Count: {key.usage_count}")
+        print(f"Last Used: {key.last_used}")
         
-        # Verify credits
-        actual_credits = StabilityApiKey.check_credits(key.api_key)
-        if actual_credits is not None:
-            print(f"Actual credits verified: {actual_credits}")
-        else:
-            print("Could not verify actual credits")
+        # For backward compatibility, show simulated credits
+        simulated_credits = max(0, 25 - key.usage_count)
+        print(f"Simulated Credits: {simulated_credits}")
     else:
-        print("No usable key found with sufficient credits")
+        print(f"No usable key found with usage count ≤ {max_uses}")
     
     print("=================================================\n")
     return key
@@ -109,27 +111,27 @@ def find_usable_key(min_credits=8):
 def main():
     parser = argparse.ArgumentParser(description="Test Stability API Key functionality")
     parser.add_argument("--list", action="store_true", help="List all API keys in the database")
-    parser.add_argument("--refresh", action="store_true", help="Refresh credits for all keys")
+    parser.add_argument("--update", action="store_true", help="Update usage info for all keys")
     parser.add_argument("--generate", action="store_true", help="Generate a new API key")
     parser.add_argument("--find", action="store_true", help="Find a usable API key")
-    parser.add_argument("--min-credits", type=int, default=8, help="Minimum credits for finding a usable key")
+    parser.add_argument("--max-uses", type=int, default=3, help="Maximum usage count for finding a usable key")
     parser.add_argument("--all", action="store_true", help="Run all tests")
     
     args = parser.parse_args()
     
     # If no arguments provided, show help
-    if not any([args.list, args.refresh, args.generate, args.find, args.all]):
+    if not any([args.list, args.update, args.generate, args.find, args.all]):
         parser.print_help()
         return
     
     if args.list or args.all:
         list_all_keys()
     
-    if args.refresh or args.all:
-        refresh_credits()
+    if args.update or args.all:
+        update_usage_info()
     
     if args.find or args.all:
-        find_usable_key(args.min_credits)
+        find_usable_key(args.max_uses)
     
     if args.generate or args.all:
         generate_new_key()

@@ -149,10 +149,10 @@ class User:
 class StabilityApiKey:
     """Model for managing Stability API keys"""
     
-    def __init__(self, api_key, credits_left=25, last_checked=None, is_active=True, _id=None):
+    def __init__(self, api_key, usage_count=0, last_used=None, is_active=True, _id=None):
         self.api_key = api_key
-        self.credits_left = credits_left
-        self.last_checked = last_checked or datetime.datetime.now()
+        self.usage_count = usage_count  # Track usage count instead of credits
+        self.last_used = last_used or datetime.datetime.now()
         self.is_active = is_active
         self._id = _id
     
@@ -163,8 +163,8 @@ class StabilityApiKey:
         
         api_key_data = {
             'api_key': self.api_key,
-            'credits_left': self.credits_left,
-            'last_checked': self.last_checked,
+            'usage_count': self.usage_count,
+            'last_used': self.last_used,
             'is_active': self.is_active
         }
         
@@ -188,8 +188,8 @@ class StabilityApiKey:
             if api_key_data:
                 return StabilityApiKey(
                     api_key=api_key_data['api_key'],
-                    credits_left=api_key_data['credits_left'],
-                    last_checked=api_key_data['last_checked'],
+                    usage_count=api_key_data.get('usage_count', 0),
+                    last_used=api_key_data.get('last_used', datetime.datetime.now()),
                     is_active=api_key_data['is_active'],
                     _id=api_key_data['_id']
                 )
@@ -198,22 +198,22 @@ class StabilityApiKey:
         return None
     
     @staticmethod
-    def find_usable_key(min_credits=8):
-        """Find the oldest API key with at least min_credits remaining"""
+    def find_usable_key(max_uses=3):
+        """Find the oldest API key with at most max_uses usage count"""
         try:
-            # Find keys with enough credits that are active
+            # Find keys with usage count less than or equal to max_uses that are active
             usable_keys = db['stability_api_keys'].find({
-                'credits_left': {'$gte': min_credits},
+                'usage_count': {'$lte': max_uses},
                 'is_active': True
-            }).sort('last_checked', 1)  # Sort by oldest checked first
+            }).sort('last_used', 1)  # Sort by oldest used first
             
             # Return the first one if available
             api_key_data = next(usable_keys, None)
             if api_key_data:
                 return StabilityApiKey(
                     api_key=api_key_data['api_key'],
-                    credits_left=api_key_data['credits_left'],
-                    last_checked=api_key_data['last_checked'],
+                    usage_count=api_key_data.get('usage_count', 0),
+                    last_used=api_key_data.get('last_used', datetime.datetime.now()),
                     is_active=api_key_data['is_active'],
                     _id=api_key_data['_id']
                 )
@@ -222,50 +222,48 @@ class StabilityApiKey:
         return None
     
     @staticmethod
-    def update_credits(api_key_str, credits_left):
-        """Update the credits remaining for a specific API key"""
+    def increment_usage(api_key_str):
+        """Increment the usage count for a specific API key"""
         try:
             result = db['stability_api_keys'].update_one(
                 {'api_key': api_key_str},
                 {
-                    '$set': {
-                        'credits_left': credits_left,
-                        'last_checked': datetime.datetime.now()
-                    }
+                    '$inc': {'usage_count': 1},
+                    '$set': {'last_used': datetime.datetime.now()}
                 }
             )
             return result.modified_count > 0
         except Exception as e:
-            print(f"Error updating API key credits: {e}")
+            print(f"Error updating API key usage count: {e}")
             return False
     
     @staticmethod
     def check_credits(api_key_str):
-        """Check the credits left for a given API key using the Stability AI API"""
+        """
+        This method is maintained for backward compatibility.
+        Instead of checking credits (which isn't reliable), it now just
+        ensures the key exists and updates its last used timestamp.
+        """
         try:
-            # Make API request to check credits
-            headers = {
-                "Authorization": f"Bearer {api_key_str}",
-                "Content-Type": "application/json"
-            }
+            # Check if the key exists in our database
+            api_key_data = db['stability_api_keys'].find_one({'api_key': api_key_str})
             
-            response = requests.get(
-                "https://api.stability.ai/v1/user/account",
-                headers=headers
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                # Extract credits information
-                credits = data.get('credits', 0)
+            if api_key_data:
+                # Key exists, return its current usage count
+                # We return 25 - usage_count to simulate "credits" for backward compatibility
+                usage_count = api_key_data.get('usage_count', 0)
+                remaining = max(0, 25 - usage_count)  # Simulate "credits" based on usage
                 
-                # Update the database with new credit information
-                StabilityApiKey.update_credits(api_key_str, credits)
+                # Update the last_used timestamp
+                db['stability_api_keys'].update_one(
+                    {'api_key': api_key_str},
+                    {'$set': {'last_used': datetime.datetime.now()}}
+                )
                 
-                return credits
+                return remaining
             else:
-                print(f"Failed to check credits. Status: {response.status_code}, Response: {response.text}")
+                # Key doesn't exist
                 return None
         except Exception as e:
-            print(f"Error checking API key credits: {e}")
+            print(f"Error checking API key: {e}")
             return None
