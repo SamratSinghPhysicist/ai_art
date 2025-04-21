@@ -15,10 +15,10 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure the upload folder for storing generated images
-app.config['UPLOAD_FOLDER'] = 'images'
-app.config['TEST_ASSETS'] = 'test_assets'
-app.config['PROCESSED_FOLDER'] = 'processed_images'
-
+app_dir = os.path.dirname(os.path.abspath(__file__))
+app.config['UPLOAD_FOLDER'] = os.path.join(app_dir, 'images')
+app.config['TEST_ASSETS'] = os.path.join(app_dir, 'test_assets')
+app.config['PROCESSED_FOLDER'] = os.path.join(app_dir, 'processed_images')
 
 # Configure Flask-Login
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_secret_key')
@@ -33,6 +33,8 @@ GEMINI_API_KEY = "AIzaSyA0RYI9KRrNLi6KaX4g49UJD4G5YBEb6II"
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROCESSED_FOLDER'], exist_ok=True)
 
+# Also fix the logs directory path
+LOGS_DIR = os.path.join(app_dir, 'logs')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -546,10 +548,10 @@ def test_processed_folder():
 
 if __name__ == '__main__':
     # Configure logging
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
+    if not os.path.exists(LOGS_DIR):
+        os.makedirs(LOGS_DIR)
     
-    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+    file_handler = RotatingFileHandler(os.path.join(LOGS_DIR, 'app.log'), maxBytes=10240, backupCount=10)
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))
