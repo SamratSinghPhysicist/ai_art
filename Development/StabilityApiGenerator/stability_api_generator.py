@@ -115,52 +115,62 @@ class StabilityApiGenerator:
         logger.info(f"Chrome options: {chrome_options.arguments}")
         
         try:
-            # Method 1: Direct ChromeDriver initialization without WebDriver Manager
-            # Make sure to download the correct chromedriver version from
-            # https://chromedriver.chromium.org/downloads and place it in an accessible location
-            driver_path = os.path.join(os.getcwd(), "chromedriver.exe")  # For Windows
-            if os.path.exists(driver_path):
-                logger.info(f"Using ChromeDriver from: {driver_path}")
-                self.driver = webdriver.Chrome(service=Service(driver_path), options=chrome_options)
-            else:
-                # Method 2: Try using a specific version with ChromeDriverManager
-                logger.info("ChromeDriver not found in current directory, trying WebDriverManager")
-                from webdriver_manager.chrome import ChromeDriverManager
-                
-                # Check Chrome version first
+            # Use webdriver-manager for automatic ChromeDriver management
+            logger.info("Using webdriver-manager for ChromeDriver management")
+            from webdriver_manager.chrome import ChromeDriverManager
+            from webdriver_manager.core.utils import ChromeType
+            
+            try:
+                # Check Chrome version to use specific driver version if needed
+                import subprocess
                 try:
-                    import subprocess
                     chrome_version_output = subprocess.check_output(["google-chrome", "--version"]).decode("utf-8").strip()
                     logger.info(f"Detected Chrome version: {chrome_version_output}")
-                except Exception as chrome_ver_error:
-                    logger.error(f"Error detecting Chrome version: {chrome_ver_error}")
-                
-                try:
-                    # Use ChromeDriverManager with specific caching strategy
+                    chrome_major_version = chrome_version_output.split()[-1].split('.')[0]
+                    logger.info(f"Chrome major version: {chrome_major_version}")
+                    
+                    # Use specific driver version for Chrome 135
+                    if chrome_major_version == "135":
+                        logger.info("Using known compatible ChromeDriver version for Chrome 135")
+                        self.driver = webdriver.Chrome(
+                            service=Service(ChromeDriverManager(version="135.0.7049.0").install()),
+                            options=chrome_options
+                        )
+                    else:
+                        # Let webdriver manager pick the right version
+                        self.driver = webdriver.Chrome(
+                            service=Service(ChromeDriverManager().install()),
+                            options=chrome_options
+                        )
+                except Exception as e:
+                    # If Chrome version detection fails, use default
+                    logger.warning(f"Failed to detect Chrome version: {e}")
                     self.driver = webdriver.Chrome(
                         service=Service(ChromeDriverManager().install()),
                         options=chrome_options
                     )
-                except Exception as cdm_error:
-                    logger.error(f"ChromeDriverManager install failed: {cdm_error}")
-                    # Try system ChromeDriver as last resort
+                
+                logger.info("ChromeDriver initialized successfully with webdriver-manager")
+            except Exception as e:
+                logger.error(f"Error initializing ChromeDriver with webdriver-manager: {e}")
+                
+                # Fallback to alternative methods
+                try:
+                    # Try using system ChromeDriver if available
                     logger.info("Trying system ChromeDriver")
                     self.driver = webdriver.Chrome(options=chrome_options)
-                
+                    logger.info("ChromeDriver initialized using system executable")
+                except Exception as e2:
+                    logger.critical(f"Failed to initialize ChromeDriver: {e2}")
+                    raise Exception("Could not initialize ChromeDriver by any method") from e
+            
+            # Set up wait times
             self.wait = WebDriverWait(self.driver, 60)
-            logger.info("Chrome WebDriver initialized successfully")
+            logger.info("WebDriver initialization complete")
+            
         except Exception as e:
-            logger.error(f"Failed to initialize Chrome WebDriver: {e}")
-            # Fallback to the simple method without service
-            logger.info("Trying fallback method for ChromeDriver initialization")
-            try:
-                self.driver = webdriver.Chrome(options=chrome_options)
-                self.wait = WebDriverWait(self.driver, 60)
-                logger.info("ChromeDriver initialized with fallback method")
-            except Exception as e2:
-                logger.critical(f"All methods to initialize ChromeDriver failed: {e2}")
-                logger.critical(f"Original error: {e}")
-                raise
+            logger.critical(f"WebDriver setup failed: {e}")
+            raise
         
     def navigate_to_stability_platform(self):
         """Navigate to the Stability AI platform"""
