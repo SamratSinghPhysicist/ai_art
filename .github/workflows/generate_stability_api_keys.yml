@@ -95,9 +95,3 @@ jobs:
             cat Development/stability_generator.log
           fi
           echo "======================="
-        
-      - name: Check credits of generated keys
-        if: steps.run_generator.outcome == 'success'
-        run: |
-          cd Development
-          python test_stability_api_key.py --refresh
