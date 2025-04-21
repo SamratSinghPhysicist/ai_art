@@ -4,6 +4,7 @@ import os
 import datetime
 from dotenv import load_dotenv
 from bson.objectid import ObjectId
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -144,3 +145,127 @@ class User:
             'created_at': datetime.datetime.now()
         }
         return db['images'].insert_one(image_data_obj).inserted_id
+
+class StabilityApiKey:
+    """Model for managing Stability API keys"""
+    
+    def __init__(self, api_key, credits_left=25, last_checked=None, is_active=True, _id=None):
+        self.api_key = api_key
+        self.credits_left = credits_left
+        self.last_checked = last_checked or datetime.datetime.now()
+        self.is_active = is_active
+        self._id = _id
+    
+    def save(self):
+        """Save API key to database"""
+        # Check if this key already exists
+        existing_key = db['stability_api_keys'].find_one({'api_key': self.api_key})
+        
+        api_key_data = {
+            'api_key': self.api_key,
+            'credits_left': self.credits_left,
+            'last_checked': self.last_checked,
+            'is_active': self.is_active
+        }
+        
+        # Update existing key or insert new one
+        if existing_key:
+            self._id = existing_key['_id']
+            db['stability_api_keys'].update_one({'_id': self._id}, {'$set': api_key_data})
+            return self._id
+        else:
+            result = db['stability_api_keys'].insert_one(api_key_data)
+            self._id = result.inserted_id
+            return result.inserted_id
+    
+    @staticmethod
+    def find_by_id(api_key_id):
+        """Find API key by ID"""
+        try:
+            if isinstance(api_key_id, str):
+                api_key_id = ObjectId(api_key_id)
+            api_key_data = db['stability_api_keys'].find_one({'_id': api_key_id})
+            if api_key_data:
+                return StabilityApiKey(
+                    api_key=api_key_data['api_key'],
+                    credits_left=api_key_data['credits_left'],
+                    last_checked=api_key_data['last_checked'],
+                    is_active=api_key_data['is_active'],
+                    _id=api_key_data['_id']
+                )
+        except Exception as e:
+            print(f"Error finding API key by ID: {e}")
+        return None
+    
+    @staticmethod
+    def find_usable_key(min_credits=8):
+        """Find the oldest API key with at least min_credits remaining"""
+        try:
+            # Find keys with enough credits that are active
+            usable_keys = db['stability_api_keys'].find({
+                'credits_left': {'$gte': min_credits},
+                'is_active': True
+            }).sort('last_checked', 1)  # Sort by oldest checked first
+            
+            # Return the first one if available
+            api_key_data = next(usable_keys, None)
+            if api_key_data:
+                return StabilityApiKey(
+                    api_key=api_key_data['api_key'],
+                    credits_left=api_key_data['credits_left'],
+                    last_checked=api_key_data['last_checked'],
+                    is_active=api_key_data['is_active'],
+                    _id=api_key_data['_id']
+                )
+        except Exception as e:
+            print(f"Error finding usable API key: {e}")
+        return None
+    
+    @staticmethod
+    def update_credits(api_key_str, credits_left):
+        """Update the credits remaining for a specific API key"""
+        try:
+            result = db['stability_api_keys'].update_one(
+                {'api_key': api_key_str},
+                {
+                    '$set': {
+                        'credits_left': credits_left,
+                        'last_checked': datetime.datetime.now()
+                    }
+                }
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error updating API key credits: {e}")
+            return False
+    
+    @staticmethod
+    def check_credits(api_key_str):
+        """Check the credits left for a given API key using the Stability AI API"""
+        try:
+            # Make API request to check credits
+            headers = {
+                "Authorization": f"Bearer {api_key_str}",
+                "Content-Type": "application/json"
+            }
+            
+            response = requests.get(
+                "https://api.stability.ai/v1/user/account",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Extract credits information
+                credits = data.get('credits', 0)
+                
+                # Update the database with new credit information
+                StabilityApiKey.update_credits(api_key_str, credits)
+                
+                return credits
+            else:
+                print(f"Failed to check credits. Status: {response.status_code}, Response: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Error checking API key credits: {e}")
+            return None

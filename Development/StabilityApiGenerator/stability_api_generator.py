@@ -3,6 +3,13 @@ import random
 import pyperclip
 import os
 import logging
+import sys
+import traceback
+
+# Add parent directory to path so we can import models
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from models import StabilityApiKey
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
@@ -35,8 +42,19 @@ class StabilityApiGenerator:
         """Set up the Selenium WebDriver"""
         logger.info("Setting up Chrome WebDriver")
         chrome_options = Options()
-        # Uncomment the line below to run in headless mode
-        # chrome_options.add_argument("--headless")
+        
+        # Check if running in GitHub Actions or CI environment
+        is_ci = os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS')
+        if is_ci:
+            logger.info("Running in CI environment - using headless mode")
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
+        else:
+            # Uncomment the line below to run in headless mode locally
+            # chrome_options.add_argument("--headless")
+            pass
+            
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--disable-notifications")
         
@@ -1045,19 +1063,41 @@ class StabilityApiGenerator:
             return False
         
     def save_api_key_to_file(self):
-        """Save the API key to a txt file"""
+        """Save the API key to a txt file and database"""
         if not self.api_key:
             logger.error("No API key to save")
             return False
             
+        # Save to txt file for legacy support
         file_path = "stability_api_key.txt"
         try:
             with open(file_path, "w") as f:
                 f.write(self.api_key)
             logger.info(f"API key saved to {os.path.abspath(file_path)}")
-            return True
         except Exception as e:
             logger.error(f"Failed to save API key to file: {e}")
+        
+        # Save to database
+        try:
+            # First check if this key already exists in the database
+            stability_api_key = StabilityApiKey(
+                api_key=self.api_key,
+                credits_left=25,  # Default starting credits
+                is_active=True
+            )
+            
+            # Save to database
+            stability_api_key.save()
+            logger.info("API key saved to database")
+            
+            # Check actual credits for this key
+            credits = StabilityApiKey.check_credits(self.api_key)
+            if credits is not None:
+                logger.info(f"API key has {credits} credits remaining")
+            
+            return True
+        except Exception as e:
+            logger.error(f"Failed to save API key to database: {e}")
             return False
         
     def close(self):
@@ -1070,15 +1110,49 @@ class StabilityApiGenerator:
 if __name__ == "__main__":
     logger.info("Starting Stability API Generator")
     generator = None
-    try:
-        generator = StabilityApiGenerator()
-        success = generator.generate_api_key()
-        if success:
-            logger.info(f"Successfully generated Stability API key: {generator.api_key}")
-        else:
-            logger.error("Failed to generate Stability API key")
-    except Exception as e:
-        logger.critical(f"An error occurred: {e}", exc_info=True)
-    finally:
-        if generator:
-            generator.close()
+    max_retries = 3
+    current_retry = 0
+    success = False  # Initialize success variable
+    
+    # Check if running in GitHub Actions
+    is_ci = os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS')
+    if is_ci:
+        logger.info("Running in CI environment - using increased retries")
+        max_retries = 5  # More retries in CI environment
+    
+    while current_retry < max_retries:
+        try:
+            current_retry += 1
+            logger.info(f"Attempt {current_retry} of {max_retries}")
+            
+            generator = StabilityApiGenerator()
+            success = generator.generate_api_key()
+            
+            if success:
+                logger.info(f"Successfully generated Stability API key: {generator.api_key[:5]}*****{generator.api_key[-4:]}")
+                break  # Exit the retry loop on success
+            else:
+                logger.error(f"Failed to generate Stability API key (Attempt {current_retry}/{max_retries})")
+                if current_retry < max_retries:
+                    wait_time = current_retry * 60  # Progressively longer waits
+                    logger.info(f"Waiting {wait_time} seconds before retrying...")
+                    time.sleep(wait_time)
+        except Exception as e:
+            logger.critical(f"An error occurred: {e}", exc_info=True)
+            
+            # Detailed error logging especially useful in CI
+            logger.critical("Exception traceback:")
+            traceback.print_exc()
+            
+            if current_retry < max_retries:
+                wait_time = current_retry * 60
+                logger.info(f"Waiting {wait_time} seconds before retrying...")
+                time.sleep(wait_time)
+        finally:
+            if generator:
+                generator.close()
+                generator = None  # Reset for next attempt
+    
+    if current_retry >= max_retries and not success:
+        logger.critical(f"Failed to generate API key after {max_retries} attempts")
+        sys.exit(1)  # Exit with error code for CI to detect failure

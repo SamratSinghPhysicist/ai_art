@@ -5,6 +5,37 @@ import json
 from PIL import Image
 import io
 import argparse
+from models import StabilityApiKey
+
+
+def get_api_key(min_credits=8):
+    """
+    Get a valid API key from the database that has at least min_credits left.
+    
+    Parameters:
+    - min_credits (int): Minimum credits required
+    
+    Returns:
+    - str: A valid API key or None if no suitable key is found
+    """
+    # First, try to find a key with sufficient credits
+    api_key_obj = StabilityApiKey.find_usable_key(min_credits)
+    
+    if api_key_obj:
+        # Re-check actual credits to ensure it's still valid
+        actual_credits = StabilityApiKey.check_credits(api_key_obj.api_key)
+        
+        if actual_credits is not None and actual_credits >= min_credits:
+            print(f"Using API key with {actual_credits} credits")
+            return api_key_obj.api_key
+        elif actual_credits is not None:
+            print(f"API key has only {actual_credits} credits, which is below the required {min_credits}")
+            # Update credits in the database
+            StabilityApiKey.update_credits(api_key_obj.api_key, actual_credits)
+    
+    # If we got here, no suitable key was found or available key has insufficient credits
+    print("No suitable API key found with sufficient credits")
+    return None
 
 
 def img2img(api_key, 
@@ -57,6 +88,12 @@ def img2img(api_key,
     if style_preset not in valid_style_presets:
         raise ValueError(f"Invalid style preset. Must be one of: {', '.join([str(p) for p in valid_style_presets if p is not None])} or None")
     
+    # If no API key is provided, try to get one from the database
+    if api_key is None:
+        api_key = get_api_key()
+        if api_key is None:
+            raise ValueError("No valid API key available with sufficient credits")
+    
     # Read and encode the image
     with open(image_path, "rb") as img_file:
         img_data = img_file.read()
@@ -108,12 +145,22 @@ def img2img(api_key,
     # Extract metadata from headers
     result_info = {
         "finish_reason": response.headers.get("finish-reason"),
-        "seed": response.headers.get("seed")
+        "seed": response.headers.get("seed"),
+        "api_key": api_key  # Include the API key used for reference
     }
     
     # Check for content filtering
     if result_info["finish_reason"] == "CONTENT_FILTERED":
         raise Exception("Generation failed due to content filtering")
+    
+    # After successful generation, decrement credits for the used API key
+    try:
+        # Check current credits and update
+        current_credits = StabilityApiKey.check_credits(api_key)
+        if current_credits is not None:
+            print(f"API key now has {current_credits} credits remaining")
+    except Exception as e:
+        print(f"Error updating API key credits: {e}")
     
     return response.content, result_info
 
@@ -158,7 +205,7 @@ def display_image(image_path):
 def main():
     # Set up argument parser
     parser = argparse.ArgumentParser(description="Image-to-Image generation using Stability AI")
-    parser.add_argument("--api-key", required=True, help="Your Stability AI API key")
+    parser.add_argument("--api-key", help="Your Stability AI API key (optional, will use from database if not provided)")
     parser.add_argument("--prompt", required=True, help="Text description of the desired output image")
     parser.add_argument("--image", required=True, help="Path to the input image file")
     parser.add_argument("--negative-prompt", default="", help="Keywords of what you do not wish to see")
@@ -178,14 +225,25 @@ def main():
                         help="How much influence the input image has (0-1)")
     parser.add_argument("--output", help="Path to save the output image")
     parser.add_argument("--display", action="store_true", help="Display the generated image")
+    parser.add_argument("--min-credits", type=int, default=8, 
+                        help="Minimum credits required when using API key from database")
     
     args = parser.parse_args()
     
     try:
         # Generate image
         print("Generating image...")
+        
+        # If API key is provided, use it; otherwise get one from the database
+        api_key = args.api_key
+        if not api_key:
+            api_key = get_api_key(args.min_credits)
+            if not api_key:
+                print("Error: No valid API key with sufficient credits found")
+                return
+        
         image_data, result_info = img2img(
-            api_key=args.api_key,
+            api_key=api_key,
             prompt=args.prompt,
             image_path=args.image,
             negative_prompt=args.negative_prompt,

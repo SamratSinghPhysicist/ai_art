@@ -1,0 +1,60 @@
+name: Generate Stability API Keys
+
+on:
+  schedule:
+    # Run every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  generate_api_key:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+      
+      - name: Install ChromeDriver
+        run: |
+          CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d. -f1)
+          wget -q "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION" -O LATEST_RELEASE
+          CHROMEDRIVER_VERSION=$(cat LATEST_RELEASE)
+          wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
+          unzip chromedriver_linux64.zip
+          chmod +x chromedriver
+          sudo mv chromedriver /usr/local/bin/
+          rm LATEST_RELEASE chromedriver_linux64.zip
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Development/requirements.txt
+      
+      - name: Set up environment variables
+        run: |
+          # Set MongoDB URI from secrets
+          echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> $GITHUB_ENV
+      
+      - name: Run StabilityApiGenerator
+        run: |
+          cd Development
+          python StabilityApiGenerator/stability_api_generator.py
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+        
+      - name: Check credits of generated keys
+        run: |
+          cd Development
+          python test_stability_api_key.py --refresh 
