@@ -5,31 +5,76 @@ import os
 import logging
 import sys
 import traceback
+import platform
+
+# Print system information for debugging in CI
+print(f"Python version: {sys.version}")
+print(f"Platform: {platform.platform()}")
+print(f"Working directory: {os.getcwd()}")
+print(f"Directory contents: {os.listdir('.')}")
 
 # Add parent directory to path so we can import models
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from models import StabilityApiKey
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+print(f"Parent directory added to path: {parent_dir}")
 
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.common.keys import Keys
+try:
+    from models import StabilityApiKey
+    print("Successfully imported StabilityApiKey model")
+except ImportError as e:
+    print(f"ERROR: Failed to import StabilityApiKey model: {e}")
+    traceback.print_exc()
 
-from temp_mail import TempMail
-
-# Configure logging
+# Setup logging to console and file
+log_format = '%(asctime)s - %(levelname)s - %(message)s'
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
+    format=log_format,
     handlers=[
-        logging.StreamHandler()  # Only log to console, not to file
+        logging.StreamHandler(),  # Log to console
+        logging.FileHandler("stability_generator.log")  # Also log to file for GitHub artifacts
     ]
 )
 logger = logging.getLogger(__name__)
+logger.info("Logger initialized")
+
+# Check environment variables
+mongo_uri = os.environ.get('MONGO_URI')
+logger.info(f"MONGO_URI is {'set' if mongo_uri else 'NOT SET'}")
+
+# Check for GitHub Actions environment
+is_ci = os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS')
+logger.info(f"Running in CI environment: {is_ci is not None}")
+if is_ci:
+    # List all environment variables in CI (without exposing secrets)
+    logger.info("CI environment variables (names only):")
+    for key in os.environ:
+        if 'secret' not in key.lower() and 'token' not in key.lower() and 'password' not in key.lower():
+            logger.info(f"  {key}")
+
+# Import Selenium after logging setup
+try:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.common.exceptions import TimeoutException, NoSuchElementException
+    from selenium.webdriver.common.keys import Keys
+    logger.info("Successfully imported Selenium modules")
+except ImportError as e:
+    logger.critical(f"Failed to import Selenium modules: {e}")
+    traceback.print_exc()
+    sys.exit(1)
+
+try:
+    from temp_mail import TempMail
+    logger.info("Successfully imported TempMail module")
+except ImportError as e:
+    logger.critical(f"Failed to import TempMail module: {e}")
+    traceback.print_exc()
+    sys.exit(1)
 
 class StabilityApiGenerator:
     def __init__(self):
@@ -46,10 +91,14 @@ class StabilityApiGenerator:
         # Check if running in GitHub Actions or CI environment
         is_ci = os.environ.get('CI') or os.environ.get('GITHUB_ACTIONS')
         if is_ci:
-            logger.info("Running in CI environment - using headless mode")
-            chrome_options.add_argument("--headless")
+            logger.info("Running in CI environment - using headless mode with enhanced options")
+            chrome_options.add_argument("--headless=new")  # New headless mode
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-extensions")
+            chrome_options.add_argument("--dns-prefetch-disable")
+            chrome_options.add_argument("--disable-features=VizDisplayCompositor")
         else:
             # Uncomment the line below to run in headless mode locally
             # chrome_options.add_argument("--headless")
@@ -57,6 +106,13 @@ class StabilityApiGenerator:
             
         chrome_options.add_argument("--window-size=1920,1080")
         chrome_options.add_argument("--disable-notifications")
+        
+        # Add additional options for CI
+        chrome_options.add_argument("--enable-logging")
+        chrome_options.add_argument("--v=1")  # Verbose logging
+        
+        # Log all Chrome options for debugging
+        logger.info(f"Chrome options: {chrome_options.arguments}")
         
         try:
             # Method 1: Direct ChromeDriver initialization without WebDriver Manager
@@ -68,13 +124,28 @@ class StabilityApiGenerator:
                 self.driver = webdriver.Chrome(service=Service(driver_path), options=chrome_options)
             else:
                 # Method 2: Try using a specific version with ChromeDriverManager
-                logger.info("ChromeDriver not found in current directory, trying WebDriverManager with specific version")
+                logger.info("ChromeDriver not found in current directory, trying WebDriverManager")
                 from webdriver_manager.chrome import ChromeDriverManager
-                # Use a specific Chrome version to avoid detection issues
-                self.driver = webdriver.Chrome(
-                    service=Service(ChromeDriverManager(chrome_type="chromium", driver_version="114.0.5735.90").install()),
-                    options=chrome_options
-                )
+                
+                # Check Chrome version first
+                try:
+                    import subprocess
+                    chrome_version_output = subprocess.check_output(["google-chrome", "--version"]).decode("utf-8").strip()
+                    logger.info(f"Detected Chrome version: {chrome_version_output}")
+                except Exception as chrome_ver_error:
+                    logger.error(f"Error detecting Chrome version: {chrome_ver_error}")
+                
+                try:
+                    # Use ChromeDriverManager with specific caching strategy
+                    self.driver = webdriver.Chrome(
+                        service=Service(ChromeDriverManager().install()),
+                        options=chrome_options
+                    )
+                except Exception as cdm_error:
+                    logger.error(f"ChromeDriverManager install failed: {cdm_error}")
+                    # Try system ChromeDriver as last resort
+                    logger.info("Trying system ChromeDriver")
+                    self.driver = webdriver.Chrome(options=chrome_options)
                 
             self.wait = WebDriverWait(self.driver, 60)
             logger.info("Chrome WebDriver initialized successfully")
@@ -88,6 +159,7 @@ class StabilityApiGenerator:
                 logger.info("ChromeDriver initialized with fallback method")
             except Exception as e2:
                 logger.critical(f"All methods to initialize ChromeDriver failed: {e2}")
+                logger.critical(f"Original error: {e}")
                 raise
         
     def navigate_to_stability_platform(self):
