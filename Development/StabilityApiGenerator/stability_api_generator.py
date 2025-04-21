@@ -54,14 +54,14 @@ if is_ci:
 
 # Import Selenium after logging setup
 try:
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.common.keys import Keys
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.chrome.service import Service
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.support.ui import WebDriverWait
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.common.exceptions import TimeoutException, NoSuchElementException
+    from selenium.webdriver.common.keys import Keys
     logger.info("Successfully imported Selenium modules")
 except ImportError as e:
     logger.critical(f"Failed to import Selenium modules: {e}")
@@ -69,7 +69,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-from temp_mail import TempMail
+    from temp_mail import TempMail
     logger.info("Successfully imported TempMail module")
 except ImportError as e:
     logger.critical(f"Failed to import TempMail module: {e}")
@@ -117,7 +117,7 @@ class StabilityApiGenerator:
         try:
             # Use webdriver-manager for automatic ChromeDriver management
             logger.info("Using webdriver-manager for ChromeDriver management")
-                from webdriver_manager.chrome import ChromeDriverManager
+            from webdriver_manager.chrome import ChromeDriverManager
             from webdriver_manager.core.utils import ChromeType
             
             try:
@@ -132,7 +132,7 @@ class StabilityApiGenerator:
                     # Use specific driver version for Chrome 135
                     if chrome_major_version == "135":
                         logger.info("Using known compatible ChromeDriver version for Chrome 135")
-                self.driver = webdriver.Chrome(
+                        self.driver = webdriver.Chrome(
                             service=Service(ChromeDriverManager(version="135.0.7049.0").install()),
                             options=chrome_options
                         )
@@ -151,16 +151,16 @@ class StabilityApiGenerator:
                 )
                 
                 logger.info("ChromeDriver initialized successfully with webdriver-manager")
-        except Exception as e:
+            except Exception as e:
                 logger.error(f"Error initializing ChromeDriver with webdriver-manager: {e}")
                 
                 # Fallback to alternative methods
                 try:
                     # Try using system ChromeDriver if available
                     logger.info("Trying system ChromeDriver")
-                self.driver = webdriver.Chrome(options=chrome_options)
+                    self.driver = webdriver.Chrome(options=chrome_options)
                     logger.info("ChromeDriver initialized using system executable")
-            except Exception as e2:
+                except Exception as e2:
                     logger.critical(f"Failed to initialize ChromeDriver: {e2}")
                     raise Exception("Could not initialize ChromeDriver by any method") from e
             
@@ -170,7 +170,7 @@ class StabilityApiGenerator:
             
         except Exception as e:
             logger.critical(f"WebDriver setup failed: {e}")
-                raise
+            raise
         
     def navigate_to_stability_platform(self):
         """Navigate to the Stability AI platform"""
@@ -1207,20 +1207,20 @@ if __name__ == "__main__":
             current_retry += 1
             logger.info(f"Attempt {current_retry} of {max_retries}")
             
-        generator = StabilityApiGenerator()
-        success = generator.generate_api_key()
-            
-        if success:
-                logger.info(f"Successfully generated Stability API key: {generator.api_key[:5]}*****{generator.api_key[-4:]}")
-                break  # Exit the retry loop on success
-        else:
-                logger.error(f"Failed to generate Stability API key (Attempt {current_retry}/{max_retries})")
-                if current_retry < max_retries:
-                    wait_time = current_retry * 60  # Progressively longer waits
-                    logger.info(f"Waiting {wait_time} seconds before retrying...")
-                    time.sleep(wait_time)
-    except Exception as e:
-        logger.critical(f"An error occurred: {e}", exc_info=True)
+            generator = StabilityApiGenerator()
+            success = generator.generate_api_key()
+
+            if success:
+                    logger.info(f"Successfully generated Stability API key: {generator.api_key[:5]}*****{generator.api_key[-4:]}")
+                    break  # Exit the retry loop on success
+            else:
+                    logger.error(f"Failed to generate Stability API key (Attempt {current_retry}/{max_retries})")
+                    if current_retry < max_retries:
+                        wait_time = current_retry * 60  # Progressively longer waits
+                        logger.info(f"Waiting {wait_time} seconds before retrying...")
+                        time.sleep(wait_time)
+        except Exception as e:
+            logger.critical(f"An error occurred: {e}", exc_info=True)
             
             # Detailed error logging especially useful in CI
             logger.critical("Exception traceback:")
@@ -1230,9 +1230,9 @@ if __name__ == "__main__":
                 wait_time = current_retry * 60
                 logger.info(f"Waiting {wait_time} seconds before retrying...")
                 time.sleep(wait_time)
-    finally:
-        if generator:
-            generator.close()
+        finally:
+            if generator:
+                generator.close()
                 generator = None  # Reset for next attempt
     
     if current_retry >= max_retries and not success:
