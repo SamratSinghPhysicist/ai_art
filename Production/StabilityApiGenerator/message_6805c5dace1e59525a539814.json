@@ -1,0 +1,46 @@
+{
+  "@context": "/contexts/Message",
+  "@id": "/messages/6805c5dace1e59525a539814",
+  "@type": "Message",
+  "id": "6805c5dace1e59525a539814",
+  "msgid": "<01000196568cd72a-649fdb6e-466d-4d78-84e2-0440c01a0a88-000000@email.amazonses.com>",
+  "from": {
+    "address": "platform@stability.ai",
+    "name": "Platform"
+  },
+  "to": [
+    {
+      "address": "temp1745208737@ptct.net",
+      "name": ""
+    }
+  ],
+  "cc": [],
+  "bcc": [],
+  "subject": "Welcome to Platform!",
+  "intro": "Welcome to Platform! Thank you for signing up. Please verify your email address by clicking the following link: Confirm my\u2026",
+  "seen": false,
+  "flagged": false,
+  "isDeleted": false,
+  "verifications": {
+    "tls": {
+      "name": "TLS_AES_256_GCM_SHA384",
+      "standardName": "TLS_AES_256_GCM_SHA384",
+      "version": "TLSv1.3"
+    },
+    "spf": false,
+    "dkim": false
+  },
+  "retention": true,
+  "retentionDate": "2025-04-28T04:13:14+00:00",
+  "text": "Welcome to Platform!\n\n              Thank you for signing up. Please verify your email address by clicking the following link:\n\n              Confirm my account ( https://stabilityai.us.auth0.com/u/email-verification?ticket=A9v3bxzXjpMhitfKSu2eZHzT64JLOMQn# ) \n\n              \n                If you are having any issues with your account, please don\u2019t hesitate to contact us by replying to\n                this mail.\n              \n\n              \n              Thanks!\n              \n\n              Platform\n\n              \n              \n              \n                If you did not make this request, please contact us by replying to this mail.",
+  "html": [
+    "<html>\r\n  <head>\r\n    <style type=\"text/css\">\r\n      .ExternalClass,.ExternalClass div,.ExternalClass font,.ExternalClass p,.ExternalClass span,.ExternalClass td,img {line-height: 100%;}#outlook a {padding: 0;}.ExternalClass,.ReadMsgBody {width: 100%;}a,blockquote,body,li,p,table,td {-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;}table,td {mso-table-lspace: 0;mso-table-rspace: 0;}img {-ms-interpolation-mode: bicubic;border: 0;height: auto;outline: 0;text-decoration: none;}table {border-collapse: collapse !important;}#bodyCell,#bodyTable,body {height: 100% !important;margin: 0;padding: 0;font-family: ProximaNova, sans-serif;}#bodyCell {padding: 20px;}#bodyTable {width: 600px;}@font-face {font-family: ProximaNova;src: url(https://cdn.auth0.com/fonts/proxima-nova/proximanova-regular-webfont-webfont.eot);src: url(https://cdn.auth0.com/fonts/proxima-nova/proximanova-regular-webfont-webfont.eot?#iefix)format(\"embedded-opentype\"),url(https://cdn.auth0.com/fonts/proxima-nova/proximanova-regular-webfont-webfont.woff) format(\"woff\");font-weight: 400;font-style: normal;}@font-face {font-family: ProximaNova;src: url(https://cdn.auth0.com/fonts/proxima-nova/proximanova-semibold-webfont-webfont.eot);src: url(https://cdn.auth0.com/fonts/proxima-nova/proximanova-semibold-webfont-webfont.eot?#iefix)format(\"embedded-opentype\"),url(https://cdn.auth0.com/fonts/proxima-nova/proximanova-semibold-webfont-webfont.woff) format(\"woff\");font-weight: 600;font-style: normal;}@media only screen and (max-width: 480px) {#bodyTable,body {width: 100% !important;}a,blockquote,body,li,p,table,td {-webkit-text-size-adjust: none !important;}body {min-width: 100% !important;}#bodyTable {max-width: 600px !important;}#signIn {max-width: 280px !important;}}\r\n    </style>\r\n  </head>\r\n  <body>\r\n    <center>\r\n      <table\r\n        style='width: 600px;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;margin: 0;padding: 0;font-family: \"ProximaNova\", sans-serif;border-collapse: collapse !important;height: 100% !important;'\r\n        align=\"center\"\r\n        border=\"0\"\r\n        cellpadding=\"0\"\r\n        cellspacing=\"0\"\r\n        height=\"100%\"\r\n        width=\"100%\"\r\n        id=\"bodyTable\"\r\n      >\r\n        <tr>\r\n          <td\r\n            align=\"center\"\r\n            valign=\"top\"\r\n            id=\"bodyCell\"\r\n            style='-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;mso-table-lspace: 0pt;mso-table-rspace: 0pt;margin: 0;padding: 20px;font-family: \"ProximaNova\", sans-serif;height: 100% !important;'\r\n          >\r\n            <div class=\"main\">\r\n              <p\r\n                style=\"text-align: center;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%; margin-bottom: 30px;\"\r\n              >\r\n                <img\r\n                  src=\"https://platform.stability.ai/favicon.png\"\r\n                  width=\"50\"\r\n                  alt=\"Your logo goes here\"\r\n                  style=\"-ms-interpolation-mode: bicubic;border: 0;height: auto;line-height: 100%;outline: none;text-decoration: none;\"\r\n                />\r\n              </p>\r\n\r\n              <h1>Welcome to Platform!</h1>\r\n\r\n              <p>Thank you for signing up. Please verify your email address by clicking the following link:</p>\r\n\r\n              <p><a href=\"https://stabilityai.us.auth0.com/u/email-verification?ticket=A9v3bxzXjpMhitfKSu2eZHzT64JLOMQn#\">Confirm my account</a></p>\r\n\r\n              <p>\r\n                If you are having any issues with your account, please don\u2019t hesitate to contact us by replying to\r\n                this mail.\r\n              </p>\r\n\r\n              <br />\r\n              Thanks!\r\n              <br />\r\n\r\n              <strong>Platform</strong>\r\n\r\n              <br /><br />\r\n              <hr style=\"border: 2px solid #EAEEF3; border-bottom: 0; margin: 20px 0;\" />\r\n              <p style=\"text-align: center;color: #A9B3BC;-webkit-text-size-adjust: 100%;-ms-text-size-adjust: 100%;\">\r\n                If you did not make this request, please contact us by replying to this mail.\r\n              </p>\r\n            </div>\r\n          </td>\r\n        </tr>\r\n      </table>\r\n    </center>\r\n  </body>\r\n</html>"
+  ],
+  "hasAttachments": false,
+  "size": 7611,
+  "downloadUrl": "/messages/6805c5dace1e59525a539814/download",
+  "sourceUrl": "/sources/6805c5dace1e59525a539814",
+  "createdAt": "2025-04-21T04:13:12+00:00",
+  "updatedAt": "2025-04-21T04:13:14+00:00",
+  "accountId": "/accounts/6805c5a80ec977f4a20bedc3"
+}

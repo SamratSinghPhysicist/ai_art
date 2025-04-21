@@ -1,0 +1,352 @@
+2025-04-21 09:41:59,166 - INFO - Starting Stability API Generator
+2025-04-21 09:41:59,166 - INFO - Initializing StabilityApiGenerator
+2025-04-21 09:41:59,166 - INFO - TempMail initialized with base URL: https://api.mail.tm
+2025-04-21 09:41:59,166 - INFO - Setting up Chrome WebDriver
+2025-04-21 09:41:59,166 - INFO - ChromeDriver not found in current directory, trying WebDriverManager with specific version
+2025-04-21 09:41:59,206 - INFO - ====== WebDriver manager ======
+2025-04-21 09:41:59,799 - INFO - About to download new driver from https://chromedriver.storage.googleapis.com/114.0.5735.90/chromedriver_win32.zip
+2025-04-21 09:42:00,521 - INFO - Driver downloading response is 200
+2025-04-21 09:42:03,783 - INFO - Driver has been saved in cache [C:\Users\Sachin Kumar\.wdm\drivers\chromedriver\win64\114.0.5735.90]
+2025-04-21 09:42:07,663 - ERROR - Failed to initialize Chrome WebDriver: Message: unknown error: cannot find Chrome binary
+Stacktrace:
+Backtrace:
+	GetHandleVerifier [0x0037A813+48355]
+	(No symbol) [0x0030C4B1]
+	(No symbol) [0x00215358]
+	(No symbol) [0x00231A9E]
+	(No symbol) [0x00230579]
+	(No symbol) [0x00260C55]
+	(No symbol) [0x0026093C]
+	(No symbol) [0x0025A536]
+	(No symbol) [0x002382DC]
+	(No symbol) [0x002393DD]
+	GetHandleVerifier [0x005DAABD+2539405]
+	GetHandleVerifier [0x0061A78F+2800735]
+	GetHandleVerifier [0x0061456C+2775612]
+	GetHandleVerifier [0x004051E0+616112]
+	(No symbol) [0x00315F8C]
+	(No symbol) [0x00312328]
+	(No symbol) [0x0031240B]
+	(No symbol) [0x00304FF7]
+	BaseThreadInitThunk [0x76657BA9+25]
+	RtlInitializeExceptionChain [0x776EC2EB+107]
+	RtlClearBits [0x776EC26F+191]
+
+2025-04-21 09:42:07,666 - INFO - Trying fallback method for ChromeDriver initialization
+2025-04-21 09:42:12,683 - INFO - ChromeDriver initialized with fallback method
+2025-04-21 09:42:16,753 - INFO - Starting API key generation process
+2025-04-21 09:42:16,757 - INFO - Fetching available domains...
+2025-04-21 09:42:17,767 - INFO - Using domain: ptct.net
+2025-04-21 09:42:17,771 - INFO - Creating account with email: temp1745208737@ptct.net
+2025-04-21 09:42:23,649 - INFO - Temporary Email Created: temp1745208737@ptct.net
+2025-04-21 09:42:23,649 - INFO - Logging in with email: temp1745208737@ptct.net
+2025-04-21 09:42:25,073 - INFO - Login successful, token received
+2025-04-21 09:42:25,078 - INFO - Using email: temp1745208737@ptct.net
+2025-04-21 09:42:25,078 - INFO - Navigating to Stability AI platform
+2025-04-21 09:42:28,681 - INFO - Navigated to Stability AI platform successfully
+2025-04-21 09:42:28,685 - INFO - Clicking on Login button
+2025-04-21 09:42:28,685 - INFO - Attempting to click element: a.cursor-pointer.select-none.text-sm.font-semibold.hover\:text-indigo-500
+2025-04-21 09:42:30,559 - INFO - Clicked on element: a.cursor-pointer.select-none.text-sm.font-semibold.hover\:text-indigo-500
+2025-04-21 09:42:30,559 - INFO - Sleeping for 3 seconds
+2025-04-21 09:42:33,561 - INFO - Waiting for login page to load (15s)
+2025-04-21 09:42:48,562 - INFO - Clicking on Sign up link
+2025-04-21 09:42:48,562 - INFO - Attempting to click element: a[href*='/u/signup']
+2025-04-21 09:42:51,074 - INFO - Clicked on element: a[href*='/u/signup']
+2025-04-21 09:42:51,074 - INFO - Sleeping for 3 seconds
+2025-04-21 09:42:54,075 - INFO - Waiting for signup page to load (15s)
+2025-04-21 09:43:09,076 - INFO - Attempting to fill input input#email with text: temp1745208737@ptct.net
+2025-04-21 09:43:09,224 - INFO - Filled input input#email with text: temp1745208737@ptct.net
+2025-04-21 09:43:09,228 - INFO - Sleeping for 1 seconds
+2025-04-21 09:43:10,228 - INFO - Attempting to fill input input#password with text: Study@123
+2025-04-21 09:43:10,420 - INFO - Filled input input#password with text: Study@123
+2025-04-21 09:43:10,424 - INFO - Sleeping for 1 seconds
+2025-04-21 09:43:11,426 - INFO - Clicking Continue button
+2025-04-21 09:43:11,426 - INFO - Attempting to click element: button[type='submit'][name='action']
+2025-04-21 09:43:14,922 - INFO - Clicked on element: button[type='submit'][name='action']
+2025-04-21 09:43:14,922 - INFO - Sleeping for 5 seconds
+2025-04-21 09:43:19,925 - INFO - Waiting for verification email...
+2025-04-21 09:43:19,925 - INFO - Fetching messages...
+2025-04-21 09:43:21,590 - INFO - Retrieved 1 messages
+2025-04-21 09:43:21,593 - INFO - Checking for messages... Found 1 messages
+2025-04-21 09:43:21,593 - INFO - Found message from: platform@stability.ai
+2025-04-21 09:43:21,593 - INFO - Found message from Stability AI
+2025-04-21 09:43:21,593 - INFO - Fetching details for message ID: 6805c5dace1e59525a539814
+2025-04-21 09:43:23,048 - INFO - Retrieved message details: Subject 'Welcome to Platform!'
+2025-04-21 09:43:23,048 - INFO - HTML content type: <class 'list'>
+2025-04-21 09:43:23,048 - INFO - HTML content is a list with 1 elements
+2025-04-21 09:43:23,050 - INFO - Saved complete message details to message_6805c5dace1e59525a539814.json
+2025-04-21 09:43:23,052 - INFO - Message subject: Welcome to Platform!
+2025-04-21 09:43:23,052 - INFO - HTML content type: <class 'list'>
+2025-04-21 09:43:23,052 - INFO - Parsing email HTML content for verification link
+2025-04-21 09:43:23,052 - INFO - Attempting to extract verification link from email
+2025-04-21 09:43:23,052 - INFO - HTML content is a list, joining elements
+2025-04-21 09:43:23,052 - INFO - Saved email HTML content to email_content.html for debugging
+2025-04-21 09:43:23,056 - INFO - Method 1: Looking for common verification text
+2025-04-21 09:43:23,056 - INFO - Found 'Confirm my account' in email
+2025-04-21 09:43:23,056 - INFO - Method 1 found link near 'Confirm my account': https://stabilityai.us.auth0.com/u/email-verification?ticket=A9v3bxzXjpMhitfKSu2eZHzT64JLOMQn#
+2025-04-21 09:43:23,056 - INFO - Navigating to verification link: https://stabilityai.us.auth0.com/u/email-verification?ticket=A9v3bxzXjpMhitfKSu2eZHzT64JLOMQn#
+2025-04-21 09:43:25,319 - INFO - Waiting for verification page to load (30s)
+2025-04-21 09:43:55,321 - INFO - Clicking Accept button
+2025-04-21 09:43:55,321 - INFO - Attempting to click element: button[type='submit'][name='action'][value='accept']
+2025-04-21 09:43:55,424 - INFO - Clicked on element: button[type='submit'][name='action'][value='accept']
+2025-04-21 09:43:55,429 - INFO - Sleeping for 5 seconds
+2025-04-21 09:44:00,432 - INFO - Waiting for redirection after acceptance (30s)
+2025-04-21 09:44:30,432 - INFO - Navigating to API keys page
+2025-04-21 09:44:31,239 - INFO - Waiting for API keys page to load (15s)
+2025-04-21 09:44:46,370 - INFO - Saved screenshot of API keys page to api_keys_page.png
+2025-04-21 09:44:46,370 - INFO - Trying to copy API key to clipboard
+2025-04-21 09:44:46,383 - INFO - Found 5 buttons on the page
+2025-04-21 09:44:46,504 - INFO - Button 2: Text='No text', Class='flex items-center justify-center p-2 opacity-50 transition-all duration-100 hover:opacity-100', Has SVG=Yes
+2025-04-21 09:44:46,535 - INFO - Button 3: Text='Create API Key', Class='h-fit max-w-[20rem] grow-0 rounded-lg p-2.5 duration-100 focus:outline-1 focus:outline-black/10 bg-brand-amber-1 text-black hover:bg-brand-amber-2 flex w-fit items-center gap-2', Has SVG=Yes
+2025-04-21 09:44:46,563 - INFO - Button 4: Text='No text', Class='h-fit max-w-[20rem] grow-0 rounded-lg p-2.5 duration-100 focus:outline-1 focus:outline-black/10 bg-brand-amber-1 text-black hover:bg-brand-amber-2 w-fit', Has SVG=Yes
+2025-04-21 09:44:46,591 - INFO - Button 5: Text='No text', Class='h-fit max-w-[20rem] grow-0 rounded-lg p-2.5 duration-100 focus:outline-1 focus:outline-black/10 bg-brand-amber-1 text-black hover:bg-brand-amber-2 w-fit', Has SVG=Yes
+2025-04-21 09:44:46,591 - INFO - Using provided exact XPaths for buttons
+2025-04-21 09:44:46,591 - INFO - Trying to click clipboard button with exact XPath
+2025-04-21 09:44:46,607 - INFO - Found clipboard button with exact XPath
+2025-04-21 09:44:46,618 - INFO - Attempting to click clipboard button
+2025-04-21 09:44:47,647 - INFO - Clicked clipboard button with JavaScript
+2025-04-21 09:44:49,658 - INFO - Alert found: 'Copy to clipboard: Ctrl+C, Enter'
+2025-04-21 09:44:49,662 - INFO - Alert accepted
+2025-04-21 09:44:49,665 - INFO - Trying standard clipboard access
+2025-04-21 09:44:49,679 - INFO - Trying keyboard shortcuts Ctrl+C, Enter
+2025-04-21 09:44:52,728 - INFO - Trying button selector: /html/body/div[1]/div/div[2]/div/div[2]/div/div/div[2]/div[1]/div[2]/div[3]/div/button
+2025-04-21 09:44:52,749 - ERROR - Error finding button with selector /html/body/div[1]/div/div[2]/div/div[2]/div/div/div[2]/div[1]/div[2]/div[3]/div/button: Message: invalid selector: An invalid or illegal selector was specified
+  (Session info: chrome=135.0.7049.95); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalid-selector-exception
+Stacktrace:
+	GetHandleVerifier [0x00007FF7B5E15355+78597]
+	GetHandleVerifier [0x00007FF7B5E153B0+78688]
+	(No symbol) [0x00007FF7B5BC91AA]
+	(No symbol) [0x00007FF7B5BD0ABC]
+	(No symbol) [0x00007FF7B5BD3B1C]
+	(No symbol) [0x00007FF7B5BD3BEF]
+	(No symbol) [0x00007FF7B5C1E9F7]
+	(No symbol) [0x00007FF7B5C1F3FC]
+	(No symbol) [0x00007FF7B5C72497]
+	(No symbol) [0x00007FF7B5C4712F]
+	(No symbol) [0x00007FF7B5C6F2BB]
+	(No symbol) [0x00007FF7B5C46EC3]
+	(No symbol) [0x00007FF7B5C103F8]
+	(No symbol) [0x00007FF7B5C11163]
+	GetHandleVerifier [0x00007FF7B60BEF0D+2870973]
+	GetHandleVerifier [0x00007FF7B60B96B8+2848360]
+	GetHandleVerifier [0x00007FF7B60D6993+2967875]
+	GetHandleVerifier [0x00007FF7B5E3019A+188746]
+	GetHandleVerifier [0x00007FF7B5E3847F+222255]
+	GetHandleVerifier [0x00007FF7B5E1D2D4+111236]
+	GetHandleVerifier [0x00007FF7B5E1D482+111666]
+	GetHandleVerifier [0x00007FF7B5E035A9+5465]
+	BaseThreadInitThunk [0x00007FFD142A259D+29]
+	RtlUserThreadStart [0x00007FFD1664AF38+40]
+
+2025-04-21 09:44:52,749 - INFO - Trying button selector: button:has(svg:has(rect[width='14'][height='14']))
+2025-04-21 09:44:52,769 - ERROR - Error finding button with selector button:has(svg:has(rect[width='14'][height='14'])): Message: invalid selector: An invalid or illegal selector was specified
+  (Session info: chrome=135.0.7049.95); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalid-selector-exception
+Stacktrace:
+	GetHandleVerifier [0x00007FF7B5E15355+78597]
+	GetHandleVerifier [0x00007FF7B5E153B0+78688]
+	(No symbol) [0x00007FF7B5BC91AA]
+	(No symbol) [0x00007FF7B5BD0ABC]
+	(No symbol) [0x00007FF7B5BD3B1C]
+	(No symbol) [0x00007FF7B5BD3BEF]
+	(No symbol) [0x00007FF7B5C1E9F7]
+	(No symbol) [0x00007FF7B5C1F3FC]
+	(No symbol) [0x00007FF7B5C72497]
+	(No symbol) [0x00007FF7B5C4712F]
+	(No symbol) [0x00007FF7B5C6F2BB]
+	(No symbol) [0x00007FF7B5C46EC3]
+	(No symbol) [0x00007FF7B5C103F8]
+	(No symbol) [0x00007FF7B5C11163]
+	GetHandleVerifier [0x00007FF7B60BEF0D+2870973]
+	GetHandleVerifier [0x00007FF7B60B96B8+2848360]
+	GetHandleVerifier [0x00007FF7B60D6993+2967875]
+	GetHandleVerifier [0x00007FF7B5E3019A+188746]
+	GetHandleVerifier [0x00007FF7B5E3847F+222255]
+	GetHandleVerifier [0x00007FF7B5E1D2D4+111236]
+	GetHandleVerifier [0x00007FF7B5E1D482+111666]
+	GetHandleVerifier [0x00007FF7B5E035A9+5465]
+	BaseThreadInitThunk [0x00007FFD142A259D+29]
+	RtlUserThreadStart [0x00007FFD1664AF38+40]
+
+2025-04-21 09:44:52,769 - INFO - Trying button selector: button:has(svg:has(path[d^='M4 16c-1.1']))
+2025-04-21 09:44:52,785 - ERROR - Error finding button with selector button:has(svg:has(path[d^='M4 16c-1.1'])): Message: invalid selector: An invalid or illegal selector was specified
+  (Session info: chrome=135.0.7049.95); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalid-selector-exception
+Stacktrace:
+	GetHandleVerifier [0x00007FF7B5E15355+78597]
+	GetHandleVerifier [0x00007FF7B5E153B0+78688]
+	(No symbol) [0x00007FF7B5BC91AA]
+	(No symbol) [0x00007FF7B5BD0ABC]
+	(No symbol) [0x00007FF7B5BD3B1C]
+	(No symbol) [0x00007FF7B5BD3BEF]
+	(No symbol) [0x00007FF7B5C1E9F7]
+	(No symbol) [0x00007FF7B5C1F3FC]
+	(No symbol) [0x00007FF7B5C72497]
+	(No symbol) [0x00007FF7B5C4712F]
+	(No symbol) [0x00007FF7B5C6F2BB]
+	(No symbol) [0x00007FF7B5C46EC3]
+	(No symbol) [0x00007FF7B5C103F8]
+	(No symbol) [0x00007FF7B5C11163]
+	GetHandleVerifier [0x00007FF7B60BEF0D+2870973]
+	GetHandleVerifier [0x00007FF7B60B96B8+2848360]
+	GetHandleVerifier [0x00007FF7B60D6993+2967875]
+	GetHandleVerifier [0x00007FF7B5E3019A+188746]
+	GetHandleVerifier [0x00007FF7B5E3847F+222255]
+	GetHandleVerifier [0x00007FF7B5E1D2D4+111236]
+	GetHandleVerifier [0x00007FF7B5E1D482+111666]
+	GetHandleVerifier [0x00007FF7B5E035A9+5465]
+	BaseThreadInitThunk [0x00007FFD142A259D+29]
+	RtlUserThreadStart [0x00007FFD1664AF38+40]
+
+2025-04-21 09:44:52,785 - INFO - Trying button selector: button.bg-brand-amber-1:not(:has(svg:has(line)))
+2025-04-21 09:44:52,806 - ERROR - Error finding button with selector button.bg-brand-amber-1:not(:has(svg:has(line))): Message: invalid selector: An invalid or illegal selector was specified
+  (Session info: chrome=135.0.7049.95); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalid-selector-exception
+Stacktrace:
+	GetHandleVerifier [0x00007FF7B5E15355+78597]
+	GetHandleVerifier [0x00007FF7B5E153B0+78688]
+	(No symbol) [0x00007FF7B5BC91AA]
+	(No symbol) [0x00007FF7B5BD0ABC]
+	(No symbol) [0x00007FF7B5BD3B1C]
+	(No symbol) [0x00007FF7B5BD3BEF]
+	(No symbol) [0x00007FF7B5C1E9F7]
+	(No symbol) [0x00007FF7B5C1F3FC]
+	(No symbol) [0x00007FF7B5C72497]
+	(No symbol) [0x00007FF7B5C4712F]
+	(No symbol) [0x00007FF7B5C6F2BB]
+	(No symbol) [0x00007FF7B5C46EC3]
+	(No symbol) [0x00007FF7B5C103F8]
+	(No symbol) [0x00007FF7B5C11163]
+	GetHandleVerifier [0x00007FF7B60BEF0D+2870973]
+	GetHandleVerifier [0x00007FF7B60B96B8+2848360]
+	GetHandleVerifier [0x00007FF7B60D6993+2967875]
+	GetHandleVerifier [0x00007FF7B5E3019A+188746]
+	GetHandleVerifier [0x00007FF7B5E3847F+222255]
+	GetHandleVerifier [0x00007FF7B5E1D2D4+111236]
+	GetHandleVerifier [0x00007FF7B5E1D482+111666]
+	GetHandleVerifier [0x00007FF7B5E035A9+5465]
+	BaseThreadInitThunk [0x00007FFD142A259D+29]
+	RtlUserThreadStart [0x00007FFD1664AF38+40]
+
+2025-04-21 09:44:52,806 - INFO - Trying button selector: button.bg-brand-amber-1:not(:has(span:contains('Create')))
+2025-04-21 09:44:52,829 - ERROR - Error finding button with selector button.bg-brand-amber-1:not(:has(span:contains('Create'))): Message: invalid selector: An invalid or illegal selector was specified
+  (Session info: chrome=135.0.7049.95); For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#invalid-selector-exception
+Stacktrace:
+	GetHandleVerifier [0x00007FF7B5E15355+78597]
+	GetHandleVerifier [0x00007FF7B5E153B0+78688]
+	(No symbol) [0x00007FF7B5BC91AA]
+	(No symbol) [0x00007FF7B5BD0ABC]
+	(No symbol) [0x00007FF7B5BD3B1C]
+	(No symbol) [0x00007FF7B5BD3BEF]
+	(No symbol) [0x00007FF7B5C1E9F7]
+	(No symbol) [0x00007FF7B5C1F3FC]
+	(No symbol) [0x00007FF7B5C72497]
+	(No symbol) [0x00007FF7B5C4712F]
+	(No symbol) [0x00007FF7B5C6F2BB]
+	(No symbol) [0x00007FF7B5C46EC3]
+	(No symbol) [0x00007FF7B5C103F8]
+	(No symbol) [0x00007FF7B5C11163]
+	GetHandleVerifier [0x00007FF7B60BEF0D+2870973]
+	GetHandleVerifier [0x00007FF7B60B96B8+2848360]
+	GetHandleVerifier [0x00007FF7B60D6993+2967875]
+	GetHandleVerifier [0x00007FF7B5E3019A+188746]
+	GetHandleVerifier [0x00007FF7B5E3847F+222255]
+	GetHandleVerifier [0x00007FF7B5E1D2D4+111236]
+	GetHandleVerifier [0x00007FF7B5E1D482+111666]
+	GetHandleVerifier [0x00007FF7B5E035A9+5465]
+	BaseThreadInitThunk [0x00007FFD142A259D+29]
+	RtlUserThreadStart [0x00007FFD1664AF38+40]
+
+2025-04-21 09:44:52,829 - INFO - Trying button selector: button svg rect[width='14'][height='14']
+2025-04-21 09:44:52,845 - INFO - Found 1 elements with selector: button svg rect[width='14'][height='14']
+2025-04-21 09:44:52,853 - INFO - Found valid button with selector: button svg rect[width='14'][height='14']
+2025-04-21 09:44:52,853 - INFO - Trying click method 1
+2025-04-21 09:44:53,945 - ERROR - Click method 1 failed: Message: element click intercepted: Element <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect> is not clickable at point (1268, 263). Other element would receive the click: <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">...</svg>
+  (Session info: chrome=135.0.7049.95)
+Stacktrace:
+	GetHandleVerifier [0x00007FF7B5E15355+78597]
+	GetHandleVerifier [0x00007FF7B5E153B0+78688]
+	(No symbol) [0x00007FF7B5BC91AA]
+	(No symbol) [0x00007FF7B5C27089]
+	(No symbol) [0x00007FF7B5C24A42]
+	(No symbol) [0x00007FF7B5C21AE1]
+	(No symbol) [0x00007FF7B5C20A42]
+	(No symbol) [0x00007FF7B5C12204]
+	(No symbol) [0x00007FF7B5C470EA]
+	(No symbol) [0x00007FF7B5C11AB6]
+	(No symbol) [0x00007FF7B5C47300]
+	(No symbol) [0x00007FF7B5C6F2BB]
+	(No symbol) [0x00007FF7B5C46EC3]
+	(No symbol) [0x00007FF7B5C103F8]
+	(No symbol) [0x00007FF7B5C11163]
+	GetHandleVerifier [0x00007FF7B60BEF0D+2870973]
+	GetHandleVerifier [0x00007FF7B60B96B8+2848360]
+	GetHandleVerifier [0x00007FF7B60D6993+2967875]
+	GetHandleVerifier [0x00007FF7B5E3019A+188746]
+	GetHandleVerifier [0x00007FF7B5E3847F+222255]
+	GetHandleVerifier [0x00007FF7B5E1D2D4+111236]
+	GetHandleVerifier [0x00007FF7B5E1D482+111666]
+	GetHandleVerifier [0x00007FF7B5E035A9+5465]
+	BaseThreadInitThunk [0x00007FFD142A259D+29]
+	RtlUserThreadStart [0x00007FFD1664AF38+40]
+
+2025-04-21 09:44:53,945 - INFO - Trying click method 2
+2025-04-21 09:44:53,953 - ERROR - Click method 2 failed: Message: javascript error: arguments[0].click is not a function
+  (Session info: chrome=135.0.7049.95)
+Stacktrace:
+	GetHandleVerifier [0x00007FF7B5E15355+78597]
+	GetHandleVerifier [0x00007FF7B5E153B0+78688]
+	(No symbol) [0x00007FF7B5BC91AA]
+	(No symbol) [0x00007FF7B5BD0ABC]
+	(No symbol) [0x00007FF7B5BD3EAC]
+	(No symbol) [0x00007FF7B5C704AB]
+	(No symbol) [0x00007FF7B5C470EA]
+	(No symbol) [0x00007FF7B5C6F2BB]
+	(No symbol) [0x00007FF7B5C46EC3]
+	(No symbol) [0x00007FF7B5C103F8]
+	(No symbol) [0x00007FF7B5C11163]
+	GetHandleVerifier [0x00007FF7B60BEF0D+2870973]
+	GetHandleVerifier [0x00007FF7B60B96B8+2848360]
+	GetHandleVerifier [0x00007FF7B60D6993+2967875]
+	GetHandleVerifier [0x00007FF7B5E3019A+188746]
+	GetHandleVerifier [0x00007FF7B5E3847F+222255]
+	GetHandleVerifier [0x00007FF7B5E1D2D4+111236]
+	GetHandleVerifier [0x00007FF7B5E1D482+111666]
+	GetHandleVerifier [0x00007FF7B5E035A9+5465]
+	BaseThreadInitThunk [0x00007FFD142A259D+29]
+	RtlUserThreadStart [0x00007FFD1664AF38+40]
+
+2025-04-21 09:44:53,953 - INFO - Trying click method 3
+2025-04-21 09:44:55,252 - INFO - Clipboard contains API key, click successful
+2025-04-21 09:44:55,252 - INFO - No alert present or error handling alert: Message: no such alert
+  (Session info: chrome=135.0.7049.95)
+Stacktrace:
+	GetHandleVerifier [0x00007FF7B5E15355+78597]
+	GetHandleVerifier [0x00007FF7B5E153B0+78688]
+	(No symbol) [0x00007FF7B5BC8FDC]
+	(No symbol) [0x00007FF7B5BB8744]
+	(No symbol) [0x00007FF7B5BDFD01]
+	(No symbol) [0x00007FF7B5BF0A07]
+	(No symbol) [0x00007FF7B5C4719D]
+	(No symbol) [0x00007FF7B5BF0885]
+	(No symbol) [0x00007FF7B5C46EC3]
+	(No symbol) [0x00007FF7B5C103F8]
+	(No symbol) [0x00007FF7B5C11163]
+	GetHandleVerifier [0x00007FF7B60BEF0D+2870973]
+	GetHandleVerifier [0x00007FF7B60B96B8+2848360]
+	GetHandleVerifier [0x00007FF7B60D6993+2967875]
+	GetHandleVerifier [0x00007FF7B5E3019A+188746]
+	GetHandleVerifier [0x00007FF7B5E3847F+222255]
+	GetHandleVerifier [0x00007FF7B5E1D2D4+111236]
+	GetHandleVerifier [0x00007FF7B5E1D482+111666]
+	GetHandleVerifier [0x00007FF7B5E035A9+5465]
+	BaseThreadInitThunk [0x00007FFD142A259D+29]
+	RtlUserThreadStart [0x00007FFD1664AF38+40]
+
+2025-04-21 09:44:55,252 - INFO - Successfully clicked the clipboard button
+2025-04-21 09:44:55,252 - INFO - Trying standard clipboard access
+2025-04-21 09:44:55,252 - INFO - Valid full API key detected: sk-iH*****6tUX
+2025-04-21 09:44:55,256 - INFO - Found valid API key in clipboard: sk-iH*****6tUX
+2025-04-21 09:44:55,256 - INFO - Successfully got API key from clipboard: sk-iH*****6tUX
+2025-04-21 09:44:55,256 - INFO - API key saved to E:\SamratSingh\CODE_AREA\AiArt\ai_art_website_real\Development\StabilityApiGenerator\stability_api_key.txt
+2025-04-21 09:45:25,733 - ERROR - Failed to save API key to database: cluster0-shard-00-00.7khtr.mongodb.net:27017: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0-shard-00-02.7khtr.mongodb.net:27017: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms),cluster0-shard-00-01.7khtr.mongodb.net:27017: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms), Timeout: 30s, Topology Description: <TopologyDescription id: 6805c58ee85b5e964af21340, topology_type: ReplicaSetNoPrimary, servers: [<ServerDescription ('cluster0-shard-00-00.7khtr.mongodb.net', 27017) server_type: Unknown, rtt: None, error=NetworkTimeout('cluster0-shard-00-00.7khtr.mongodb.net:27017: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0-shard-00-01.7khtr.mongodb.net', 27017) server_type: Unknown, rtt: None, error=NetworkTimeout('cluster0-shard-00-01.7khtr.mongodb.net:27017: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>, <ServerDescription ('cluster0-shard-00-02.7khtr.mongodb.net', 27017) server_type: Unknown, rtt: None, error=NetworkTimeout('cluster0-shard-00-02.7khtr.mongodb.net:27017: timed out (configured timeouts: socketTimeoutMS: 20000.0ms, connectTimeoutMS: 20000.0ms)')>]>
+2025-04-21 09:45:25,733 - INFO - Successfully generated Stability API key: sk-iHE6tGu5PjFo8VCTikL0PDJgJ2XaYyDdWecE7jiXnN9F6tUX
+2025-04-21 09:45:25,733 - INFO - Closing browser
+2025-04-21 09:45:28,245 - INFO - Browser closed

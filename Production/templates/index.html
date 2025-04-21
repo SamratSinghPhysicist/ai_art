@@ -52,6 +52,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
+    <div class="bg-decoration"></div>
+    
     <header class="header">
         <div class="container">
             <nav class="nav">
@@ -83,35 +85,158 @@
 
     <main class="container my-8">
         <div class="card p-6 shadow-lg">
-            <h1 class="text-3xl font-bold text-primary text-center mb-6">Create Stunning AI Images</h1>
-            <p class="text-center text-gray-700 mb-6">Generate beautiful AI art in seconds - Free, Unlimited, No Signup Required</p>
+            <div class="light-effect"></div>
+            <h1 class="text-3xl font-bold text-center mb-2">
+                <span class="gradient-text">AI Art</span>
+            </h1>
+            <p class="text-center text-gray-500 mb-6">Transform your images with AI magic - Free, Unlimited, No Signup Required</p>
             
-            <form id="image-form" class="my-6" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="video-description" class="form-label">Describe the image you want to create:</label>
-                    <div class="textarea-container">
-                        <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: A serene mountain landscape with a waterfall at sunset, photorealistic style"></textarea>
-                    </div>
-                    <div class="button-container mt-4">
-                        <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
-                        <button type="button" id="revert-prompt-btn" class="btn btn-secondary" title="Revert to Original" style="display: none;">↩️<span class="button-text">Revert</span></button>
-                    </div>
+            <div class="tabs-container mb-6">
+                <div class="tab-buttons">
+                    <button id="text-to-image-tab" class="tab-button active">Text to Image</button>
+                    <button id="image-to-image-tab" class="tab-button">Image to Image</button>
                 </div>
                 
+                <div id="text-to-image-content" class="tab-content active">
+                    <form id="image-form" class="my-6" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="video-description" class="form-label">Describe the image you want to create:</label>
+                            <div class="textarea-container">
+                                <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: A serene mountain landscape with a waterfall at sunset, photorealistic style"></textarea>
+                            </div>
+                            <div class="button-container mt-4">
+                                <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
+                                <button type="button" id="revert-prompt-btn" class="btn btn-secondary" title="Revert to Original" style="display: none;">↩️<span class="button-text">Revert</span></button>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
+                            <input type="checkbox" id="test-mode" name="test_mode">
+                            <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
+                        </div>
+                        
+                        <div class="text-center mt-8">
+                            <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
+                                <span class="flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 2v7"></path><path d="M10 7l2 3 2-3"></path><path d="M4.93 10.93l6.1 2.65"></path><path d="M2 15.5L4.93 13"></path><path d="M19.07 10.93l-6.1 2.65"></path><path d="M22 15.5L19.07 13"></path><path d="M12 21.5v-4"></path></svg>
+                                    Generate Image
+                                </span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <div id="image-to-image-content" class="tab-content">
+                    <form id="img2img-form" class="my-6" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="image-upload" class="form-label">Upload your image:</label>
+                            <div class="file-drop-area" id="drop-area">
+                                <div class="drop-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-upload"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                </div>
+                                <div class="drop-message">Drag & drop your image here</div>
+                                <div class="drop-or">or</div>
+                                <input type="file" id="image-upload" name="image" accept="image/*" required>
+                                <button type="button" class="browse-btn">Browse Files</button>
+                                <div class="file-info">Supports JPG, PNG, WEBP (Max: 5MB)</div>
+                            </div>
+                            <div id="preview-container" class="hidden mt-4">
+                                <img id="image-preview" class="max-w-full max-h-64 mx-auto rounded-md" alt="Image preview">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <label for="img2img-prompt" class="form-label">Describe how you want to transform the image:</label>
+                            <div class="textarea-container">
+                                <textarea id="img2img-prompt" name="prompt" class="form-input" required placeholder="Example: Convert this photo into an oil painting with vibrant colors"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <label for="negative-prompt" class="form-label">Negative prompt (optional - what to avoid):</label>
+                            <div class="textarea-container">
+                                <textarea id="negative-prompt" name="negative_prompt" class="form-input" placeholder="Example: blurry, distorted, low quality"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-6">
+                            <label for="strength-slider" class="form-label">Transformation strength: <span id="strength-value">0.7</span></label>
+                            <input type="range" id="strength-slider" name="strength" min="0.1" max="0.9" step="0.1" value="0.7" class="form-slider">
+                            <div class="slider-labels">
+                                <span>Subtle</span>
+                                <span>Balanced</span>
+                                <span>Strong</span>
+                            </div>
+                        </div>
 
-                
-                <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
-                    <input type="checkbox" id="test-mode" name="test_mode">
-                    <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
+                        <div class="form-group mt-6">
+                            <label for="style-preset" class="form-label">Style Preset:</label>
+                            <select id="style-preset" name="style_preset" class="form-select">
+                                <option value="">None (Default)</option>
+                                <option value="3d-model">3D Model</option>
+                                <option value="analog-film">Analog Film</option>
+                                <option value="anime">Anime</option>
+                                <option value="cinematic">Cinematic</option>
+                                <option value="comic-book">Comic Book</option>
+                                <option value="digital-art">Digital Art</option>
+                                <option value="enhance">Enhance</option>
+                                <option value="fantasy-art">Fantasy Art</option>
+                                <option value="isometric">Isometric</option>
+                                <option value="line-art">Line Art</option>
+                                <option value="low-poly">Low Poly</option>
+                                <option value="modeling-compound">Modeling Compound</option>
+                                <option value="neon-punk">Neon Punk</option>
+                                <option value="origami">Origami</option>
+                                <option value="photographic">Photographic</option>
+                                <option value="pixel-art">Pixel Art</option>
+                                <option value="tile-texture">Tile Texture</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mt-6">
+                            <label for="aspect-ratio" class="form-label">Aspect Ratio:</label>
+                            <select id="aspect-ratio" name="aspect_ratio" class="form-select">
+                                <option value="1:1">1:1 (Square)</option>
+                                <option value="16:9">16:9 (Landscape)</option>
+                                <option value="9:16">9:16 (Portrait)</option>
+                                <option value="4:5">4:5 (Portrait)</option>
+                                <option value="5:4">5:4 (Landscape)</option>
+                                <option value="2:3">2:3 (Portrait)</option>
+                                <option value="3:2">3:2 (Landscape)</option>
+                                <option value="21:9">21:9 (Ultrawide)</option>
+                                <option value="9:21">9:21 (Tall)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mt-6">
+                            <label for="output-format" class="form-label">Output Format:</label>
+                            <select id="output-format" name="output_format" class="form-select">
+                                <option value="png">PNG (Best quality)</option>
+                                <option value="jpeg">JPEG (Smaller file size)</option>
+                                <option value="webp">WebP (Web optimized)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group mt-6">
+                            <label for="seed" class="form-label">Seed (0 for random):</label>
+                            <input type="number" id="seed" name="seed" class="form-input" min="0" max="4294967295" value="0" placeholder="Enter a seed number for reproducible results">
+                            <div class="help-text text-sm text-gray-500 mt-1">Use the same seed to get consistent results or 0 for random generation</div>
+                        </div>
+                        
+                        <div class="text-center mt-8">
+                            <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
+                                <span class="flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="m2 12 5-5"></path><path d="M2 12h7"></path><path d="m2 12 5 5"></path><path d="M13 2a10 10 2 0 1 9 8"></path><path d="M13 2v7"></path><path d="m13 2-5 5"></path><path d="M11 22a10 10 2 0 1-9-8"></path><path d="M11 22v-7"></path><path d="m11 22 5-5"></path></svg>
+                                    Transform Image
+                                </span>
+                            </button>
+                        </div>
+                    </form>
                 </div>
-                
-                <div class="text-center mt-6">
-                    <button type="submit" class="btn btn-primary px-8 py-3 text-lg">Generate Image</button>
-                </div>
-            </form>
+            </div>
             
             <div class="loading text-center my-8 hidden" id="loading">
-                <p class="mb-4">Generating your image... This may take up to a minute.</p>
+                <p class="mb-4">Creating your masterpiece... This may take up to a minute.</p>
                 <div class="loading-spinner"></div>
             </div>
             
@@ -124,16 +249,27 @@
                 <div class="image-card mx-auto" style="max-width: 640px;">
                     <img id="generated-image" src="" alt="Generated AI Image" class="w-full rounded-lg shadow-md">
                 </div>
-                <div class="mt-4">
-                    <button id="download-btn" class="btn btn-secondary" onclick="downloadImage()" disabled>Download Image</button>
+                <div class="mt-6 flex justify-center gap-4">
+                    <button id="download-btn" class="btn btn-secondary" onclick="downloadImage()" disabled>
+                        <span class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                            Download
+                        </span>
+                    </button>
+                    <button id="share-btn" class="btn btn-secondary">
+                        <span class="flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                            Share
+                        </span>
+                    </button>
                 </div>
             </div>
         </div>
         
-        
-
         <div class="card p-6 shadow-md mt-8">
-            <h2 class="text-2xl font-semibold mb-4">Sample Thumbnails</h2>
+            <div class="light-effect"></div>
+            <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Inspiration Gallery</h2>
+            <p class="text-center text-gray-500 mb-6">Check out what's possible with our AI art generator</p>
             <div class="gallery-grid">
                 <div class="thumbnail-card">
                     <img src="/static/images/sample1.jpg" alt="AI-generated YouTube thumbnail example showing space facts" onerror="this.src='/test_assets/placeholder.jpg'">
@@ -145,127 +281,187 @@
                     <img src="/static/images/sample3.jpg" alt="Engaging YouTube thumbnail design for technology tutorial" onerror="this.src='/test_assets/placeholder.jpg'">
                 </div>
                 <div class="thumbnail-card">
-                    <img src="/static/images/sample4.jpg" alt="Eye-catching YouTube thumbnail for travel vlog generated by AI" onerror="this.src='/test_assets/placeholder.jpg'">
-                </div>
-                <div class="thumbnail-card">
-                    <img src="/static/images/sample5.jpg" alt="High-quality AI art thumbnail for educational YouTube video" onerror="this.src='/test_assets/placeholder.jpg'">
+                    <img src="/static/images/sample4.jpg" alt="Creative YouTube thumbnail for travel vlog created using AI" onerror="this.src='/test_assets/placeholder.jpg'">
                 </div>
             </div>
         </div>
 
-        <div class="card p-6 shadow-md mt-8" id="api-info">
-            <h2 class="text-2xl font-semibold mb-4">API Usage</h2>
-            <p class="mb-4">You can also use our API to generate images programmatically:</p>
-            <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto">POST /api/generate
+        <div id="api-info" class="card p-6 shadow-md mt-8">
+            <div class="light-effect"></div>
+            <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">API Access</h2>
+            <p class="text-center text-gray-500 mb-6">Integrate our AI image generation capabilities into your own applications</p>
+            
+            <div class="p-4 border border-gray-200 rounded-lg">
+                <h3 class="text-xl font-semibold mb-2">RESTful API</h3>
+                <p class="text-gray-500 mb-4">Access our image generation engine via simple HTTP requests</p>
+                <div class="code-block bg-secondary p-4 rounded-md mb-4 overflow-auto">
+                    <pre><code>POST /api/generate
 Content-Type: application/json
 
 {
     "video_description": "Your image description here",
     "test_mode": false
-}</pre>
-        </div>
-
-        <section class="my-12">
-            <h2 class="text-2xl font-bold text-primary text-center mb-6">AI Art Creation Tips</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="card p-4 shadow-md">
-                    <h3 class="text-xl font-semibold text-primary mb-2">Prompt Engineering</h3>
-                    <p class="text-gray-700 mb-4">Learn techniques to craft the perfect prompts that generate exactly the images you want.</p>
-                    <a href="/blog" class="text-primary font-medium">Read More →</a>
+}</code></pre>
                 </div>
-                <div class="card p-4 shadow-md">
-                    <h3 class="text-xl font-semibold text-primary mb-2">AI Art Styles</h3>
-                    <p class="text-gray-700 mb-4">Discover different artistic styles and techniques you can use in your AI art generation prompts.</p>
-                    <a href="/blog" class="text-primary font-medium">Read More →</a>
-                </div>
-                <div class="card p-4 shadow-md">
-                    <h3 class="text-xl font-semibold text-primary mb-2">Using AI Art</h3>
-                    <p class="text-gray-700 mb-4">Explore creative ways to use your AI-generated images in projects, social media, and more.</p>
-                    <a href="/blog" class="text-primary font-medium">Read More →</a>
-                </div>
-            </div>
-        </section>
-
-        <section id="api-info" class="my-12">
-            <h2 class="text-2xl font-bold text-primary text-center mb-6">API Integration Available</h2>
-            <p class="text-center text-gray-700 mb-6">Integrate our image generator directly into your workflow with our easy-to-use API</p>
-            <div class="bg-gray-100 p-4 rounded">
-                <h3 class="text-xl font-semibold text-primary mb-2">Example API Request</h3>
-                <pre class="bg-gray-800 text-black p-4 rounded overflow-x-auto"><code>
-curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
+                <p class="text-gray-500 mb-4">Example API Request:</p>
+                <div class="code-block bg-secondary p-4 rounded-md mb-4 overflow-auto">
+                    <pre><code>curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
     -H "Content-Type: application/json" \
     -d '{"video_description": "A serene mountain landscape with a waterfall at sunset, photorealistic style"}'</code></pre>
+                </div>
+                <a href="#" class="btn btn-secondary">View Documentation</a>
             </div>
-        </section>
+        </div>
 
-        <section id="faq" class="my-12">
-            <h2 class="text-2xl font-bold text-primary text-center mb-6">Frequently Asked Questions</h2>
-            <div class="space-y-6">
-                <div class="card p-4 shadow-sm">
-                    <h3 class="text-xl font-semibold text-primary mb-2">How does the AI image generator work?</h3>
-                    <p>Our AI image generator uses advanced machine learning algorithms to create beautiful images based on your text description. The AI understands the context of your prompt and generates visually appealing images in various artistic styles.</p>
+        <div class="card p-6 shadow-md mt-8">
+            <div class="light-effect"></div>
+            <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Key Features</h2>
+            <p class="text-center text-gray-500 mb-6">Discover what makes our AI art generator special</p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"></path><path d="M4.93 10.93l1.41 1.41"></path><path d="M2 18h2"></path><path d="M20 18h2"></path><path d="M19.07 10.93l-1.41 1.41"></path><path d="M22 22H2"></path><path d="M8 22v-4"></path><path d="M16 22v-4"></path><path d="M12 22v-6"></path></svg>
+                    </div>
+                    <h3 class="feature-title">State-of-the-Art AI</h3>
+                    <p class="feature-description">Powered by the latest diffusion models to create stunning, realistic images from text descriptions</p>
                 </div>
-                <div class="card p-4 shadow-sm">
-                    <h3 class="text-xl font-semibold text-primary mb-2">Is this service free to use?</h3>
-                    <p>Yes, our image generation service is completely free to use with no limits. Create as many images as you need without any cost or signup requirements.</p>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z"></path><path d="M12 18c3.3 0 6-2.7 6-6s-2.7-6-6-6-6 2.7-6 6 2.7 6 6 6z"></path><path d="M12 14c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"></path></svg>
+                    </div>
+                    <h3 class="feature-title">Image Transformation</h3>
+                    <p class="feature-description">Transform your existing photos into various artistic styles with our image-to-image technology</p>
                 </div>
-                <div class="card p-4 shadow-sm">
-                    <h3 class="text-xl font-semibold text-primary mb-2">Can I customize the generated images?</h3>
-                    <p>Absolutely! You can download the generated images and further edit them in your preferred image editing software to add your own personal touch and artistic elements.</p>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    </div>
+                    <h3 class="feature-title">Lightning Fast</h3>
+                    <p class="feature-description">Generate high-quality images in seconds with our optimized infrastructure</p>
                 </div>
-                <div class="card p-4 shadow-sm">
-                    <h3 class="text-xl font-semibold text-primary mb-2">What image resolution do I get?</h3>
-                    <p>All images are generated at a high resolution of 1920x1080 pixels. This ensures your AI art looks crisp and detailed across all devices and screen sizes.</p>
+            </div>
+        </div>
+
+        <section id="faq" class="card p-6 shadow-md mt-8">
+            <div class="light-effect"></div>
+            <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Frequently Asked Questions</h2>
+            <p class="text-center text-gray-500 mb-6">Get answers to common questions about our AI art generator</p>
+            
+            <div class="faq-container">
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How does the AI image generator work?</h3>
+                        <div class="faq-toggle">
+                            <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Our AI image generator uses advanced machine learning algorithms to create beautiful images based on your text description. The AI understands the context of your prompt and generates visually appealing images in various artistic styles.</p>
+                    </div>
                 </div>
-                <div class="card p-4 shadow-sm">
-                    <h3 class="text-xl font-semibold text-primary mb-2">How do I integrate the image generator with my workflow?</h3>
-                    <p>For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow.</p>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>Is this service free to use?</h3>
+                        <div class="faq-toggle">
+                            <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Yes, our image generation service is completely free to use with no limits. Create as many images as you need without any cost or signup requirements.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>Can I customize the generated images?</h3>
+                        <div class="faq-toggle">
+                            <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Absolutely! You can download the generated images and further edit them in your preferred image editing software to add your own personal touch and artistic elements.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What image resolution do I get?</h3>
+                        <div class="faq-toggle">
+                            <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
+                    </div>
+                    <div class="faq-answer">
+                        <p>All images are generated at a high resolution of 1920x1080 pixels. This ensures your AI art looks crisp and detailed across all devices and screen sizes.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>How do I integrate the image generator with my workflow?</h3>
+                        <div class="faq-toggle">
+                            <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
+                    </div>
+                    <div class="faq-answer">
+                        <p>For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow.</p>
+                    </div>
+                </div>
+                
+                <div class="faq-item">
+                    <div class="faq-question">
+                        <h3>What are the advanced options in image-to-image transformation?</h3>
+                        <div class="faq-toggle">
+                            <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        </div>
+                    </div>
+                    <div class="faq-answer">
+                        <p>The image-to-image feature allows you to transform existing images with several options:</p>
+                        <ul class="list-disc ml-6 mt-2">
+                            <li><strong>Style Preset:</strong> Choose artistic styles like anime, cinematic, digital art, etc.</li>
+                            <li><strong>Aspect Ratio:</strong> Control the dimensions of your output image</li>
+                            <li><strong>Output Format:</strong> Select PNG for best quality or other formats for smaller file sizes</li>
+                            <li><strong>Seed:</strong> Use a specific seed number to make transformations reproducible</li>
+                            <li><strong>Strength:</strong> Control how much the original image influences the result</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <footer class="footer bg-gray-100 mt-12 py-8">
-        <div class="container mx-auto px-4">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-                <div class="md:col-span-2">
-                    <h3 class="text-lg font-bold mb-4">AI Art Image Generator</h3>
-                    <p class="text-gray-600 mb-4">Create beautiful, high-quality AI-generated images in seconds with our free, unlimited generator. No signup required.</p>
-                    <p class="text-gray-600">&copy; 2023 AI Art. All rights reserved.</p>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold mb-4">Quick Links</h3>
-                    <ul class="space-y-2">
-                        <li><a href="/" class="text-primary hover:text-primary-dark">Home</a></li>
-                        <li><a href="/blog" class="text-primary hover:text-primary-dark">Blog</a></li>
-                        <li><a href="#api-info" class="text-primary hover:text-primary-dark">API Documentation</a></li>
-                        <li><a href="/sitemap-page" class="text-primary hover:text-primary-dark">Sitemap</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold mb-4">Account</h3>
-                    <ul class="space-y-2">
-                        <li><a href="/login" class="text-primary hover:text-primary-dark">Login</a></li>
-                        <li><a href="/signup" class="text-primary hover:text-primary-dark">Sign Up</a></li>
-                        {% if current_user.is_authenticated %}
-                        <li><a href="/dashboard" class="text-primary hover:text-primary-dark">My Images</a></li>
-                        <li><a href="/logout" class="text-primary hover:text-primary-dark">Logout</a></li>
-                        {% endif %}
-                    </ul>
-                </div>
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">
+                <span class="footer-logo-text">AI Art</span>
             </div>
-            <div class="mt-8 pt-8 border-t border-gray-200 text-sm text-gray-500">
-                <div class="flex flex-wrap justify-between">
-                    <div class="w-full md:w-auto mb-4 md:mb-0">
-                        <a href="/sitemap-page" class="mr-4">Sitemap</a>
-                        <a href="/sitemap.xml" class="mr-4">XML Sitemap</a>
-                        <a href="/blog" class="mr-4">Blog</a>
-                    </div>
-                    <div>
-                        <a href="https://aiart-zroo.onrender.com" class="text-primary">aiart-zroo.onrender.com</a>
-                    </div>
-                </div>
+            
+            <div class="footer-links">
+                <a href="/" class="footer-link">Home</a>
+                <a href="/blog" class="footer-link">Blog</a>
+                <a href="#api-info" class="footer-link">API</a>
+                <a href="/terms" class="footer-link">Terms</a>
+                <a href="/privacy" class="footer-link">Privacy</a>
             </div>
+            
+            <p class="footer-description">
+                AI Art allows you to create and transform images using cutting-edge artificial intelligence. 
+                Powered by state-of-the-art diffusion models, our platform offers a simple and intuitive way to 
+                generate artwork, modify photos, and more.
+            </p>
+            
+            <p class="footer-copyright">
+                © 2025 AI Art. All rights reserved. Powered by Stability AI.
+            </p>
         </div>
     </footer>
     
@@ -398,18 +594,130 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
             });
         });
         
-        // Download image function
+        // Function to handle download button clicks
         function downloadImage() {
-            const img = document.getElementById('generated-image');
-            if (img.src) {
-                const a = document.createElement('a');
-                a.href = img.src;
-                a.download = 'ai-image.jpg';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+            const imagePath = window.currentImagePath;
+            if (!imagePath) {
+                console.error('No image path found for download');
+                return;
             }
+            
+            console.log('Downloading image from:', imagePath);
+            
+            // Create a filename from the path
+            const pathParts = imagePath.split('/');
+            const filename = pathParts[pathParts.length - 1];
+            
+            // Fetch the image as a blob
+            fetch(imagePath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Create a URL for the blob
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    // Create a temporary link element
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename; // Set the filename
+                    
+                    // Add to document, click it, and remove it
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Clean up
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    console.error('Error downloading image:', error);
+                    alert('Failed to download image. Please try again later.');
+                });
         }
+
+        // FAQ accordion
+        document.addEventListener('DOMContentLoaded', function() {
+            const faqItems = document.querySelectorAll('.faq-item');
+            
+            faqItems.forEach(item => {
+                const question = item.querySelector('.faq-question');
+                const answer = item.querySelector('.faq-answer');
+                
+                question.addEventListener('click', () => {
+                    // Check if this item is currently active
+                    const isActive = item.classList.contains('active');
+                    
+                    // First, close all items
+                    faqItems.forEach(faqItem => {
+                        faqItem.classList.remove('active');
+                        const faqAnswer = faqItem.querySelector('.faq-answer');
+                        faqAnswer.style.maxHeight = null;
+                    });
+                    
+                    // Then, if the clicked item wasn't active, open it
+                    if (!isActive) {
+                        item.classList.add('active');
+                        answer.style.maxHeight = answer.scrollHeight + 'px';
+                    }
+                });
+            });
+            
+            // Open the first FAQ item by default
+            if (faqItems.length > 0) {
+                const firstItem = faqItems[0];
+                const firstAnswer = firstItem.querySelector('.faq-answer');
+                firstItem.classList.add('active');
+                firstAnswer.style.maxHeight = firstAnswer.scrollHeight + 'px';
+            }
+        });
+
+        // Light effect on cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            
+            cards.forEach(card => {
+                const lightEffect = card.querySelector('.light-effect');
+                
+                if (lightEffect) {
+                    // Disabled light effect tracking
+                    // Removing the mousemove handler to prevent any hover effects
+                    /*
+                    card.addEventListener('mousemove', (e) => {
+                        const rect = card.getBoundingClientRect();
+                        const x = ((e.clientX - rect.left) / rect.width) * 100;
+                        const y = ((e.clientY - rect.top) / rect.height) * 100;
+                        
+                        lightEffect.style.setProperty('--x', `${x}%`);
+                        lightEffect.style.setProperty('--y', `${y}%`);
+                    });
+                    */
+                }
+            });
+        });
+
+        // Smooth scroll for anchor links
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    const targetId = this.getAttribute('href');
+                    const targetElement = document.querySelector(targetId);
+                    
+                    if (targetElement) {
+                        window.scrollTo({
+                            top: targetElement.offsetTop - 100,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
     </script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
      crossorigin="anonymous"></script>
@@ -457,6 +765,22 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
             "@type": "Answer",
             "text": "For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow."
           }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I customize the generated images?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "You can customize your generated images by using detailed prompts and specific keywords. Additionally, for image-to-image transformations, you can control the strength, style preset, aspect ratio, and seed to fine-tune the results."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are the advanced options in image-to-image transformation?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The image-to-image feature allows you to transform existing images with several options: Style Preset, Aspect Ratio, Output Format, Seed, and Strength."
+          }
         }
       ]
     }
@@ -466,5 +790,168 @@ curl -X POST "https://aiart-zroo.onrender.com/api/generate" \
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
     crossorigin="anonymous"></script>
 
+    <script>
+        // Add the new img2img functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Existing variables
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const result = document.getElementById('result');
+            const generatedImage = document.getElementById('generated-image');
+            const downloadBtn = document.getElementById('download-btn');
+            
+            // Tab switching functionality
+            const textToImageTab = document.getElementById('text-to-image-tab');
+            const imageToImageTab = document.getElementById('image-to-image-tab');
+            const textToImageContent = document.getElementById('text-to-image-content');
+            const imageToImageContent = document.getElementById('image-to-image-content');
+            
+            if (textToImageTab && imageToImageTab) {
+                textToImageTab.addEventListener('click', function() {
+                    textToImageTab.classList.add('active');
+                    imageToImageTab.classList.remove('active');
+                    textToImageContent.classList.add('active');
+                    imageToImageContent.classList.remove('active');
+                    // Hide results when switching tabs
+                    result.classList.add('hidden');
+                });
+                
+                imageToImageTab.addEventListener('click', function() {
+                    imageToImageTab.classList.add('active');
+                    textToImageTab.classList.remove('active');
+                    imageToImageContent.classList.add('active');
+                    textToImageContent.classList.remove('active');
+                    // Hide results when switching tabs
+                    result.classList.add('hidden');
+                });
+            }
+            
+            // Image upload preview
+            const imageUpload = document.getElementById('image-upload');
+            const imagePreview = document.getElementById('image-preview');
+            const previewContainer = document.getElementById('preview-container');
+            
+            if (imageUpload) {
+                imageUpload.addEventListener('change', function() {
+                    const file = this.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            imagePreview.src = e.target.result;
+                            previewContainer.classList.remove('hidden');
+                        }
+                        reader.readAsDataURL(file);
+                    } else {
+                        previewContainer.classList.add('hidden');
+                    }
+                });
+            }
+            
+            // Strength slider
+            const strengthSlider = document.getElementById('strength-slider');
+            const strengthValue = document.getElementById('strength-value');
+            
+            if (strengthSlider) {
+                strengthSlider.addEventListener('input', function() {
+                    strengthValue.textContent = this.value;
+                });
+            }
+            
+            // Image-to-image form handling
+            const img2imgForm = document.getElementById('img2img-form');
+            
+            if (img2imgForm) {
+                img2imgForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Validate form
+                    if (!imageUpload.files[0]) {
+                        alert('Please upload an image to transform');
+                        return;
+                    }
+                    
+                    const img2imgPrompt = document.getElementById('img2img-prompt').value;
+                    if (!img2imgPrompt) {
+                        alert('Please enter a prompt for the transformation');
+                        return;
+                    }
+                    
+                    // Show loading
+                    loading.classList.remove('hidden');
+                    result.classList.add('hidden');
+                    error.classList.add('hidden');
+                    
+                    // Prepare form data with all parameters
+                    const formData = new FormData(img2imgForm);
+                    
+                    // Add seed parameter (if random seed is requested, let server handle it)
+                    const seedValue = parseInt(document.getElementById('seed').value);
+                    if (isNaN(seedValue) || seedValue < 0) {
+                        formData.set('seed', '0');
+                    }
+                    
+                    fetch('/img2img', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        loading.classList.add('hidden');
+                        
+                        // Debug: Log the full response data
+                        console.log('Server response:', data);
+                        
+                        if (data.success) {
+                            // Debug: Log the image path
+                            console.log('Image path from server:', data.image_path);
+                            
+                            // Show the result
+                            result.classList.remove('hidden');
+                            
+                            // Set the image source and log it
+                            generatedImage.src = data.image_path;
+                            console.log('Set image src to:', generatedImage.src);
+                            
+                            generatedImage.alt = 'Transformed image based on input';
+                            
+                            // Debug: Add an onload event to confirm the image loads correctly
+                            generatedImage.onload = function() {
+                                console.log('Image loaded successfully');
+                            };
+                            
+                            // Debug: Add an onerror event to catch loading errors
+                            generatedImage.onerror = function() {
+                                console.error('Failed to load image from:', generatedImage.src);
+                                // Try an alternate approach: add a timestamp to avoid caching
+                                const cacheBuster = '?t=' + new Date().getTime();
+                                console.log('Trying with cache buster:', data.image_path + cacheBuster);
+                                generatedImage.src = data.image_path + cacheBuster;
+                            };
+                            
+                            // Enable download button
+                            downloadBtn.disabled = false;
+                            
+                            // Save the current URL for download
+                            window.currentImagePath = data.image_path;
+                            
+                            // Update the seed field with the used seed for reproducibility
+                            if (data.seed && document.getElementById('seed')) {
+                                document.getElementById('seed').value = data.seed;
+                            }
+                        } else {
+                            // Show error
+                            error.classList.remove('hidden');
+                            error.querySelector('p').textContent = data.error || 'An error occurred during image transformation';
+                        }
+                    })
+                    .catch(err => {
+                        loading.classList.add('hidden');
+                        error.classList.remove('hidden');
+                        error.querySelector('p').textContent = 'Network error: ' + err.message;
+                    });
+                });
+            }
+        });
+    </script>
 </body>
 </html>

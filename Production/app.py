@@ -15,10 +15,10 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configure the upload folder for storing generated images
-app.config['UPLOAD_FOLDER'] = 'images'
-app.config['TEST_ASSETS'] = 'test_assets'
-app.config['PROCESSED_FOLDER'] = 'processed_images'
-
+app_dir = os.path.dirname(os.path.abspath(__file__))
+app.config['UPLOAD_FOLDER'] = os.path.join(app_dir, 'images')
+app.config['TEST_ASSETS'] = os.path.join(app_dir, 'test_assets')
+app.config['PROCESSED_FOLDER'] = os.path.join(app_dir, 'processed_images')
 
 # Configure Flask-Login
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_secret_key')
@@ -33,6 +33,8 @@ GEMINI_API_KEY = "AIzaSyA0RYI9KRrNLi6KaX4g49UJD4G5YBEb6II"
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROCESSED_FOLDER'], exist_ok=True)
 
+# Also fix the logs directory path
+LOGS_DIR = os.path.join(app_dir, 'logs')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -248,6 +250,207 @@ def serve_processed_image(filename):
     """Serve the processed images"""
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
+@app.route('/img2img', methods=['POST'])
+def img2img_transform():
+    """Transform an uploaded image based on the prompt provided"""
+    # Check if file and prompt are provided
+    if 'image' not in request.files or not request.form.get('prompt'):
+        return jsonify({'error': 'Both image and prompt are required'}), 400
+    
+    file = request.files['image']
+    prompt = request.form.get('prompt')
+    negative_prompt = request.form.get('negative_prompt', '')
+    strength = float(request.form.get('strength', 0.7))
+    
+    # Get the new parameters
+    style_preset = request.form.get('style_preset', None)
+    if style_preset == '':
+        style_preset = None
+    
+    aspect_ratio = request.form.get('aspect_ratio', '1:1')
+    output_format = request.form.get('output_format', 'png')
+    
+    # Get seed (0 means random)
+    try:
+        seed = int(request.form.get('seed', 0))
+    except ValueError:
+        seed = 0
+    
+    # Validate the file
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    if file:
+        # Save the uploaded file temporarily
+        temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_' + file.filename)
+        file.save(temp_image_path)
+        
+        try:
+            # Import the img2img function and StabilityApiKey from models
+            from img2img_stability import img2img
+            from models import StabilityApiKey
+            
+            # Get API key from the database (oldest available key)
+            api_key_obj = StabilityApiKey.find_oldest_key()
+            if not api_key_obj:
+                return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
+                
+            stability_api_key = api_key_obj.api_key
+            
+            # Perform the image transformation
+            image_data, result_info = img2img(
+                api_key=stability_api_key,
+                prompt=prompt,
+                image_path=temp_image_path,
+                negative_prompt=negative_prompt,
+                strength=strength,
+                aspect_ratio=aspect_ratio,
+                seed=seed,
+                style_preset=style_preset,
+                output_format=output_format
+            )
+            
+            # Generate output filename based on prompt
+            safe_prompt = ''.join(c if c.isalnum() else '_' for c in prompt)[:25]
+            output_filename = f"img2img_{safe_prompt}_{result_info['seed']}.{output_format}"
+            output_path = os.path.join(app.config['PROCESSED_FOLDER'], output_filename)
+            
+            # Save the generated image
+            with open(output_path, 'wb') as f:
+                f.write(image_data)
+            
+            # Check if file was saved successfully and log info
+            if os.path.exists(output_path):
+                print(f"Image saved successfully at: {output_path}")
+                print(f"File size: {os.path.getsize(output_path)} bytes")
+            else:
+                print(f"WARNING: File was not saved at: {output_path}")
+            
+            # Print current working directory and absolute path
+            print(f"Current working directory: {os.getcwd()}")
+            print(f"Absolute path to saved image: {os.path.abspath(output_path)}")
+            
+            # Clean up the temporary file
+            os.remove(temp_image_path)
+            
+            # Save the image to the user's collection if logged in
+            if current_user.is_authenticated:
+                current_user.save_thumbnail(f'/{app.config["PROCESSED_FOLDER"]}/{output_filename}', prompt)
+            
+            # Construct the URL that will be used in the frontend
+            image_url = url_for('serve_processed_image', filename=output_filename)
+            print(f"Returning image URL to frontend: {image_url}")
+            
+            # Return success response
+            return jsonify({
+                'success': True,
+                'message': 'Image transformed successfully',
+                'image_path': image_url,
+                'seed': result_info['seed']
+            })
+            
+        except Exception as e:
+            print(f"Error in img2img_transform: {str(e)}")
+            # Clean up temporary file in case of error
+            if os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
+            return jsonify({'error': str(e)}), 500
+    
+    return jsonify({'error': 'Invalid file'}), 400
+
+@app.route('/api/img2img', methods=['POST'])
+def api_img2img_transform():
+    """API endpoint to transform an image"""
+    # Check if file was uploaded
+    if 'image' not in request.files:
+        return jsonify({'error': 'Image file is required'}), 400
+    
+    file = request.files['image']
+    
+    # Get JSON data from form
+    prompt = request.form.get('prompt')
+    if not prompt:
+        return jsonify({'error': 'Prompt is required'}), 400
+    
+    negative_prompt = request.form.get('negative_prompt', '')
+    strength = float(request.form.get('strength', 0.7))
+    
+    # Get the new parameters
+    style_preset = request.form.get('style_preset', None)
+    if style_preset == '':
+        style_preset = None
+    
+    aspect_ratio = request.form.get('aspect_ratio', '1:1')
+    output_format = request.form.get('output_format', 'png')
+    
+    # Get seed (0 means random)
+    try:
+        seed = int(request.form.get('seed', 0))
+    except ValueError:
+        seed = 0
+    
+    # Validate the file
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    if file:
+        # Save the uploaded file temporarily
+        temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_' + file.filename)
+        file.save(temp_image_path)
+        
+        try:
+            # Import the img2img function and StabilityApiKey
+            from img2img_stability import img2img
+            from models import StabilityApiKey
+            
+            # Get API key from the database (oldest available key)
+            api_key_obj = StabilityApiKey.find_oldest_key()
+            if not api_key_obj:
+                return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
+                
+            stability_api_key = api_key_obj.api_key
+            
+            # Perform the image transformation
+            image_data, result_info = img2img(
+                api_key=stability_api_key,
+                prompt=prompt,
+                image_path=temp_image_path,
+                negative_prompt=negative_prompt,
+                strength=strength,
+                aspect_ratio=aspect_ratio,
+                seed=seed,
+                style_preset=style_preset,
+                output_format=output_format
+            )
+            
+            # Generate output filename
+            safe_prompt = ''.join(c if c.isalnum() else '_' for c in prompt)[:25]
+            output_filename = f"img2img_{safe_prompt}_{result_info['seed']}.{output_format}"
+            output_path = os.path.join(app.config['PROCESSED_FOLDER'], output_filename)
+            
+            # Save the generated image
+            with open(output_path, 'wb') as f:
+                f.write(image_data)
+            
+            # Clean up the temporary file
+            os.remove(temp_image_path)
+            
+            # Return the image URL and success message
+            return jsonify({
+                'success': True,
+                'message': 'Image transformed successfully',
+                'image_url': url_for('serve_processed_image', filename=output_filename, _external=True),
+                'seed': result_info['seed']
+            })
+            
+        except Exception as e:
+            # Clean up temporary file in case of error
+            if os.path.exists(temp_image_path):
+                os.remove(temp_image_path)
+            return jsonify({'error': str(e)}), 500
+    
+    return jsonify({'error': 'Invalid file'}), 400
+
 @app.route('/api/enhance-prompt', methods=['POST'])
 def enhance_prompt():
     """API endpoint to enhance the given image prompt with AI"""
@@ -304,12 +507,51 @@ def serve_robots_txt():
     """Serve the robots.txt file"""
     return send_from_directory('static', 'robots.txt')
 
+@app.route('/test-processed-folder')
+def test_processed_folder():
+    """Test endpoint to check if the processed_images folder is accessible"""
+    processed_dir = app.config['PROCESSED_FOLDER']
+    absolute_path = os.path.abspath(processed_dir)
+    
+    # Create a simple test file
+    test_file = "test_access.txt"
+    test_path = os.path.join(processed_dir, test_file)
+    
+    try:
+        # Write a test file
+        with open(test_path, 'w') as f:
+            f.write("This is a test file to check folder access")
+        
+        # Check if the file was created
+        file_exists = os.path.exists(test_path)
+        
+        # List all files in the directory
+        dir_contents = os.listdir(processed_dir)
+        
+        # Return diagnostic information
+        return jsonify({
+            'success': file_exists,
+            'processed_dir': processed_dir,
+            'absolute_path': absolute_path,
+            'file_created': file_exists,
+            'url_path': f'/{processed_dir}/{test_file}',
+            'dir_contents': dir_contents,
+            'test_access_url': url_for('serve_processed_image', filename=test_file, _external=True)
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'processed_dir': processed_dir,
+            'absolute_path': absolute_path
+        }), 500
+
 if __name__ == '__main__':
     # Configure logging
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
+    if not os.path.exists(LOGS_DIR):
+        os.makedirs(LOGS_DIR)
     
-    file_handler = RotatingFileHandler('logs/app.log', maxBytes=10240, backupCount=10)
+    file_handler = RotatingFileHandler(os.path.join(LOGS_DIR, 'app.log'), maxBytes=10240, backupCount=10)
     file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
     ))

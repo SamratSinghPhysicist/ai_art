@@ -4,6 +4,7 @@ import os
 import datetime
 from dotenv import load_dotenv
 from bson.objectid import ObjectId
+import requests
 
 # Load environment variables
 load_dotenv()
@@ -144,3 +145,97 @@ class User:
             'created_at': datetime.datetime.now()
         }
         return db['images'].insert_one(image_data_obj).inserted_id
+
+class StabilityApiKey:
+    """Model for managing Stability API keys"""
+    
+    def __init__(self, api_key, created_at=None, is_active=True, _id=None):
+        self.api_key = api_key
+        self.created_at = created_at or datetime.datetime.now()
+        self.is_active = is_active
+        self._id = _id
+    
+    def save(self):
+        """Save API key to database"""
+        # Check if this key already exists
+        existing_key = db['stability_api_keys'].find_one({'api_key': self.api_key})
+        
+        api_key_data = {
+            'api_key': self.api_key,
+            'created_at': self.created_at,
+            'is_active': self.is_active
+        }
+        
+        # Update existing key or insert new one
+        if existing_key:
+            self._id = existing_key['_id']
+            db['stability_api_keys'].update_one({'_id': self._id}, {'$set': api_key_data})
+            return self._id
+        else:
+            result = db['stability_api_keys'].insert_one(api_key_data)
+            self._id = result.inserted_id
+            return result.inserted_id
+    
+    @staticmethod
+    def find_by_id(api_key_id):
+        """Find API key by ID"""
+        try:
+            if isinstance(api_key_id, str):
+                api_key_id = ObjectId(api_key_id)
+            api_key_data = db['stability_api_keys'].find_one({'_id': api_key_id})
+            if api_key_data:
+                return StabilityApiKey(
+                    api_key=api_key_data['api_key'],
+                    created_at=api_key_data.get('created_at', datetime.datetime.now()),
+                    is_active=api_key_data['is_active'],
+                    _id=api_key_data['_id']
+                )
+        except Exception as e:
+            print(f"Error finding API key by ID: {e}")
+        return None
+    
+    @staticmethod
+    def find_oldest_key():
+        """Find the oldest API key available"""
+        try:
+            # Find active keys sorted by creation date (oldest first)
+            oldest_key = db['stability_api_keys'].find({
+                'is_active': True
+            }).sort('created_at', 1).limit(1)
+            
+            # Return the first one if available
+            api_key_data = next(oldest_key, None)
+            if api_key_data:
+                return StabilityApiKey(
+                    api_key=api_key_data['api_key'],
+                    created_at=api_key_data.get('created_at', datetime.datetime.now()),
+                    is_active=api_key_data['is_active'],
+                    _id=api_key_data['_id']
+                )
+        except Exception as e:
+            print(f"Error finding oldest API key: {e}")
+        return None
+    
+    @staticmethod
+    def delete_key(api_key_str):
+        """Delete an API key from the database after it's been used"""
+        try:
+            result = db['stability_api_keys'].delete_one({'api_key': api_key_str})
+            if result.deleted_count > 0:
+                print(f"Deleted API key: {api_key_str[:5]}...{api_key_str[-4:]}")
+                return True
+            else:
+                print(f"API key not found: {api_key_str[:5]}...{api_key_str[-4:]}")
+                return False
+        except Exception as e:
+            print(f"Error deleting API key: {e}")
+            return False
+    
+    @staticmethod
+    def count_keys():
+        """Count the number of active API keys in the database"""
+        try:
+            return db['stability_api_keys'].count_documents({'is_active': True})
+        except Exception as e:
+            print(f"Error counting API keys: {e}")
+            return 0

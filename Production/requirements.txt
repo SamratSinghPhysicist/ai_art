@@ -16,3 +16,11 @@ scipy==1.11.3
 scikit-image==0.22.0
 # Added for enhanced image analysis
 json5==0.9.14
+# Added for Stability AI integration
+argparse==1.4.0
+# Added for StabilityApiGenerator
+selenium==4.16.0
+webdriver-manager==4.0.1
+pyperclip==1.8.2
+# Custom temp_mail module - install from local path
+-e Development/StabilityApiGenerator
