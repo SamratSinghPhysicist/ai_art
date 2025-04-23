@@ -32,12 +32,6 @@
   box-sizing: border-box;
 }
 
-/* Add overflow-x: hidden to HTML element */
-html {
-  scroll-behavior: smooth;
-  overflow-x: hidden; /* Prevent horizontal scrolling */
-}
-
 body {
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   line-height: 1.6;
@@ -45,7 +39,6 @@ body {
   background-color: var(--bg);
   background-image: linear-gradient(120deg, #F8FAFF 0%, #F0F7FF 100%);
   min-height: 100vh;
-  overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 /* Container utilities */
@@ -525,8 +518,6 @@ input[type="file"].form-input {
     z-index: 100;
     box-shadow: -10px 0 30px rgba(91, 143, 249, 0.1);
     align-items: flex-start;
-    overflow-y: auto; /* Allow vertical scrolling if needed */
-    overflow-x: hidden; /* Prevent horizontal scrolling */
   }
   
   .nav-links.active {
@@ -540,13 +531,6 @@ input[type="file"].form-input {
   
   .nav-link:last-child {
     margin-top: 1rem;
-  }
-
-  /* Prevent content from shifting when menu opens */
-  .header {
-    position: relative;
-    width: 100%;
-    overflow-x: clip;
   }
 }
 
@@ -1432,13 +1416,6 @@ ul.list-disc li strong {
 
 /* Responsive adjustments for mobile */
 @media (max-width: 640px) {
-  body,
-  html {
-    overflow-x: hidden; /* Prevent horizontal scroll on mobile */
-    width: 100%;
-    position: relative;
-  }
-
   .feature-card {
     padding: 1.5rem 1rem;
   }

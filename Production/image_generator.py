@@ -8,7 +8,7 @@ import os
 from urllib.parse import quote
 
 from gemini_generator import generate_gemini
-from image_editor import process_image
+
 # Note: image_analyzer is imported dynamically in main_image_function when needed
 
 
@@ -50,7 +50,7 @@ def image_generate_prompt_pollinations(image_description, api_key_gemini):
 
     return image_generate_prompt
 
-def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, seed=random.randint(1,100000), model='flux-realism', style=None):
+def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, seed=random.randint(1,100000), model='flux-realism', style=None, nologo=True):
     if testMode == False:
         # Define the subfolder and filename
         subfolder = Path("images")
@@ -69,7 +69,10 @@ def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, se
 
         def download_image(image_url, image_path):
             try:
-                response = requests.get(image_url)
+                params = {
+                    'nologo': nologo,
+                }
+                response = requests.get(image_url, params=params)
             except Exception as e:
                 print("Error during requests.get:", e)
                 print("Using test_assests/placeholder.jpg")
@@ -113,13 +116,13 @@ def main_image_function(image_description, testMode, api_key_gemini):
             
             generated_image_path = generate_image_pollinations_ai(image_prompt, testMode)
             
-            # Process the image to remove the watermark
-            processed_image_path = process_image(generated_image_path)
-
-            return f"{processed_image_path}"
+            print(f"Generated image path in main_image_function: {generated_image_path}")
+            
+            return f"{generated_image_path}"
 
         except Exception as e:
             print("Error in generating Image:", e)
+            return "test_assets/placeholder.jpg"
     else:
         print("Test Mode is ON")
         print("Skipping the image search and download process, and using placeholder images")

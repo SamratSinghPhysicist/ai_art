@@ -10,16 +10,6 @@
     <meta name="author" content="AI Art">
 
     <meta name="5a8137c2095fcc91c57a307bc77230856293ef66" content="5a8137c2095fcc91c57a307bc77230856293ef66" />
-
-    <!-- Google Adsense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
-     crossorigin="anonymous"></script>
-    
-    <!-- Google Adsense - AMP -->
-    <script async custom-element="amp-auto-ads"
-        src="https://cdn.ampproject.org/v0/amp-auto-ads-0.1.js">
-    </script>
-
     
 	
     <link rel="canonical" href="https://aiart-zroo.onrender.com/">
@@ -62,12 +52,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-
-    <!-- Google Adsense AMP -->
-    <amp-auto-ads type="adsense"
-    data-ad-client="ca-pub-7179365574545627">
-    </amp-auto-ads>
-    
     <div class="bg-decoration"></div>
     
     <header class="header">
@@ -566,9 +550,9 @@ Content-Type: application/json
             e.preventDefault();
             
             // Show loading, hide results and errors
-            document.getElementById('loading').style.display = 'block';
-            document.getElementById('result').style.display = 'none';
-            document.getElementById('error').style.display = 'none';
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
             
             // Get form data
             const description = document.getElementById('video-description').value;
@@ -587,25 +571,47 @@ Content-Type: application/json
             .then(response => response.json())
             .then(data => {
                 // Hide loading
-                document.getElementById('loading').style.display = 'none';
+                document.getElementById('loading').classList.add('hidden');
                 
                 if (data.success) {
                     // Show result
-                    document.getElementById('result').style.display = 'block';
+                    document.getElementById('result').classList.remove('hidden');
                     // Add a timestamp parameter to prevent browser caching
                     document.getElementById('generated-image').src = data.image_path + '?t=' + new Date().getTime();
+                    
+                    // Add debug logging
+                    console.log('Image path from server:', data.image_path);
+                    console.log('Set image src to:', document.getElementById('generated-image').src);
+                    
+                    // Debug: Add an onload event to confirm the image loads correctly
+                    document.getElementById('generated-image').onload = function() {
+                        console.log('Image loaded successfully');
+                    };
+                    
+                    // Debug: Add an onerror event to catch loading errors
+                    document.getElementById('generated-image').onerror = function() {
+                        console.error('Failed to load image from:', document.getElementById('generated-image').src);
+                        // Try an alternate approach: add a timestamp to avoid caching
+                        const cacheBuster = '?t=' + new Date().getTime();
+                        console.log('Trying with cache buster:', data.image_path + cacheBuster);
+                        document.getElementById('generated-image').src = data.image_path + cacheBuster;
+                    };
+                    
                     // Enable download button
                     document.getElementById('download-btn').disabled = false;
+                    // Save the current URL for download
+                    window.currentImagePath = data.image_path;
                 } else {
                     // Show error
-                    document.getElementById('error').style.display = 'block';
-                    document.getElementById('error').textContent = data.error || 'An error occurred';
+                    document.getElementById('error').classList.remove('hidden');
+                    document.getElementById('error').querySelector('p').textContent = data.error || 'An error occurred';
                 }
             })
             .catch(error => {
                 // Hide loading, show error
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('error').style.display = 'block';
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').querySelector('p').textContent = 'Network error: ' + error.message;
                 console.error('Error:', error);
             });
         });
@@ -802,6 +808,9 @@ Content-Type: application/json
     }
     </script>
 
+    <!-- Google Adsense Ads -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
+    crossorigin="anonymous"></script>
 
     <script>
         // Add the new img2img functionality
