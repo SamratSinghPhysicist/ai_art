@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session, flash
 import os
 from image_generator import main_image_function
-from image_editor import process_image
 from models import User, db
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -166,9 +165,6 @@ def generate_image():
         # Generate the image
         generated_image_path = main_image_function(image_description, test_mode, GEMINI_API_KEY)
         
-        # Process the image to remove the watermark if it's not a test asset
-        generated_image_path = process_image(generated_image_path)
-        
         # Extract just the filename from the path
         image_filename = os.path.basename(generated_image_path)
         
@@ -184,11 +180,21 @@ def generate_image():
         if current_user.is_authenticated:
             current_user.save_thumbnail(f'/{folder}/{image_filename}', image_description)
         
+        # Construct the URL using url_for for consistent URL handling
+        if 'test_assets' in generated_image_path:
+            image_url = url_for('serve_test_asset', filename=image_filename)
+        elif 'processed_images' in generated_image_path:
+            image_url = url_for('serve_processed_image', filename=image_filename)
+        else:
+            image_url = url_for('serve_image', filename=image_filename)
+            
+        print(f"Returning image URL to frontend: {image_url}")
+        
         # Return the image path and success message
         return jsonify({
             'success': True,
             'message': 'Image generated successfully',
-            'image_path': f'/{folder}/{image_filename}'
+            'image_path': image_url
         })
     
     except Exception as e:
@@ -211,8 +217,6 @@ def api_generate_image():
         # Generate the image
         generated_image_path = main_image_function(image_description, test_mode, GEMINI_API_KEY)
         
-        # Process the image to remove the watermark if it's not a test asset
-        generated_image_path = process_image(generated_image_path)
         
         # Extract just the filename from the path
         image_filename = os.path.basename(generated_image_path)
