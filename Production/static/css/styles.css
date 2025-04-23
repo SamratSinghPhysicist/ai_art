@@ -1483,3 +1483,34 @@ html {
   box-shadow: 0 10px 25px rgba(91, 143, 249, 0.1);
   padding: 0.75rem 0;
 }
+
+/* AdSense Container Styles */
+.adsense-container {
+  min-height: 90px;
+  background-color: rgba(248, 250, 255, 0.5);
+  border-radius: var(--radius-md);
+  padding: 0.5rem;
+  overflow: hidden;
+  width: 100%;
+  margin: 1rem auto;
+  clear: both;
+  text-align: center;
+}
+
+.adsense-container ins {
+  display: block;
+  margin: 0 auto;
+}
+
+@media (max-width: 640px) {
+  .adsense-container {
+    min-height: 250px;
+  }
+  
+  /* Make fixed-size ads responsive on mobile */
+  .adsense-container ins[style*="width:728px"] {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 90px;
+  }
+}
