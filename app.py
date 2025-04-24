@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
 from flask import send_file
+from visitor_logger import VisitorLogger
 
 # Load environment variables
 load_dotenv()
@@ -563,6 +564,10 @@ if __name__ == '__main__':
     app.logger.addHandler(file_handler)
     app.logger.setLevel(logging.INFO)
     app.logger.info('AI Art startup')
+    
+    # Initialize visitor logger to track IP addresses and locations
+    visitor_logger = VisitorLogger(app, LOGS_DIR)
+    app.logger.info('Visitor logging initialized')
     
     # Start the app in debug mode (development only)
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)
