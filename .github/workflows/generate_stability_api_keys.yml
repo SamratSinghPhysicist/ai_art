@@ -40,7 +40,7 @@ jobs:
           # Install Selenium and related dependencies
           pip install selenium==4.16.0 webdriver-manager==4.0.1 pyperclip==1.8.2
           # Then install the rest of the requirements
-          pip install -r Production/requirements.txt
+          pip install -r requirements.txt
           # List installed packages for debugging
           pip list
       
