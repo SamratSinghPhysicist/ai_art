@@ -47,13 +47,12 @@ jobs:
       - name: Run Chrome Debug Script
         run: |
           # Correct the path to the script
-          python Production/debug_chrome.py
+          python debug_chrome.py
       
       - name: Verify directory structure
         run: |
           ls -la
-          ls -la Production/
-          ls -la Production/StabilityApiGenerator/
+          ls -la StabilityApiGenerator/
       
       - name: Set up environment variables
         run: |
@@ -70,7 +69,6 @@ jobs:
         id: run_generator
         continue-on-error: true  # Don't fail the whole job if this step fails
         run: |
-          cd Production
           # Run with more verbose output
           python -u StabilityApiGenerator/stability_api_generator.py
         env:
@@ -91,7 +89,7 @@ jobs:
         if: always()
         run: |
           echo "=== Generated Logs ==="
-          if [ -f "Production/stability_generator.log" ]; then
-            cat Production/stability_generator.log
+          if [ -f "stability_generator.log" ]; then
+            cat stability_generator.log
           fi
           echo "======================="
