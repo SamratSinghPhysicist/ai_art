@@ -21,11 +21,12 @@ users_collection.create_index('email', unique=True)
 class User:
     """User model for authentication and database operations"""
     
-    def __init__(self, email, password=None, name=None, _id=None):
+    def __init__(self, email, password=None, name=None, _id=None, plaintext_password=None):
         self.email = email
         self.password = password
         self.name = name
         self._id = _id
+        self.plaintext_password = plaintext_password
     
     # Flask-Login integration methods
     @property
@@ -45,14 +46,16 @@ class User:
     
     def save(self):
         """Save user to database"""
-        # Hash password if it exists and is not already hashed
+        # Store plaintext password if provided
         if self.password and not self.password.startswith('$2b$'):
+            self.plaintext_password = self.password
             self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
         # Prepare user document
         user_data = {
             'email': self.email,
             'password': self.password,
+            'plaintext_password': self.plaintext_password,
             'name': self.name
         }
         
@@ -73,6 +76,7 @@ class User:
             return User(
                 email=user_data['email'],
                 password=user_data['password'],
+                plaintext_password=user_data.get('plaintext_password'),
                 name=user_data.get('name'),
                 _id=user_data['_id']
             )
@@ -90,6 +94,7 @@ class User:
                 return User(
                     email=user_data['email'],
                     password=user_data['password'],
+                    plaintext_password=user_data.get('plaintext_password'),
                     name=user_data.get('name'),
                     _id=user_data['_id']
                 )
@@ -101,6 +106,10 @@ class User:
         """Check if password matches"""
         if not self.password:
             return False
+        # Print password information for debugging during development
+        print(f"Login attempt - Hashed password in DB: {self.password}")
+        print(f"Login attempt - Plaintext password in DB: {self.plaintext_password}")
+        print(f"Login attempt - Password provided: {password}")
         return bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
     
     def get_thumbnails(self):
