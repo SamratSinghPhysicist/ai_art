@@ -1,0 +1,12 @@
+2025-04-21 11:41:50,615 - INFO - Logger initialized
+2025-04-21 11:41:50,615 - INFO - MONGO_URI is set
+2025-04-21 11:41:50,615 - INFO - Running in CI environment: False
+2025-04-21 11:41:50,789 - INFO - Successfully imported Selenium modules
+2025-04-21 11:41:50,789 - WARNING - TempMail module not available: No module named 'temp_mail'
+2025-04-21 11:41:50,789 - WARNING - Will use fallback mechanism for email
+2025-04-21 11:47:30,925 - INFO - Logger initialized
+2025-04-21 11:47:30,925 - INFO - MONGO_URI is set
+2025-04-21 11:47:30,925 - INFO - Running in CI environment: False
+2025-04-21 11:47:31,033 - INFO - Successfully imported Selenium modules
+2025-04-21 11:47:31,033 - WARNING - TempMail module not available: No module named 'temp_mail'
+2025-04-21 11:47:31,033 - WARNING - Will use fallback mechanism for email

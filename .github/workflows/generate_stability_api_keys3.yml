@@ -1,0 +1,95 @@
+name: Generate Stability API Keys
+
+on:
+  schedule:
+    # Run every 7 minutes
+    - cron: '*/7 * * * *'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  generate_api_key:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check Git version
+        run: git --version
+      
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1  # Only fetch the latest commit
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+      
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+          google-chrome --version  # Print Chrome version for debugging
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install Selenium and related dependencies
+          pip install selenium==4.16.0 webdriver-manager==4.0.1 pyperclip==1.8.2
+          # Then install the rest of the requirements
+          pip install -r requirements.txt
+          # List installed packages for debugging
+          pip list
+      
+      - name: Run Chrome Debug Script
+        run: |
+          # Correct the path to the script
+          python debug_chrome.py
+      
+      - name: Verify directory structure
+        run: |
+          ls -la
+          ls -la StabilityApiGenerator/
+      
+      - name: Set up environment variables
+        run: |
+          # Set MongoDB URI from secrets
+          echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> $GITHUB_ENV
+          # Check if MongoDB URI is set (without showing the value)
+          if [ -n "${{ secrets.MONGO_URI }}" ]; then
+            echo "MongoDB URI is set"
+          else
+            echo "MongoDB URI is NOT set"
+          fi
+      
+      - name: Run StabilityApiGenerator
+        id: run_generator
+        continue-on-error: true  # Don't fail the whole job if this step fails
+        run: |
+          # Run with more verbose output
+          python -u StabilityApiGenerator/stability_api_generator.py
+        env:
+          MONGO_URI: ${{ secrets.MONGO_URI }}
+          PYTHONUNBUFFERED: 1
+      
+      # Simplify the rest of the workflow to minimize potential issues
+      - name: Report status
+        run: |
+          if [ "${{ steps.run_generator.outcome }}" == "success" ]; then
+            echo "✅ Successfully generated API key!"
+          else
+            echo "❌ Failed to generate API key. Check logs for details."
+          fi
+      
+      # Print logs to console instead of using the upload-artifact action
+      - name: Display logs
+        if: always()
+        run: |
+          echo "=== Generated Logs ==="
+          if [ -f "stability_generator.log" ]; then
+            cat stability_generator.log
+          fi
+          echo "======================="

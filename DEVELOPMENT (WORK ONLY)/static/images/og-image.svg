@@ -1,0 +1,18 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#f8f9fa"/>
+  <rect x="50" y="50" width="1100" height="530" rx="15" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  
+  <!-- Logo and Branding -->
+  <text x="100" y="120" font-family="Inter, sans-serif" font-weight="700" font-size="48" fill="#3f51b5">AI Art Thumbnail Generator</text>
+  <text x="100" y="180" font-family="Inter, sans-serif" font-weight="400" font-size="28" fill="#4a5568">Create professional YouTube thumbnails with AI</text>
+  
+  <!-- Sample Thumbnails Area -->
+  <rect x="100" y="220" width="1000" height="300" rx="10" fill="#f7fafc"/>
+  
+  <!-- Decorative Elements -->
+  <circle cx="200" cy="370" r="70" fill="#3f51b5" opacity="0.1"/>
+  <circle cx="1000" cy="370" r="70" fill="#3f51b5" opacity="0.1"/>
+  
+  <!-- CTA -->
+  <text x="600" y="570" font-family="Inter, sans-serif" font-weight="500" font-size="24" fill="#3f51b5" text-anchor="middle">aiart-zroo.onrender.com</text>
+</svg> 
