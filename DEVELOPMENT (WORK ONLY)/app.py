@@ -55,6 +55,16 @@ def blog_ai_image_generation():
     """Render the AI image generation blog page"""
     return render_template('blog-ai-image-generation.html')
 
+@app.route('/text-to-image')
+def text_to_image():
+    """Render the text-to-image page"""
+    return render_template('text-to-image.html')
+
+@app.route('/image-to-image')
+def image_to_image():
+    """Render the image-to-image page"""
+    return render_template('image-to-image.html')
+
 @app.route('/sitemap-page')
 def sitemap_page():
     """Render the human-readable sitemap page"""

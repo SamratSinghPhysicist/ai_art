@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text to Image - AI Art | Generate Images from Text</title>
+    <meta name="description" content="Transform your text descriptions into stunning AI-generated images with our Text to Image tool. Free, unlimited, no signup required.">
+    <meta name="keywords" content="text to image, AI image generation, AI art, text to art, AI image creator">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="AI Art">
+    <link rel="canonical" href="https://aiart-zroo.onrender.com/text-to-image">
+    
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="nav-logo">AI Art</a>
+                <button class="mobile-menu-btn">☰</button>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/blog" class="nav-link">Blog</a>
+                    
+                    <!-- AI Tools dropdown -->
+                    <div class="dropdown">
+                        <button type="button" class="dropdown-toggle nav-link">AI Tools <span class="dropdown-arrow">▼</span></button>
+                        <div class="dropdown-menu">
+                            <a href="/text-to-image" class="dropdown-item">Text to Image</a>
+                            <a href="/image-to-image" class="dropdown-item">Image to Image</a>
+                        </div>
+                    </div>
+                    
+                    <a href="/#api-info" class="nav-link">API</a>
+                    {% if current_user.is_authenticated %}
+                    <a href="/dashboard" class="nav-link">My Images</a>
+                    <a href="/logout" class="nav-link">Logout</a>
+                    {% else %}
+                    <a href="/login" class="nav-link">Login</a>
+                    <a href="/signup" class="nav-link">Sign Up</a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <div class="breadcrumbs container py-2 text-sm">
+        <nav aria-label="breadcrumb">
+            <ol class="flex">
+                <li class="breadcrumb-item"><a href="/" class="text-primary hover:underline">Home</a></li>
+                <li class="breadcrumb-item active" aria-current="page"><span class="mx-2">/</span>Text to Image</li>
+            </ol>
+        </nav>
+    </div>
+
+    <main class="main-content">
+        <div class="container my-4">
+            <div class="card p-4 sm:p-6 shadow-lg">
+                <div class="light-effect"></div>
+                <h1 class="text-3xl font-bold text-center mb-2">
+                    <span class="gradient-text">Text to Image</span>
+                </h1>
+                <p class="text-center text-gray-500 mb-6">Transform your text descriptions into stunning AI-generated images</p>
+                
+                <form id="image-form" class="my-6" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="video-description" class="form-label">Describe the image you want to create:</label>
+                        <div class="textarea-container">
+                            <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: A serene mountain landscape with a waterfall at sunset, photorealistic style"></textarea>
+                        </div>
+                        <div class="help-text text-sm text-gray-500 mt-1">Tip: To control the weight of a given word use the format <code>word:weight</code>, where weight is a value between 0 and 1.</div>
+                        <div class="button-container mt-4">
+                            <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
+                            <button type="button" id="revert-prompt-btn" class="btn btn-secondary" title="Revert to Original" style="display: none;">↩️<span class="button-text">Revert</span></button>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group mt-4">
+                        <div class="advanced-options-toggle">
+                            <button type="button" id="toggle-advanced-options" class="btn btn-secondary">
+                                <span id="advanced-options-icon">▼</span> Advanced Options
+                            </button>
+                        </div>
+                        <div id="advanced-options-container" class="advanced-options-container" style="display: none;">
+                            <div class="form-group mt-4">
+                                <label for="txt2img-negative-prompt" class="form-label">Negative prompt (optional - what to avoid):</label>
+                                <div class="textarea-container">
+                                    <textarea id="txt2img-negative-prompt" name="negative_prompt" class="form-input" placeholder="Example: blurry, distorted, low quality"></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mt-6">
+                                <label for="txt2img-style-preset" class="form-label">Style Preset:</label>
+                                <select id="txt2img-style-preset" name="style_preset" class="form-select">
+                                    <option value="">None (Default)</option>
+                                    <option value="3d-model">3D Model</option>
+                                    <option value="analog-film">Analog Film</option>
+                                    <option value="anime">Anime</option>
+                                    <option value="cinematic">Cinematic</option>
+                                    <option value="comic-book">Comic Book</option>
+                                    <option value="digital-art">Digital Art</option>
+                                    <option value="enhance">Enhance</option>
+                                    <option value="fantasy-art">Fantasy Art</option>
+                                    <option value="isometric">Isometric</option>
+                                    <option value="line-art">Line Art</option>
+                                    <option value="low-poly">Low Poly</option>
+                                    <option value="modeling-compound">Modeling Compound</option>
+                                    <option value="neon-punk">Neon Punk</option>
+                                    <option value="origami">Origami</option>
+                                    <option value="photographic">Photographic</option>
+                                    <option value="pixel-art">Pixel Art</option>
+                                    <option value="tile-texture">Tile Texture</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group mt-6">
+                                <label for="txt2img-aspect-ratio" class="form-label">Aspect Ratio:</label>
+                                <select id="txt2img-aspect-ratio" name="aspect_ratio" class="form-select">
+                                    <option value="16:9">16:9 (Landscape)</option>
+                                    <option value="1:1">1:1 (Square)</option>
+                                    <option value="9:16">9:16 (Portrait)</option>
+                                    <option value="4:5">4:5 (Portrait)</option>
+                                    <option value="5:4">5:4 (Landscape)</option>
+                                    <option value="2:3">2:3 (Portrait)</option>
+                                    <option value="3:2">3:2 (Landscape)</option>
+                                    <option value="21:9">21:9 (Ultrawide)</option>
+                                    <option value="9:21">9:21 (Tall)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group mt-6">
+                                <label for="txt2img-output-format" class="form-label">Output Format:</label>
+                                <select id="txt2img-output-format" name="output_format" class="form-select">
+                                    <option value="png">PNG (Best quality)</option>
+                                    <option value="jpeg">JPEG (Smaller file size)</option>
+                                    <option value="webp">WebP (Web optimized)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group mt-6">
+                                <label for="txt2img-seed" class="form-label">Seed (0 for random):</label>
+                                <input type="number" id="txt2img-seed" name="seed" class="form-input" min="0" max="4294967295" value="0" placeholder="Enter a seed number for reproducible results">
+                                <div class="help-text text-sm text-gray-500 mt-1">Use the same seed to get consistent results or 0 for random generation</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
+                        <input type="checkbox" id="test-mode" name="test_mode">
+                        <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
+                    </div>
+                    
+                    <div class="text-center mt-8">
+                        <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
+                            <span class="flex items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 2v7"></path><path d="M10 7l2 3 2-3"></path><path d="M4.93 10.93l6.1 2.65"></path><path d="M2 15.5L4.93 13"></path><path d="M19.07 10.93l-6.1 2.65"></path><path d="M22 15.5L19.07 13"></path><path d="M12 21.5v-4"></path></svg>
+                                Generate Image
+                            </span>
+                        </button>
+                    </div>
+                </form>
+                
+                <!-- Loading indicator -->
+                <div id="loading" class="hidden text-center py-6">
+                    <div class="loading-spinner mx-auto"></div>
+                    <p class="mt-4 text-gray-700">Generating your image...</p>
+                </div>
+                
+                <!-- Results section -->
+                <div id="result" class="hidden mt-8">
+                    <h2 class="text-2xl font-bold text-primary mb-4">Your Generated Image</h2>
+                    <div class="image-card p-4 rounded-lg border border-gray-200 shadow-sm text-center">
+                        <img id="generated-image" src="" alt="Generated image" class="max-w-full mx-auto rounded-md">
+                        <div class="mt-4">
+                            <button id="download-btn" class="btn btn-primary" disabled>Download Image</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Error section -->
+                <div id="error" class="hidden mt-8">
+                    <div class="p-4 bg-red-100 text-red-700 rounded-lg">
+                        <h2 class="text-xl font-bold mb-2">Error</h2>
+                        <p>An error occurred while generating your image. Please try again.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- How it works section -->
+            <section class="my-12">
+                <h2 class="text-2xl font-bold text-primary mb-6">How Text to Image Works</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M18 13l-6 6-6-6"></path></svg>
+                        </div>
+                        <h3 class="feature-title">1. Describe Your Vision</h3>
+                        <p class="feature-description">Type a detailed description of the image you want to create. Be specific about style, mood, colors, and composition.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        </div>
+                        <h3 class="feature-title">2. AI Generates Your Image</h3>
+                        <p class="feature-description">Our advanced AI model processes your description and transforms it into a unique image that matches your specifications.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        </div>
+                        <h3 class="feature-title">3. Download and Use</h3>
+                        <p class="feature-description">Once generated, you can download your image in high resolution and use it for personal or commercial projects.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">
+                <span class="footer-logo-text">AI Art</span>
+            </div>
+            
+            <div class="footer-links">
+                <a href="/" class="footer-link">Home</a>
+                <a href="/blog" class="footer-link">Blog</a>
+                <a href="#api-info" class="footer-link">API</a>
+                <a href="/terms" class="footer-link">Terms</a>
+                <a href="/privacy" class="footer-link">Privacy</a>
+            </div>
+            
+            <p class="footer-description">
+                AI Art allows you to create and transform images using cutting-edge artificial intelligence. 
+                Powered by state-of-the-art diffusion models, our platform offers a simple and intuitive way to 
+                generate artwork, modify photos, and more.
+            </p>
+            
+            <p class="footer-copyright">
+                © 2025 AI Art. All rights reserved. Powered by Stability AI.
+            </p>
+        </div>
+    </footer>
+    <script src="/static/js/mobile-nav.js"></script>
+    <script>
+        // Variables to store original and enhanced prompts
+        let originalPrompt = '';
+        
+        // Developer mode toggle with keyboard shortcut (Ctrl+Shift+D)
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+                const testModeContainer = document.getElementById('test-mode-container');
+                if (testModeContainer.style.display === 'none') {
+                    testModeContainer.style.display = 'flex';
+                    console.log('Developer mode activated');
+                } else {
+                    testModeContainer.style.display = 'none';
+                    console.log('Developer mode deactivated');
+                }
+            }
+        });
+        
+        // Enhance prompt button click handler
+        document.getElementById('enhance-prompt-btn').addEventListener('click', function() {
+            const promptInput = document.getElementById('video-description');
+            const userPrompt = promptInput.value.trim();
+            
+            if (!userPrompt) {
+                alert('Please enter a description first');
+                return;
+            }
+            
+            // Store the original prompt
+            originalPrompt = userPrompt;
+            
+            // Show loading state on the button
+            this.disabled = true;
+            this.innerHTML = '<div class="loading-dots"><div></div><div></div><div></div></div>';
+            
+            // Create form data for the API request
+            const formData = new FormData();
+            formData.append('prompt', userPrompt);
+            
+            // Call the enhance-prompt API
+            fetch('/api/enhance-prompt', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset button state
+                this.disabled = false;
+                this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
+                
+                if (data.success) {
+                    // Update the prompt with the enhanced version
+                    promptInput.value = data.enhanced_prompt;
+                    
+                    // Show the revert button
+                    document.getElementById('revert-prompt-btn').style.display = 'block';
+                } else {
+                    alert('Failed to enhance prompt: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                // Reset button state
+                this.disabled = false;
+                this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
+                
+                console.error('Error:', error);
+                alert('Failed to enhance prompt: ' + error.message);
+            });
+        });
+        
+        // Toggle advanced options
+        document.getElementById('toggle-advanced-options').addEventListener('click', function() {
+            const container = document.getElementById('advanced-options-container');
+            const icon = document.getElementById('advanced-options-icon');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                icon.textContent = '▲';
+                this.classList.add('active');
+            } else {
+                container.style.display = 'none';
+                icon.textContent = '▼';
+                this.classList.remove('active');
+            }
+        });
+        
+        document.getElementById('revert-prompt-btn').addEventListener('click', function() {
+            // Restore the original prompt
+            document.getElementById('video-description').value = originalPrompt;
+            
+            // Hide the revert button
+            this.style.display = 'none';
+        });
+        
+        // Form submission handler
+        document.getElementById('image-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Show loading, hide results and errors
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('result').classList.add('hidden');
+            document.getElementById('error').classList.add('hidden');
+            
+            // Get form data
+            const description = document.getElementById('video-description').value;
+            const testMode = document.getElementById('test-mode')?.checked || false;
+            
+            // Create form data object
+            const formData = new FormData();
+            formData.append('video_description', description);
+            formData.append('test_mode', testMode ? 'true' : 'false');
+            
+            // Add advanced options if visible
+            if (document.getElementById('advanced-options-container').style.display !== 'none') {
+                // Add negative prompt
+                const negativePrompt = document.getElementById('txt2img-negative-prompt').value;
+                if (negativePrompt) {
+                    formData.append('negative_prompt', negativePrompt);
+                }
+                
+                // Add style preset
+                const stylePreset = document.getElementById('txt2img-style-preset').value;
+                if (stylePreset) {
+                    formData.append('style_preset', stylePreset);
+                }
+                
+                // Add aspect ratio
+                const aspectRatio = document.getElementById('txt2img-aspect-ratio').value;
+                formData.append('aspect_ratio', aspectRatio);
+                
+                // Add output format
+                const outputFormat = document.getElementById('txt2img-output-format').value;
+                formData.append('output_format', outputFormat);
+                
+                // Add seed (if random seed is requested, let server handle it)
+                const seedValue = parseInt(document.getElementById('txt2img-seed').value);
+                if (!isNaN(seedValue) && seedValue >= 0) {
+                    formData.append('seed', seedValue.toString());
+                } else {
+                    formData.append('seed', '0');
+                }
+            }
+            
+            // Send request
+            fetch('/generate', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading
+                document.getElementById('loading').classList.add('hidden');
+                
+                if (data.success) {
+                    // Show result
+                    document.getElementById('result').classList.remove('hidden');
+                    document.getElementById('generated-image').src = data.image_path + '?t=' + new Date().getTime();
+                    
+                    // Enable download button
+                    document.getElementById('download-btn').disabled = false;
+                    // Save the current URL for download
+                    window.currentImagePath = data.image_path;
+                    
+                    // Add download handler
+                    document.getElementById('download-btn').onclick = function() {
+                        downloadImage(data.image_path);
+                    };
+                } else {
+                    // Show error
+                    document.getElementById('error').classList.remove('hidden');
+                    document.getElementById('error').querySelector('p').textContent = data.error || 'An error occurred';
+                }
+            })
+            .catch(error => {
+                // Hide loading, show error
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').querySelector('p').textContent = 'Network error: ' + error.message;
+                console.error('Error:', error);
+            });
+        });
+        
+        // Function to handle image download
+        function downloadImage(imagePath) {
+            if (!imagePath) {
+                console.error('No image path found for download');
+                return;
+            }
+            
+            // Create a filename from the path
+            const pathParts = imagePath.split('/');
+            const filename = pathParts[pathParts.length - 1];
+            
+            // Fetch the image as a blob
+            fetch(imagePath)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.blob();
+                })
+                .then(blob => {
+                    // Create a URL for the blob
+                    const url = window.URL.createObjectURL(blob);
+                    
+                    // Create a temporary link element
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename; // Set the filename
+                    
+                    // Add to document, click it, and remove it
+                    document.body.appendChild(a);
+                    a.click();
+                    
+                    // Clean up
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    console.error('Error downloading image:', error);
+                    alert('Failed to download image. Please try again later.');
+                });
+        }
+    </script>
+</body>
+</html> 
