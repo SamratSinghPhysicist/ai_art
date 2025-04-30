@@ -248,6 +248,87 @@
             margin: 0;
             padding: 0;
         }
+        
+        /* Key Features Section Styles */
+        .key-features-section {
+            padding: 3rem 0;
+            text-align: center;
+        }
+        
+        .key-features-title {
+            color: #60a5fa;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .key-features-subtitle {
+            color: #6b7280;
+            margin-bottom: 3rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        @media (min-width: 768px) {
+            .features-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        
+        .feature-item {
+            background-color: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .feature-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-icon-wrapper {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background-color: #f3f4ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .feature-icon-wrapper svg {
+            width: 24px;
+            height: 24px;
+            color: #6d28d9;
+        }
+        
+        .feature-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #111827;
+        }
+        
+        .feature-text {
+            color: #6b7280;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
@@ -284,268 +365,101 @@
         </div>
     </header>
 
-    <div class="breadcrumbs container py-2 text-sm">
-        <nav aria-label="breadcrumb">
-            <ol class="flex">
-                <li class="breadcrumb-item active" aria-current="page">Home</li>
-            </ol>
-        </nav>
-    </div>
 
     <main class="main-content">
         <div class="container my-4">
-            <div class="card p-4 sm:p-6 shadow-lg">
-                <div class="light-effect"></div>
-                <h1 class="text-3xl font-bold text-center mb-2">
-                    <span class="gradient-text">AI Art</span>
-                </h1>
-                <p class="text-center text-gray-500 mb-6">Transform your images with AI magic - Free, Unlimited, No Signup Required</p>
-                
-                <div class="tabs-container mb-6">
-                    <div class="tab-buttons">
-                        <button id="text-to-image-tab" class="tab-button active">Text to Image</button>
-                        <button id="image-to-image-tab" class="tab-button">Image to Image</button>
-                    </div>
-                    
-                    <div id="text-to-image-content" class="tab-content active">
-                        <form id="image-form" class="my-6" enctype="multipart/form-data">
-                            <div class="form-group">
-                                <label for="video-description" class="form-label">Describe the image you want to create:</label>
-                                <div class="textarea-container">
-                                    <textarea id="video-description" name="video_description" class="form-input" required placeholder="Example: A serene mountain landscape with a waterfall at sunset, photorealistic style"></textarea>
-                                </div>
-                                <div class="help-text text-sm text-gray-500 mt-1">Tip: To control the weight of a given word use the format <code>word:weight</code>, where weight is a value between 0 and 1.</div>
-                                <div class="button-container mt-4">
-                                    <button type="button" id="enhance-prompt-btn" class="btn btn-primary" title="Enhance Prompt with AI"><i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span></button>
-                                    <button type="button" id="revert-prompt-btn" class="btn btn-secondary" title="Revert to Original" style="display: none;">↩️<span class="button-text">Revert</span></button>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group mt-4">
-                                <div class="advanced-options-toggle">
-                                    <button type="button" id="toggle-advanced-options" class="btn btn-secondary">
-                                        <span id="advanced-options-icon">▼</span> Advanced Options
-                                    </button>
-                                </div>
-                                <div id="advanced-options-container" class="advanced-options-container" style="display: none;">
-                                    <div class="form-group mt-4">
-                                        <label for="txt2img-negative-prompt" class="form-label">Negative prompt (optional - what to avoid):</label>
-                                        <div class="textarea-container">
-                                            <textarea id="txt2img-negative-prompt" name="negative_prompt" class="form-input" placeholder="Example: blurry, distorted, low quality"></textarea>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-group mt-6">
-                                        <label for="txt2img-style-preset" class="form-label">Style Preset:</label>
-                                        <select id="txt2img-style-preset" name="style_preset" class="form-select">
-                                            <option value="">None (Default)</option>
-                                            <option value="3d-model">3D Model</option>
-                                            <option value="analog-film">Analog Film</option>
-                                            <option value="anime">Anime</option>
-                                            <option value="cinematic">Cinematic</option>
-                                            <option value="comic-book">Comic Book</option>
-                                            <option value="digital-art">Digital Art</option>
-                                            <option value="enhance">Enhance</option>
-                                            <option value="fantasy-art">Fantasy Art</option>
-                                            <option value="isometric">Isometric</option>
-                                            <option value="line-art">Line Art</option>
-                                            <option value="low-poly">Low Poly</option>
-                                            <option value="modeling-compound">Modeling Compound</option>
-                                            <option value="neon-punk">Neon Punk</option>
-                                            <option value="origami">Origami</option>
-                                            <option value="photographic">Photographic</option>
-                                            <option value="pixel-art">Pixel Art</option>
-                                            <option value="tile-texture">Tile Texture</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="form-group mt-6">
-                                        <label for="txt2img-aspect-ratio" class="form-label">Aspect Ratio:</label>
-                                        <select id="txt2img-aspect-ratio" name="aspect_ratio" class="form-select">
-                                            <option value="16:9">16:9 (Landscape)</option>
-                                            <option value="1:1">1:1 (Square)</option>
-                                            <option value="9:16">9:16 (Portrait)</option>
-                                            <option value="4:5">4:5 (Portrait)</option>
-                                            <option value="5:4">5:4 (Landscape)</option>
-                                            <option value="2:3">2:3 (Portrait)</option>
-                                            <option value="3:2">3:2 (Landscape)</option>
-                                            <option value="21:9">21:9 (Ultrawide)</option>
-                                            <option value="9:21">9:21 (Tall)</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="form-group mt-6">
-                                        <label for="txt2img-output-format" class="form-label">Output Format:</label>
-                                        <select id="txt2img-output-format" name="output_format" class="form-select">
-                                            <option value="png">PNG (Best quality)</option>
-                                            <option value="jpeg">JPEG (Smaller file size)</option>
-                                            <option value="webp">WebP (Web optimized)</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="form-group mt-6">
-                                        <label for="txt2img-seed" class="form-label">Seed (0 for random):</label>
-                                        <input type="number" id="txt2img-seed" name="seed" class="form-input" min="0" max="4294967295" value="0" placeholder="Enter a seed number for reproducible results">
-                                        <div class="help-text text-sm text-gray-500 mt-1">Use the same seed to get consistent results or 0 for random generation</div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
-                                <input type="checkbox" id="test-mode" name="test_mode">
-                                <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
-                            </div>
-                            
-                            <div class="text-center mt-8">
-                                <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
-                                    <span class="flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 2v7"></path><path d="M10 7l2 3 2-3"></path><path d="M4.93 10.93l6.1 2.65"></path><path d="M2 15.5L4.93 13"></path><path d="M19.07 10.93l-6.1 2.65"></path><path d="M22 15.5L19.07 13"></path><path d="M12 21.5v-4"></path></svg>
-                                        Generate Image
-                                    </span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                    
-                    <div id="image-to-image-content" class="tab-content">
-                        <form id="img2img-form" class="my-6" enctype="multipart/form-data">
-                            <div class="form-group">
-                                <label for="image-upload" class="form-label">Upload your image:</label>
-                                <div class="file-drop-area" id="drop-area">
-                                    <div class="drop-icon">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-upload"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                                    </div>
-                                    <div class="drop-message">Drag & drop your image here</div>
-                                    <div class="drop-or">or</div>
-                                    <input type="file" id="image-upload" name="image" accept="image/*" required>
-                                    <button type="button" class="browse-btn">Browse Files</button>
-                                    <div class="file-info">Supports JPG, PNG, WEBP (Max: 5MB)</div>
-                                </div>
-                                <div id="preview-container" class="hidden mt-4">
-                                    <img id="image-preview" class="max-w-full max-h-64 mx-auto rounded-md" alt="Image preview">
-                                </div>
-                            </div>
-                            
-                            <div class="form-group mt-4">
-                                <label for="img2img-prompt" class="form-label">Describe how you want to transform the image:</label>
-                                <div class="textarea-container">
-                                    <textarea id="img2img-prompt" name="prompt" class="form-input" required placeholder="Example: Convert this photo into an oil painting with vibrant colors"></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group mt-4">
-                                <label for="negative-prompt" class="form-label">Negative prompt (optional - what to avoid):</label>
-                                <div class="textarea-container">
-                                    <textarea id="negative-prompt" name="negative_prompt" class="form-input" placeholder="Example: blurry, distorted, low quality"></textarea>
-                                </div>
-                            </div>
-                            
-                            <div class="form-group mt-6">
-                                <label for="strength-slider" class="form-label">Transformation strength: <span id="strength-value">0.7</span></label>
-                                <input type="range" id="strength-slider" name="strength" min="0.1" max="0.9" step="0.1" value="0.7" class="form-slider">
-                                <div class="slider-labels">
-                                    <span>Subtle</span>
-                                    <span>Balanced</span>
-                                    <span>Strong</span>
-                                </div>
-                            </div>
+            
 
-                            <div class="form-group mt-6">
-                                <label for="style-preset" class="form-label">Style Preset:</label>
-                                <select id="style-preset" name="style_preset" class="form-select">
-                                    <option value="">None (Default)</option>
-                                    <option value="3d-model">3D Model</option>
-                                    <option value="analog-film">Analog Film</option>
-                                    <option value="anime">Anime</option>
-                                    <option value="cinematic">Cinematic</option>
-                                    <option value="comic-book">Comic Book</option>
-                                    <option value="digital-art">Digital Art</option>
-                                    <option value="enhance">Enhance</option>
-                                    <option value="fantasy-art">Fantasy Art</option>
-                                    <option value="isometric">Isometric</option>
-                                    <option value="line-art">Line Art</option>
-                                    <option value="low-poly">Low Poly</option>
-                                    <option value="modeling-compound">Modeling Compound</option>
-                                    <option value="neon-punk">Neon Punk</option>
-                                    <option value="origami">Origami</option>
-                                    <option value="photographic">Photographic</option>
-                                    <option value="pixel-art">Pixel Art</option>
-                                    <option value="tile-texture">Tile Texture</option>
-                                </select>
+            <!-- Hero Section - AI Art Landing Page -->
+            <section id="ai-tools-section" class="mt-0 mb-16">
+                <div class="hero-container-new">
+                    <div class="hero-grid">
+                        <!-- Left side content -->
+                        <div class="hero-content-left">
+                            <h1 class="hero-heading">
+                                <span class="hero-heading-main">Transform Your Ideas</span>
+                                <div class="hero-heading-highlight">
+                                    <span class="gradient-text hero-gradient">AI Art Generator</span>
+                                    <svg class="hero-spark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 3L14.5 8.5H19.5L15.5 12.5L17 18L12 15L7 18L8.5 12.5L4.5 8.5H9.5L12 3Z" fill="currentColor"/>
+                                    </svg>
+                                </div>
+                            </h1>
+                            
+                            <p class="hero-description-new">Create stunning, realistic images in seconds with our Free, Unlimited AI Art generator. No signup required.</p>
+                            
+                            <div class="hero-cta">
+                                <a href="/text-to-image" class="btn-hero-primary">
+                                    <span>Text to Image</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                                </a>
+                                <a href="/image-to-image" class="btn-hero-secondary">
+                                    <span>Image to Image</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                </a>
                             </div>
                             
-                            <div class="form-group mt-6">
-                                <label for="aspect-ratio" class="form-label">Aspect Ratio:</label>
-                                <select id="aspect-ratio" name="aspect_ratio" class="form-select">
-                                    <option value="1:1">1:1 (Square)</option>
-                                    <option value="16:9">16:9 (Landscape)</option>
-                                    <option value="9:16">9:16 (Portrait)</option>
-                                    <option value="4:5">4:5 (Portrait)</option>
-                                    <option value="5:4">5:4 (Landscape)</option>
-                                    <option value="2:3">2:3 (Portrait)</option>
-                                    <option value="3:2">3:2 (Landscape)</option>
-                                    <option value="21:9">21:9 (Ultrawide)</option>
-                                    <option value="9:21">9:21 (Tall)</option>
-                                </select>
+                            <!-- Stats/Features -->
+                            <div class="hero-stats">
+                                <div class="hero-stat">
+                                    <div class="hero-stat-number">100%</div>
+                                    <div class="hero-stat-label">Free</div>
+                                </div>
+                                <div class="hero-stat">
+                                    <div class="hero-stat-number">∞</div>
+                                    <div class="hero-stat-label">Unlimited</div>
+                                </div>
+                                <div class="hero-stat">
+                                    <div class="hero-stat-number">0</div>
+                                    <div class="hero-stat-label">No Signup Required</div>
+                                </div>
                             </div>
-                            
-                            <div class="form-group mt-6">
-                                <label for="output-format" class="form-label">Output Format:</label>
-                                <select id="output-format" name="output_format" class="form-select">
-                                    <option value="png">PNG (Best quality)</option>
-                                    <option value="jpeg">JPEG (Smaller file size)</option>
-                                    <option value="webp">WebP (Web optimized)</option>
-                                </select>
+                        </div>
+                        
+                        <!-- Right side preview/imagery -->
+                        <div class="hero-imagery">
+                            <div class="hero-image-container">
+                                <div class="hero-image-grid">
+                                    <div class="hero-image hero-image-1">
+                                        <img src="/static/images/sample1.jpg" alt="AI generated art sample" class="hero-img">
+                                        <div class="hero-image-overlay"></div>
+                                    </div>
+                                    <div class="hero-image hero-image-2">
+                                        <img src="/static/images/sample2.jpg" alt="AI generated art sample" class="hero-img">
+                                        <div class="hero-image-overlay"></div>
+                                    </div>
+                                    <div class="hero-image hero-image-3">
+                                        <img src="/static/images/sample3.jpg" alt="AI generated art sample" class="hero-img">
+                                        <div class="hero-image-overlay"></div>
+                                    </div>
+                                    <div class="hero-image hero-image-4">
+                                        <img src="/static/images/sample4.jpg" alt="AI generated art sample" class="hero-img">
+                                        <div class="hero-image-overlay"></div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Floating elements -->
+                                <div class="floating-element floating-element-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                                </div>
+                                <div class="floating-element floating-element-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v19"></path><path d="M5 9l7-6 7 6"></path><path d="M2 15h20"></path></svg>
+                                </div>
+                                <div class="floating-element floating-element-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                                </div>
                             </div>
-                            
-                            <div class="form-group mt-6">
-                                <label for="seed" class="form-label">Seed (0 for random):</label>
-                                <input type="number" id="seed" name="seed" class="form-input" min="0" max="4294967295" value="0" placeholder="Enter a seed number for reproducible results">
-                                <div class="help-text text-sm text-gray-500 mt-1">Use the same seed to get consistent results or 0 for random generation</div>
-                            </div>
-                            
-                            <div class="text-center mt-8">
-                                <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
-                                    <span class="flex items-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="m2 12 5-5"></path><path d="M2 12h7"></path><path d="m2 12 5 5"></path><path d="M13 2a10 10 2 0 1 9 8"></path><path d="M13 2v7"></path><path d="m13 2-5 5"></path><path d="M11 22a10 10 2 0 1-9-8"></path><path d="M11 22v-7"></path><path d="m11 22 5-5"></path></svg>
-                                        Transform Image
-                                    </span>
-                                </button>
-                            </div>
-                        </form>
+                        </div>
                     </div>
+                    
+                    <!-- Decorative elements -->
+                    <div class="hero-shape hero-shape-1"></div>
+                    <div class="hero-shape hero-shape-2"></div>
+                    <div class="hero-shape hero-shape-3"></div>
+                    <div class="hero-shape hero-shape-4"></div>
+                    
                 </div>
-                
-                <div class="loading text-center my-8 hidden" id="loading">
-                    <p class="mb-4">Creating your masterpiece... This may take up to a minute.</p>
-                    <div class="loading-spinner"></div>
-                </div>
-                
-                <div class="error text-center my-6 hidden" id="error">
-                    <p class="text-primary-dark">An error occurred. Please try again.</p>
-                </div>
-                
-                <div class="result text-center my-8 hidden" id="result">
-                    <h2 class="text-2xl font-semibold mb-4">Your Generated Image</h2>
-                    <div class="image-card mx-auto" style="max-width: 640px;">
-                        <img id="generated-image" src="" alt="Generated AI Image" class="w-full rounded-lg shadow-md">
-                    </div>
-                    <div class="mt-6 flex justify-center gap-4">
-                        <button id="download-btn" class="btn btn-secondary" onclick="downloadImage()" disabled>
-                            <span class="flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                                Download
-                            </span>
-                        </button>
-                        <button id="share-btn" class="btn btn-secondary">
-                            <span class="flex items-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-                                Share
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+            </section>
             
             <div class="card p-6 shadow-md mt-8">
                 <div class="light-effect"></div>
@@ -594,37 +508,43 @@ Content-Type: application/json
                 </div>
             </div>
 
+            <section class="key-features-section">
             <div class="card p-6 shadow-md mt-8">
-                <div class="light-effect"></div>
-                <h2 class="text-2xl font-semibold mb-4 gradient-text text-center">Key Features</h2>
-                <p class="text-center text-gray-500 mb-6">Discover what makes our AI art generator special</p>
+                <h2 class="key-features-title">Key Features</h2>
+                <p class="key-features-subtitle">Discover what makes our AI art generator special</p>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"></path><path d="M4.93 10.93l1.41 1.41"></path><path d="M2 18h2"></path><path d="M20 18h2"></path><path d="M19.07 10.93l-1.41 1.41"></path><path d="M22 22H2"></path><path d="M8 22v-4"></path><path d="M16 22v-4"></path><path d="M12 22v-6"></path></svg>
+                <div class="features-grid">
+                    <div class="feature-item">
+                        <div class="feature-icon-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 2v8"></path><path d="M4.93 10.93l1.41 1.41"></path><path d="M2 18h2"></path><path d="M20 18h2"></path><path d="M19.07 10.93l-1.41 1.41"></path>
+                            </svg>
                         </div>
                         <h3 class="feature-title">State-of-the-Art AI</h3>
-                        <p class="feature-description">Powered by the latest diffusion models to create stunning, realistic images from text descriptions</p>
+                        <p class="feature-text">Powered by the latest diffusion models to create stunning, realistic images from text descriptions</p>
                     </div>
                     
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z"></path><path d="M12 18c3.3 0 6-2.7 6-6s-2.7-6-6-6-6 2.7-6 6 2.7 6 6 6z"></path><path d="M12 14c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"></path></svg>
+                    <div class="feature-item">
+                        <div class="feature-icon-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z"></path><path d="M12 18c3.3 0 6-2.7 6-6s-2.7-6-6-6-6 2.7-6 6 2.7 6 6 6z"></path>
+                            </svg>
                         </div>
                         <h3 class="feature-title">Image Transformation</h3>
-                        <p class="feature-description">Transform your existing photos into various artistic styles with our image-to-image technology</p>
+                        <p class="feature-text">Transform your existing photos into various artistic styles with our image-to-image technology</p>
                     </div>
                     
-                    <div class="feature-card">
-                        <div class="feature-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                    <div class="feature-item">
+                        <div class="feature-icon-wrapper">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                            </svg>
                         </div>
                         <h3 class="feature-title">Lightning Fast</h3>
-                        <p class="feature-description">Generate high-quality images in seconds with our optimized infrastructure</p>
+                        <p class="feature-text">Generate high-quality images in seconds with our optimized infrastructure</p>
                     </div>
                 </div>
-            </div>
+            </div>            </section>
 
             <section id="faq" class="card p-6 shadow-md mt-8">
                 <div class="light-effect"></div>
@@ -817,12 +737,33 @@ Content-Type: application/json
                 }
             }
 
-            // Now add all the other functionality that was here before
-            // ... existing code ...
+            // Enhanced FAQ functionality
+            const faqQuestions = document.querySelectorAll('.faq-question');
+            
+            faqQuestions.forEach(question => {
+                question.addEventListener('click', () => {
+                    const isExpanded = question.getAttribute('aria-expanded') === 'true';
+                    question.setAttribute('aria-expanded', !isExpanded);
+                });
+            });
+            
+            // Apply initial accessibility attributes to FAQ items
+            document.querySelectorAll('.faq-item').forEach((item, index) => {
+                const question = item.querySelector('.faq-question');
+                const answer = item.querySelector('.faq-answer');
+                if (question && answer) {
+                    const id = `faq-answer-${index}`;
+                    answer.id = id;
+                    question.setAttribute('aria-controls', id);
+                    question.setAttribute('aria-expanded', 'false');
+                }
+            });
         });
     </script>
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
      crossorigin="anonymous"></script>
+     
+    <!-- Schema.org structured data for FAQ page -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -915,7 +856,7 @@ Content-Type: application/json
                     textToImageContent.classList.add('active');
                     imageToImageContent.classList.remove('active');
                     // Hide results when switching tabs
-                    result.classList.add('hidden');
+                    if (result) result.classList.add('hidden');
                 });
                 
                 imageToImageTab.addEventListener('click', function() {
@@ -924,7 +865,7 @@ Content-Type: application/json
                     imageToImageContent.classList.add('active');
                     textToImageContent.classList.remove('active');
                     // Hide results when switching tabs
-                    result.classList.add('hidden');
+                    if (result) result.classList.add('hidden');
                 });
             }
             
@@ -1019,35 +960,13 @@ Content-Type: application/json
                     .then(data => {
                         loading.classList.add('hidden');
                         
-                        // Debug: Log the full response data
-                        console.log('Server response:', data);
-                        
                         if (data.success) {
-                            // Debug: Log the image path
-                            console.log('Image path from server:', data.image_path);
-                            
                             // Show the result
                             result.classList.remove('hidden');
                             
-                            // Set the image source and log it
+                            // Set the image source
                             generatedImage.src = data.image_path;
-                            console.log('Set image src to:', generatedImage.src);
-                            
                             generatedImage.alt = 'Transformed image based on input';
-                            
-                            // Debug: Add an onload event to confirm the image loads correctly
-                            generatedImage.onload = function() {
-                                console.log('Image loaded successfully');
-                            };
-                            
-                            // Debug: Add an onerror event to catch loading errors
-                            generatedImage.onerror = function() {
-                                console.error('Failed to load image from:', generatedImage.src);
-                                // Try an alternate approach: add a timestamp to avoid caching
-                                const cacheBuster = '?t=' + new Date().getTime();
-                                console.log('Trying with cache buster:', data.image_path + cacheBuster);
-                                generatedImage.src = data.image_path + cacheBuster;
-                            };
                             
                             // Enable download button
                             downloadBtn.disabled = false;
