@@ -8,13 +8,14 @@ import os
 from urllib.parse import quote
 
 from gemini_generator import generate_gemini
+from text2img_stability import generate_image_stability
 
 # Note: image_analyzer is imported dynamically in main_image_function when needed
 
 
-def image_generate_prompt_pollinations(image_description, api_key_gemini):
+def generate_prompt_with_gemini(image_description, api_key_gemini):
     # Base prompt
-    prompt = f"""You are an expert AI image generation prompt engineer for Pollinations.ai. I need a prompt that will generate a beautiful, high-quality AI image.
+    prompt = f"""You are an expert AI image generation prompt engineer. I need a prompt that will generate a beautiful, high-quality AI image.
 
     Here's the description for the image: [{image_description}]
 
@@ -26,7 +27,7 @@ def image_generate_prompt_pollinations(image_description, api_key_gemini):
     Lighting: Specify the lighting conditions (soft, dramatic, natural, etc.)
     Color: Suggest a color palette that would enhance the image
 
-    Generate a detailed prompt for Pollinations.ai that includes:
+    Generate a detailed prompt that includes:
 
     A clear description of the subject matter
     Specific keywords related to the desired style
@@ -38,18 +39,25 @@ def image_generate_prompt_pollinations(image_description, api_key_gemini):
     """
     prompt += """
 
-    Provide the Pollinations.ai prompt in a single, concise paragraph that can be directly copied and pasted.
+    Provide the prompt in a single, concise paragraph that can be directly copied and pasted.
 
-    Don't say/write anything other than the prompt as I will directly give your response to pollinations.ai via code. So make sure that you just give the prompt.
+    Don't say/write anything other than the prompt as I will directly give your response to the image generation API via code. So make sure that you just give the prompt.
     """
 
-    image_generate_prompt = generate_gemini(prompt, api_key_gemini)
+    enhanced_prompt = generate_gemini(prompt, api_key_gemini)
 
-    image_generate_prompt = image_generate_prompt.replace('\\', ' ')
-    image_generate_prompt = image_generate_prompt.replace('\n', ' ')
+    enhanced_prompt = enhanced_prompt.replace('\\', ' ')
+    enhanced_prompt = enhanced_prompt.replace('\n', ' ')
 
-    return image_generate_prompt
+    return enhanced_prompt
 
+
+# Keeping this function for backward compatibility
+def image_generate_prompt_pollinations(image_description, api_key_gemini):
+    return generate_prompt_with_gemini(image_description, api_key_gemini)
+
+
+# Legacy function, kept for backward compatibility
 def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, seed=random.randint(1,100000), model='flux-realism', style=None, nologo=True):
     if testMode == False:
         # Define the subfolder and filename
@@ -108,13 +116,25 @@ def generate_image_pollinations_ai(prompt, testMode, width=1920, height=1080, se
         print("Path of placeholder.jpg: /test_assets/placeholder.jpg")
         return "test_assets/placeholder.jpg"
 
-def main_image_function(image_description, testMode, api_key_gemini):
+
+def main_image_function(image_description, testMode, api_key_gemini, 
+                     negative_prompt="", aspect_ratio="16:9", seed=0, 
+                     style_preset=None, output_format="png"):
     if testMode == False:
         try:
-            # Generate the prompt
-            image_prompt = image_generate_prompt_pollinations(image_description, api_key_gemini)
+            # Generate the enhanced prompt
+            image_prompt = generate_prompt_with_gemini(image_description, api_key_gemini)
             
-            generated_image_path = generate_image_pollinations_ai(image_prompt, testMode)
+            # Use Stability AI for image generation
+            generated_image_path = generate_image_stability(
+                prompt=image_prompt,
+                testMode=testMode,
+                negative_prompt=negative_prompt,
+                aspect_ratio=aspect_ratio,
+                seed=seed,
+                style_preset=style_preset,
+                output_format=output_format
+            )
             
             print(f"Generated image path in main_image_function: {generated_image_path}")
             
@@ -125,7 +145,7 @@ def main_image_function(image_description, testMode, api_key_gemini):
             return "test_assets/placeholder.jpg"
     else:
         print("Test Mode is ON")
-        print("Skipping the image search and download process, and using placeholder images")
+        print("Using placeholder images")
         print("To turn off the Test Mode, change the testMode variable to False in main_image_function()")
 
-        return f"test_assets/placeholder.jpg"
+        return "test_assets/placeholder.jpg"

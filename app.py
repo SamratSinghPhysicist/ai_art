@@ -55,6 +55,16 @@ def blog_ai_image_generation():
     """Render the AI image generation blog page"""
     return render_template('blog-ai-image-generation.html')
 
+@app.route('/text-to-image')
+def text_to_image():
+    """Render the text-to-image page"""
+    return render_template('text-to-image.html')
+
+@app.route('/image-to-image')
+def image_to_image():
+    """Render the image-to-image page"""
+    return render_template('image-to-image.html')
+
 @app.route('/sitemap-page')
 def sitemap_page():
     """Render the human-readable sitemap page"""
@@ -162,9 +172,33 @@ def generate_image():
     if not image_description:
         return jsonify({'error': 'Image description is required'}), 400
     
+    # Get advanced options
+    negative_prompt = request.form.get('negative_prompt', '')
+    style_preset = request.form.get('style_preset', None)
+    if style_preset == '':
+        style_preset = None
+    
+    aspect_ratio = request.form.get('aspect_ratio', '16:9')
+    output_format = request.form.get('output_format', 'png')
+    
+    # Get seed (0 means random)
     try:
-        # Generate the image
-        generated_image_path = main_image_function(image_description, test_mode, GEMINI_API_KEY)
+        seed = int(request.form.get('seed', 0))
+    except ValueError:
+        seed = 0
+    
+    try:
+        # Generate the image with advanced options
+        generated_image_path = main_image_function(
+            image_description=image_description,
+            testMode=test_mode,
+            api_key_gemini=GEMINI_API_KEY,
+            negative_prompt=negative_prompt,
+            aspect_ratio=aspect_ratio,
+            seed=seed,
+            style_preset=style_preset,
+            output_format=output_format
+        )
         
         # Extract just the filename from the path
         image_filename = os.path.basename(generated_image_path)
@@ -212,12 +246,34 @@ def api_generate_image():
     
     image_description = data['video_description']
     test_mode = data.get('test_mode', False)
-    # No reference image handling in API endpoint
+    
+    # Get advanced options
+    negative_prompt = data.get('negative_prompt', '')
+    style_preset = data.get('style_preset')
+    if style_preset == '':
+        style_preset = None
+    
+    aspect_ratio = data.get('aspect_ratio', '16:9')
+    output_format = data.get('output_format', 'png')
+    
+    # Get seed (0 means random)
+    try:
+        seed = int(data.get('seed', 0))
+    except (ValueError, TypeError):
+        seed = 0
     
     try:
-        # Generate the image
-        generated_image_path = main_image_function(image_description, test_mode, GEMINI_API_KEY)
-        
+        # Generate the image with advanced options
+        generated_image_path = main_image_function(
+            image_description=image_description,
+            testMode=test_mode,
+            api_key_gemini=GEMINI_API_KEY,
+            negative_prompt=negative_prompt,
+            aspect_ratio=aspect_ratio,
+            seed=seed,
+            style_preset=style_preset,
+            output_format=output_format
+        )
         
         # Extract just the filename from the path
         image_filename = os.path.basename(generated_image_path)
@@ -459,35 +515,47 @@ def api_img2img_transform():
 @app.route('/api/enhance-prompt', methods=['POST'])
 def enhance_prompt():
     """API endpoint to enhance the given image prompt with AI"""
-    # Get the prompt from the request
-    data = request.get_json()
-    
-    if not data or 'prompt' not in data:
-        return jsonify({'error': 'Prompt is required'}), 400
-    
-    user_prompt = data['prompt']
-    
-    # The prompt to send to the Gemini API
-    system_prompt = f"""You are an expert prompt engineer for AI image generation. Enhance the following image description to create a visually stunning AI-generated image. 
-    
-    User's original prompt: "{user_prompt}"
-    
-    Improve this prompt by:
-    1. Adding specific details about visual elements
-    2. Suggesting an artistic style if none is specified
-    3. Including composition details (lighting, perspective, framing)
-    4. Specifying mood or atmosphere
-    5. Adding any relevant technical aspects (like photo-realistic, cinematic, etc.)
-    
-    Keep your enhanced prompt focused on the same subject/theme the user wanted, but make it much more detailed for better results.
-    
-    Provide only the enhanced prompt, without explanations or formatting.
-    """
-    
     try:
+        print("Enhance prompt endpoint called")
+        print(f"Content type: {request.content_type}")
+        print(f"Form data: {request.form}")
+        
+        # Check if the request has form data or JSON
+        if request.content_type and 'application/json' in request.content_type:
+            data = request.get_json()
+            if not data or 'prompt' not in data:
+                return jsonify({'error': 'Prompt is required'}), 400
+            user_prompt = data['prompt']
+            print(f"JSON data received: {data}")
+        else:
+            # Handle form data
+            user_prompt = request.form.get('prompt')
+            if not user_prompt:
+                return jsonify({'error': 'Prompt is required'}), 400
+            print(f"Form data prompt: {user_prompt}")
+        
+        # The prompt to send to the Gemini API
+        system_prompt = f"""You are an expert prompt engineer for AI image generation. Enhance the following image description to create a visually stunning AI-generated image. 
+        
+        User's original prompt: "{user_prompt}"
+        
+        Improve this prompt by:
+        1. Adding specific details about visual elements
+        2. Suggesting an artistic style if none is specified
+        3. Including composition details (lighting, perspective, framing)
+        4. Specifying mood or atmosphere
+        5. Adding any relevant technical aspects (like photo-realistic, cinematic, etc.)
+        
+        Keep your enhanced prompt focused on the same subject/theme the user wanted, but make it much more detailed for better results.
+        
+        Provide only the enhanced prompt, without explanations or formatting.
+        """
+        
         # Call Gemini API to enhance the prompt
         from gemini_generator import generate_gemini
+        print("Calling Gemini API")
         enhanced_prompt = generate_gemini(system_prompt, GEMINI_API_KEY)
+        print(f"Enhanced prompt: {enhanced_prompt[:100]}...")
         
         # Return the enhanced prompt
         return jsonify({
@@ -495,6 +563,9 @@ def enhance_prompt():
             'enhanced_prompt': enhanced_prompt
         })
     except Exception as e:
+        import traceback
+        print(f"Error in enhance_prompt: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
 
 @app.route('/google4732be05fe4d2482.html')
