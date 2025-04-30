@@ -928,6 +928,25 @@ Content-Type: application/json
                 });
             }
             
+            // Advanced Options Toggle
+            const toggleAdvancedOptionsBtn = document.getElementById('toggle-advanced-options');
+            if (toggleAdvancedOptionsBtn) {
+                toggleAdvancedOptionsBtn.addEventListener('click', function() {
+                    const container = document.getElementById('advanced-options-container');
+                    const icon = document.getElementById('advanced-options-icon');
+                    
+                    if (container.style.display === 'none') {
+                        container.style.display = 'block';
+                        icon.textContent = '▲';
+                        this.classList.add('active');
+                    } else {
+                        container.style.display = 'none';
+                        icon.textContent = '▼';
+                        this.classList.remove('active');
+                    }
+                });
+            }
+            
             // Image upload preview
             const imageUpload = document.getElementById('image-upload');
             const imagePreview = document.getElementById('image-preview');

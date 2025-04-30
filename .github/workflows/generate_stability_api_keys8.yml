@@ -1,4 +1,4 @@
-name: Generate Stability API Keys 2
+name: Generate Stability API Keys 8
 
 on:
   schedule:

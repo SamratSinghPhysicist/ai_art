@@ -1,9 +1,9 @@
-name: Generate Stability API Keys
+name: Generate Stability API Keys 1
 
 on:
   schedule:
-    # Run every 7 minutes
-    - cron: '*/7 * * * *'
+    # Run every 6 minutes
+    - cron: '*/6 * * * *'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
