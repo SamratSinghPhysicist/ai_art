@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <header class="header">
@@ -50,15 +53,25 @@
                 </div>
                 {% endif %}
                 
+                <!-- Firebase UI Container -->
+                <div id="firebaseui-auth-container" class="mb-6"></div>
+                
+                <!-- Or separator -->
+                <div class="flex items-center my-4">
+                    <div class="flex-grow border-t border-gray-300"></div>
+                    <span class="flex-shrink mx-4 text-gray-600">or sign in with email</span>
+                    <div class="flex-grow border-t border-gray-300"></div>
+                </div>
+                
                 <form action="/login" method="POST" class="my-6">
                     <div class="form-group mb-4">
                         <label for="email" class="form-label">Email:</label>
-                        <input type="email" id="email" name="email" class="form-input" required>
+                        <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
                     </div>
                     
                     <div class="form-group mb-6">
                         <label for="password" class="form-label">Password:</label>
-                        <input type="password" id="password" name="password" class="form-input" required>
+                        <input type="password" id="password" name="password" class="form-input" required autocomplete="current-password">
                     </div>
                     
                     <div class="text-center mt-6">
@@ -68,6 +81,7 @@
                 
                 <div class="text-center mt-4">
                     <p>Don't have an account? <a href="/signup" class="text-primary hover:underline">Sign up</a></p>
+                    <p class="mt-2"><a href="#" id="forgot-password" class="text-gray-600 hover:underline">Forgot password?</a></p>
                 </div>
             </div>
         </div>
@@ -103,8 +117,37 @@
     <script src="/static/js/app.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
 
-    <!-- Google Adsense Ads -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
-    crossorigin="anonymous"></script>
+    <!-- Firebase Authentication Script -->
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "{{ firebase_api_key }}",
+            authDomain: "{{ firebase_auth_domain }}",
+            projectId: "{{ firebase_project_id }}",
+            appId: "{{ firebase_app_id }}"
+        };
+      
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Handle forgot password
+        document.getElementById('forgot-password').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            if (!email) {
+                alert('Please enter your email address in the form first.');
+                return;
+            }
+            
+            firebase.auth().sendPasswordResetEmail(email)
+                .then(() => {
+                    alert('Password reset email sent. Please check your inbox.');
+                })
+                .catch((error) => {
+                    alert('Error sending password reset email: ' + error.message);
+                });
+        });
+    </script>
 </body>
 </html>

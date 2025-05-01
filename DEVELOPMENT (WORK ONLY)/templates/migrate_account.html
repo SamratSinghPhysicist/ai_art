@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Migrate Account - AI Art Thumbnail Generator</title>
+    <meta name="description" content="Migrate your AI Art account to our improved authentication system for better security and features.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://aiart-zroo.onrender.com/migrate-account">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="nav-logo">AI Art</a>
+                <button class="mobile-menu-btn">☰</button>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    <a href="/blog" class="nav-link">Blog</a>
+                    
+                    <!-- Added AI Tools dropdown -->
+                    <div class="dropdown">
+                        <button type="button" class="dropdown-toggle nav-link">AI Tools <span class="dropdown-arrow">▼</span></button>
+                        <div class="dropdown-menu">
+                            <a href="/text-to-image" class="dropdown-item">Text to Image</a>
+                            <a href="/image-to-image" class="dropdown-item">Image to Image</a>
+                        </div>
+                    </div>
+                    
+                    <a href="/#api-info" class="nav-link">API</a>
+                    <a href="/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/logout" class="nav-link">Logout</a>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container my-4">
+            <div class="card p-4 sm:p-6 shadow-lg max-w-md mx-auto">
+                <h1 class="text-3xl font-bold text-primary text-center mb-6">Account Migration</h1>
+                
+                {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                <div class="mb-4 p-3 bg-blue-100 text-blue-700 rounded">
+                    {% for message in messages %}
+                    <p>{{ message }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+                
+                <div class="my-6">
+                    <p class="mb-4">We've upgraded our authentication system to enhance security and add new features.</p>
+                    <p class="mb-4">Your account needs to be migrated to the new system. This is a one-time process that will take just a moment.</p>
+                    <p class="mb-4 font-bold">Benefits of migration:</p>
+                    <ul class="list-disc pl-6 mb-6">
+                        <li class="mb-2">Enhanced security for your account</li>
+                        <li class="mb-2">Improved password recovery options</li>
+                        <li class="mb-2">Access to new features in the future</li>
+                    </ul>
+                    
+                    <form action="/migrate-account" method="POST" class="text-center mt-8">
+                        <button type="submit" class="btn btn-primary px-8 py-3 text-lg w-full">Migrate My Account</button>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <p><a href="/dashboard" class="text-gray-600 hover:underline">Skip for now (you'll be reminded later)</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">
+                <span class="footer-logo-text">AI Art</span>
+            </div>
+            
+            <div class="footer-links">
+                <a href="/" class="footer-link">Home</a>
+                <a href="/blog" class="footer-link">Blog</a>
+                <a href="#api-info" class="footer-link">API</a>
+                <a href="/terms" class="footer-link">Terms</a>
+                <a href="/privacy" class="footer-link">Privacy</a>
+            </div>
+            
+            <p class="footer-description">
+                AI Art allows you to create and transform images using cutting-edge artificial intelligence. 
+                Powered by state-of-the-art diffusion models, our platform offers a simple and intuitive way to 
+                generate artwork, modify photos, and more.
+            </p>
+            
+            <p class="footer-copyright">
+                © 2025 AI Art. All rights reserved. Powered by Stability AI.
+            </p>
+        </div>
+    </footer>
+    <script src="/static/js/app.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
+</body>
+</html> 

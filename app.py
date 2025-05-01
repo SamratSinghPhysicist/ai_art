@@ -8,6 +8,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask import send_file
 from visitor_logger import VisitorLogger
+import firebase_auth
 
 # Load environment variables
 load_dotenv()
@@ -39,6 +40,10 @@ LOGS_DIR = os.path.join(app_dir, 'logs')
 @login_manager.user_loader
 def load_user(user_id):
     return User.find_by_id(user_id)
+
+# Custom function to load user by Firebase UID
+def load_user_by_firebase_uid(firebase_uid):
+    return User.find_by_firebase_uid(firebase_uid)
 
 @app.route('/')
 def index():
@@ -85,15 +90,58 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
         
+        # Try Firebase authentication first
+        firebase_result = firebase_auth.sign_in(email, password)
+        
+        if firebase_result.get('success', False):
+            # Check if user exists in our database
+            user = User.find_by_firebase_uid(firebase_result['uid'])
+            
+            if not user:
+                # Create a new user record if the Firebase user doesn't exist in our DB
+                user = User(
+                    email=firebase_result['email'],
+                    name=firebase_result['display_name'] or email.split('@')[0],
+                    firebase_uid=firebase_result['uid']
+                )
+                user.save()
+            
+            # Store Firebase tokens in session
+            session['firebase_id_token'] = firebase_result.get('id_token')
+            session['firebase_refresh_token'] = firebase_result.get('refresh_token')
+            
+            login_user(user)
+            return redirect(url_for('dashboard'))
+        
+        # Try legacy authentication if Firebase auth failed
         user = User.find_by_email(email)
         
         if user and user.check_password(password):
+            # If this is a legacy user, offer to migrate to Firebase
+            if not user.firebase_uid:
+                # Store in session for migration
+                session['legacy_user_id'] = str(user._id)
+                session['legacy_password'] = password
+            
             login_user(user)
+            
+            # If migration is needed, redirect to migration page
+            if not user.firebase_uid and 'legacy_user_id' in session:
+                return redirect(url_for('migrate_account'))
+            
             return redirect(url_for('dashboard'))
         else:
             return render_template('login.html', error='Invalid email or password')
     
-    return render_template('login.html')
+    # Pass Firebase config to template
+    firebase_config = {
+        'firebase_api_key': os.getenv('FIREBASE_API_KEY', ''),
+        'firebase_auth_domain': os.getenv('FIREBASE_AUTH_DOMAIN', ''),
+        'firebase_project_id': os.getenv('FIREBASE_PROJECT_ID', ''),
+        'firebase_app_id': os.getenv('FIREBASE_APP_ID', '')
+    }
+    
+    return render_template('login.html', **firebase_config)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -106,25 +154,89 @@ def signup():
         email = request.form.get('email')
         password = request.form.get('password')
         
-        # Check if user already exists
+        # Check if terms were accepted
+        if not request.form.get('terms'):
+            return render_template('signup.html', error='You must accept the Terms of Service and Privacy Policy')
+        
+        # Check if user already exists in our database
         existing_user = User.find_by_email(email)
         if existing_user:
             return render_template('signup.html', error='Email already registered')
         
-        # Create new user
-        user = User(email=email, password=password, name=name)
+        # Create user in Firebase
+        firebase_result = firebase_auth.sign_up(email, password, name)
+        
+        if not firebase_result.get('success', False):
+            # Firebase signup failed
+            return render_template('signup.html', error=firebase_result.get('error', 'Registration failed'))
+        
+        # Create user in our database with Firebase UID
+        user = User(
+            email=email,
+            name=name,
+            firebase_uid=firebase_result['uid']
+        )
         user.save()
+        
+        # Store Firebase tokens in session
+        if 'id_token' in firebase_result:
+            session['firebase_id_token'] = firebase_result['id_token']
         
         # Log in the new user
         login_user(user)
         return redirect(url_for('dashboard'))
     
-    return render_template('signup.html')
+    # Pass Firebase config to template
+    firebase_config = {
+        'firebase_api_key': os.getenv('FIREBASE_API_KEY', ''),
+        'firebase_auth_domain': os.getenv('FIREBASE_AUTH_DOMAIN', ''),
+        'firebase_project_id': os.getenv('FIREBASE_PROJECT_ID', ''),
+        'firebase_app_id': os.getenv('FIREBASE_APP_ID', '')
+    }
+    
+    return render_template('signup.html', **firebase_config)
+
+@app.route('/migrate-account', methods=['GET', 'POST'])
+@login_required
+def migrate_account():
+    """Handle migration of legacy accounts to Firebase"""
+    # Only accessible if there's a legacy account in session
+    if 'legacy_user_id' not in session or not current_user or current_user.firebase_uid:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        # Get legacy password from session
+        password = session.get('legacy_password')
+        
+        if not password:
+            flash('Unable to migrate account. Please log in again.')
+            return redirect(url_for('login'))
+        
+        # Migrate user to Firebase
+        migration_result = current_user.migrate_to_firebase(password)
+        
+        if migration_result:
+            flash('Your account has been successfully migrated to Firebase authentication.')
+            # Clear legacy data from session
+            session.pop('legacy_user_id', None)
+            session.pop('legacy_password', None)
+        else:
+            flash('Account migration failed. Please try again later.')
+        
+        return redirect(url_for('dashboard'))
+    
+    return render_template('migrate_account.html')
 
 @app.route('/logout')
 @login_required
 def logout():
     """Handle user logout"""
+    # Clear Firebase tokens from session
+    session.pop('firebase_id_token', None)
+    session.pop('firebase_refresh_token', None)
+    session.pop('legacy_user_id', None)
+    session.pop('legacy_password', None)
+    
     logout_user()
     return redirect(url_for('index'))
 

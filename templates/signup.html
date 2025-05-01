@@ -10,6 +10,9 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
 <body>
     <header class="header">
@@ -49,21 +52,42 @@
                     {{ error }}
                 </div>
                 {% endif %}
+
+                <!-- Firebase UI Container -->
+                <div id="firebaseui-auth-container" class="mb-6"></div>
+                
+                <!-- Or separator -->
+                <div class="flex items-center my-4">
+                    <div class="flex-grow border-t border-gray-300"></div>
+                    <span class="flex-shrink mx-4 text-gray-600">or sign up with email</span>
+                    <div class="flex-grow border-t border-gray-300"></div>
+                </div>
                 
                 <form action="/signup" method="POST" class="my-6">
                     <div class="form-group mb-4">
                         <label for="name" class="form-label">Name:</label>
-                        <input type="text" id="name" name="name" class="form-input" required>
+                        <input type="text" id="name" name="name" class="form-input" required autocomplete="name">
                     </div>
                     
                     <div class="form-group mb-4">
                         <label for="email" class="form-label">Email:</label>
-                        <input type="email" id="email" name="email" class="form-input" required>
+                        <input type="email" id="email" name="email" class="form-input" required autocomplete="email">
                     </div>
                     
                     <div class="form-group mb-6">
                         <label for="password" class="form-label">Password:</label>
-                        <input type="password" id="password" name="password" class="form-input" required>
+                        <input type="password" id="password" name="password" class="form-input" required autocomplete="new-password" minlength="8">
+                        <p class="text-sm text-gray-600 mt-1">Minimum 8 characters</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="flex items-start">
+                            <input id="terms" name="terms" type="checkbox" class="form-checkbox mt-1" required>
+                            <label for="terms" class="ml-2 text-sm text-gray-600">
+                                I agree to the <a href="/terms" class="text-primary hover:underline">Terms of Service</a> and 
+                                <a href="/privacy" class="text-primary hover:underline">Privacy Policy</a>
+                            </label>
+                        </div>
                     </div>
                     
                     <div class="text-center mt-6">
@@ -108,9 +132,37 @@
     <script src="/static/js/app.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
 
-
-    <!-- Google Adsense Ads -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
-    crossorigin="anonymous"></script>
+    <!-- Firebase Authentication Script -->
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "{{ firebase_api_key }}",
+            authDomain: "{{ firebase_auth_domain }}",
+            projectId: "{{ firebase_project_id }}",
+            appId: "{{ firebase_app_id }}"
+        };
+      
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Password strength validation
+        document.getElementById('password').addEventListener('input', function(e) {
+            const password = e.target.value;
+            const isValid = password.length >= 8;
+            
+            // Add visual feedback
+            if (password.length > 0) {
+                if (isValid) {
+                    e.target.classList.remove('border-red-500');
+                    e.target.classList.add('border-green-500');
+                } else {
+                    e.target.classList.remove('border-green-500');
+                    e.target.classList.add('border-red-500');
+                }
+            } else {
+                e.target.classList.remove('border-red-500', 'border-green-500');
+            }
+        });
+    </script>
 </body>
 </html>

@@ -5,6 +5,8 @@ import datetime
 from dotenv import load_dotenv
 from bson.objectid import ObjectId
 import requests
+# Import Firebase auth module
+import firebase_auth
 
 # Load environment variables
 load_dotenv()
@@ -17,16 +19,19 @@ users_collection = db['users']
 
 # Ensure indexes for email uniqueness
 users_collection.create_index('email', unique=True)
+# Add index for firebase_uid
+users_collection.create_index('firebase_uid', unique=True, sparse=True)
 
 class User:
     """User model for authentication and database operations"""
     
-    def __init__(self, email, password=None, name=None, _id=None, plaintext_password=None):
+    def __init__(self, email, password=None, name=None, _id=None, plaintext_password=None, firebase_uid=None):
         self.email = email
         self.password = password
         self.name = name
         self._id = _id
         self.plaintext_password = plaintext_password
+        self.firebase_uid = firebase_uid
     
     # Flask-Login integration methods
     @property
@@ -46,18 +51,23 @@ class User:
     
     def save(self):
         """Save user to database"""
-        # Store plaintext password if provided
-        if self.password and not self.password.startswith('$2b$'):
+        # Store plaintext password if provided (only for legacy accounts)
+        if self.password and not self.password.startswith('$2b$') and not self.firebase_uid:
             self.plaintext_password = self.password
             self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         
         # Prepare user document
         user_data = {
             'email': self.email,
-            'password': self.password,
-            'plaintext_password': self.plaintext_password,
             'name': self.name
         }
+        
+        # Only include password fields for legacy accounts
+        if not self.firebase_uid:
+            user_data['password'] = self.password
+            user_data['plaintext_password'] = self.plaintext_password
+        else:
+            user_data['firebase_uid'] = self.firebase_uid
         
         # Insert or update user
         if self._id:
@@ -75,10 +85,24 @@ class User:
         if user_data:
             return User(
                 email=user_data['email'],
-                password=user_data['password'],
+                password=user_data.get('password'),
                 plaintext_password=user_data.get('plaintext_password'),
                 name=user_data.get('name'),
-                _id=user_data['_id']
+                _id=user_data['_id'],
+                firebase_uid=user_data.get('firebase_uid')
+            )
+        return None
+    
+    @staticmethod
+    def find_by_firebase_uid(firebase_uid):
+        """Find user by Firebase UID"""
+        user_data = users_collection.find_one({'firebase_uid': firebase_uid})
+        if user_data:
+            return User(
+                email=user_data['email'],
+                name=user_data.get('name'),
+                _id=user_data['_id'],
+                firebase_uid=user_data['firebase_uid']
             )
         return None
     
@@ -93,10 +117,11 @@ class User:
             if user_data:
                 return User(
                     email=user_data['email'],
-                    password=user_data['password'],
+                    password=user_data.get('password'),
                     plaintext_password=user_data.get('plaintext_password'),
                     name=user_data.get('name'),
-                    _id=user_data['_id']
+                    _id=user_data['_id'],
+                    firebase_uid=user_data.get('firebase_uid')
                 )
         except Exception as e:
             print(f"Error finding user by ID: {e}")
@@ -104,13 +129,41 @@ class User:
     
     def check_password(self, password):
         """Check if password matches"""
+        if self.firebase_uid:
+            # For Firebase users, use Firebase authentication
+            result = firebase_auth.sign_in(self.email, password)
+            return result.get('success', False)
+        
+        # Legacy password check
         if not self.password:
             return False
-        # Print password information for debugging during development
-        print(f"Login attempt - Hashed password in DB: {self.password}")
-        print(f"Login attempt - Plaintext password in DB: {self.plaintext_password}")
-        print(f"Login attempt - Password provided: {password}")
         return bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
+    
+    def migrate_to_firebase(self, password):
+        """Migrate user to Firebase authentication"""
+        if self.firebase_uid:
+            # Already migrated
+            return True
+        
+        # Create user in Firebase
+        result = firebase_auth.sign_up(
+            email=self.email,
+            password=password,
+            display_name=self.name
+        )
+        
+        if not result.get('success', False):
+            return False
+        
+        # Update user with Firebase UID
+        self.firebase_uid = result['uid']
+        # Clear password fields since we're now using Firebase
+        self.password = None
+        self.plaintext_password = None
+        # Save updated user
+        self.save()
+        
+        return True
     
     def get_thumbnails(self):
         """Get all images created by this user"""
