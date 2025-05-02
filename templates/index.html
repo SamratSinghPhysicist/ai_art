@@ -54,6 +54,11 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
     <style>
         :root {
             --primary: #6d28d9;
@@ -360,8 +365,8 @@
                     <a href="/dashboard" class="nav-link">My Images</a>
                     <a href="/logout" class="nav-link">Logout</a>
                     {% else %}
-                    <a href="/login" class="nav-link">Login</a>
-                    <a href="/signup" class="nav-link">Sign Up</a>
+                    <a href="#" class="nav-link open-auth-modal" data-mode="login">Login</a>
+                    <a href="#" class="nav-link open-auth-modal" data-mode="signup">Sign Up</a>
                     {% endif %}
                 </div>
             </nav>
@@ -669,325 +674,539 @@ Content-Type: application/json
         </div>
     </footer>
     
-    <script src="/static/js/app.js"></script>
+    <script src="/static/js/main.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
     <script>
+        // Initialize Firebase config
+        const firebaseConfig = {
+            apiKey: "{{firebase_api_key}}",
+            authDomain: "{{firebase_auth_domain}}",
+            projectId: "{{firebase_project_id}}",
+            appId: "{{firebase_app_id}}"
+        };
+        
+        // Wait for the DOM to be fully loaded
         document.addEventListener('DOMContentLoaded', function() {
-            // Tab functionality
-            const textToImageTab = document.getElementById('text-to-image-tab');
-            const imageToImageTab = document.getElementById('image-to-image-tab');
-            const textToImageContent = document.getElementById('text-to-image-content');
-            const imageToImageContent = document.getElementById('image-to-image-content');
+            console.log("DOM loaded - initializing auth");
             
-            // Dropdown links
-            const textToImageLink = document.getElementById('text-to-image-link');
-            const imageToImageLink = document.getElementById('image-to-image-link');
-            
-            function switchTab(activeTab, inactiveTab, activeContent, inactiveContent) {
-                activeTab.classList.add('active');
-                inactiveTab.classList.remove('active');
-                activeContent.classList.add('active');
-                inactiveContent.classList.remove('active');
-                // Hide results when switching tabs
-                result.classList.add('hidden');
-                // Scroll to the AI tools section
-                document.getElementById('ai-tools-section').scrollIntoView({ behavior: 'smooth' });
-            }
-            
-            if (textToImageTab && imageToImageTab) {
-                textToImageTab.addEventListener('click', function() {
-                    switchTab(
-                        textToImageTab,
-                        imageToImageTab,
-                        textToImageContent,
-                        imageToImageContent
-                    );
-                });
-                
-                imageToImageTab.addEventListener('click', function() {
-                    switchTab(
-                        imageToImageTab,
-                        textToImageTab,
-                        imageToImageContent,
-                        textToImageContent
-                    );
-                });
-                
-                // Handle dropdown nav links
-                if (textToImageLink) {
-                    textToImageLink.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        switchTab(
-                            textToImageTab,
-                            imageToImageTab,
-                            textToImageContent,
-                            imageToImageContent
-                        );
-                    });
+            // Initialize Firebase if not already initialized
+            if (typeof firebase !== 'undefined') {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                    console.log("Firebase initialized");
                 }
-                
-                if (imageToImageLink) {
-                    imageToImageLink.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        switchTab(
-                            imageToImageTab,
-                            textToImageTab,
-                            imageToImageContent,
-                            textToImageContent
-                        );
-                    });
-                }
-            }
-
-            // Enhanced FAQ functionality
-            const faqQuestions = document.querySelectorAll('.faq-question');
-            
-            faqQuestions.forEach(question => {
-                question.addEventListener('click', () => {
-                    const isExpanded = question.getAttribute('aria-expanded') === 'true';
-                    question.setAttribute('aria-expanded', !isExpanded);
-                });
-            });
-            
-            // Apply initial accessibility attributes to FAQ items
-            document.querySelectorAll('.faq-item').forEach((item, index) => {
-                const question = item.querySelector('.faq-question');
-                const answer = item.querySelector('.faq-answer');
-                if (question && answer) {
-                    const id = `faq-answer-${index}`;
-                    answer.id = id;
-                    question.setAttribute('aria-controls', id);
-                    question.setAttribute('aria-expanded', 'false');
-                }
-            });
-        });
-    </script>
-     
-    <!-- Schema.org structured data for FAQ page -->
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      "mainEntity": [
-        {
-          "@type": "Question",
-          "name": "How does the AI image generator work?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Our AI image generator uses advanced machine learning algorithms to create beautiful images based on your text description. The AI understands the context of your prompt and generates visually appealing images in various artistic styles."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Is this service free to use?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Yes, our image generation service is completely free to use with no limits. Create as many images as you need without any cost or signup requirements."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "Can I customize the generated images?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "Absolutely! You can download the generated images and further edit them in your preferred image editing software to add your own personal touch and artistic elements."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What image resolution do I get?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "All images are generated at a high resolution of 1920x1080 pixels. This ensures your AI art looks crisp and detailed across all devices and screen sizes."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How do I integrate the image generator with my workflow?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "For creators who need automated solutions, we offer a simple API that allows you to generate images programmatically. Check our API documentation for details on how to integrate it into your creative workflow."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "How do I customize the generated images?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "You can customize your generated images by using detailed prompts and specific keywords. Additionally, for image-to-image transformations, you can control the strength, style preset, aspect ratio, and seed to fine-tune the results."
-          }
-        },
-        {
-          "@type": "Question",
-          "name": "What are the advanced options in image-to-image transformation?",
-          "acceptedAnswer": {
-            "@type": "Answer",
-            "text": "The image-to-image feature allows you to transform existing images with several options: Style Preset, Aspect Ratio, Output Format, Seed, and Strength."
-          }
-        }
-      ]
-    }
-    </script>
-
-    <script>
-        // Add the new img2img functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            // Existing variables
-            const loading = document.getElementById('loading');
-            const error = document.getElementById('error');
-            const result = document.getElementById('result');
-            const generatedImage = document.getElementById('generated-image');
-            const downloadBtn = document.getElementById('download-btn');
-            
-            // Tab switching functionality
-            const textToImageTab = document.getElementById('text-to-image-tab');
-            const imageToImageTab = document.getElementById('image-to-image-tab');
-            const textToImageContent = document.getElementById('text-to-image-content');
-            const imageToImageContent = document.getElementById('image-to-image-content');
-            
-            if (textToImageTab && imageToImageTab) {
-                textToImageTab.addEventListener('click', function() {
-                    textToImageTab.classList.add('active');
-                    imageToImageTab.classList.remove('active');
-                    textToImageContent.classList.add('active');
-                    imageToImageContent.classList.remove('active');
-                    // Hide results when switching tabs
-                    if (result) result.classList.add('hidden');
-                });
-                
-                imageToImageTab.addEventListener('click', function() {
-                    imageToImageTab.classList.add('active');
-                    textToImageTab.classList.remove('active');
-                    imageToImageContent.classList.add('active');
-                    textToImageContent.classList.remove('active');
-                    // Hide results when switching tabs
-                    if (result) result.classList.add('hidden');
-                });
+            } else {
+                console.error("Firebase SDK not available - check script loading");
             }
             
-            // Advanced Options Toggle
-            const toggleAdvancedOptionsBtn = document.getElementById('toggle-advanced-options');
-            if (toggleAdvancedOptionsBtn) {
-                toggleAdvancedOptionsBtn.addEventListener('click', function() {
-                    const container = document.getElementById('advanced-options-container');
-                    const icon = document.getElementById('advanced-options-icon');
-                    
-                    if (container.style.display === 'none') {
-                        container.style.display = 'block';
-                        icon.textContent = '▲';
-                        this.classList.add('active');
-                    } else {
-                        container.style.display = 'none';
-                        icon.textContent = '▼';
-                        this.classList.remove('active');
-                    }
-                });
-            }
+            // Get all login/signup buttons
+            const authButtons = document.querySelectorAll('.open-auth-modal');
+            console.log("Found auth buttons:", authButtons.length);
             
-            // Image upload preview
-            const imageUpload = document.getElementById('image-upload');
-            const imagePreview = document.getElementById('image-preview');
-            const previewContainer = document.getElementById('preview-container');
-            
-            if (imageUpload) {
-                imageUpload.addEventListener('change', function() {
-                    const file = this.files[0];
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = function(e) {
-                            imagePreview.src = e.target.result;
-                            previewContainer.classList.remove('hidden');
-                        }
-                        reader.readAsDataURL(file);
-                    } else {
-                        previewContainer.classList.add('hidden');
-                    }
-                });
-            }
-            
-            // Strength slider
-            const strengthSlider = document.getElementById('strength-slider');
-            const strengthValue = document.getElementById('strength-value');
-            
-            if (strengthSlider) {
-                strengthSlider.addEventListener('input', function() {
-                    strengthValue.textContent = this.value;
-                });
-            }
-            
-            // Image-to-image form handling
-            const img2imgForm = document.getElementById('img2img-form');
-            
-            if (img2imgForm) {
-                img2imgForm.addEventListener('submit', function(e) {
+            // Add click event to each button
+            authButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
                     e.preventDefault();
+                    console.log("Auth button clicked");
                     
-                    // Validate form
-                    if (!imageUpload.files[0]) {
-                        alert('Please upload an image to transform');
-                        return;
+                    // Get the auth mode (login or signup)
+                    const mode = this.getAttribute('data-mode');
+                    console.log("Auth mode:", mode);
+                    
+                    // Get or create the auth modal
+                    let authModal = document.getElementById('authModal');
+                    if (!authModal) {
+                        console.log("Creating auth modal");
+                        createAuthModal();
+                        authModal = document.getElementById('authModal');
                     }
                     
-                    const img2imgPrompt = document.getElementById('img2img-prompt').value;
-                    if (!img2imgPrompt) {
-                        alert('Please enter a prompt for the transformation');
-                        return;
-                    }
-                    
-                    // Show loading
-                    loading.classList.remove('hidden');
-                    result.classList.add('hidden');
-                    error.classList.add('hidden');
-                    
-                    // Prepare form data with all parameters
-                    const formData = new FormData(img2imgForm);
-                    
-                    // Add seed parameter (if random seed is requested, let server handle it)
-                    const seedValue = parseInt(document.getElementById('seed').value);
-                    if (isNaN(seedValue) || seedValue < 0) {
-                        formData.set('seed', '0');
-                    }
-                    
-                    fetch('/img2img', {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        loading.classList.add('hidden');
+                    if (authModal) {
+                        // Update modal content for login or signup
+                        updateModalContent(mode);
                         
-                        if (data.success) {
-                            // Show the result
-                            result.classList.remove('hidden');
-                            
-                            // Set the image source
-                            generatedImage.src = data.image_path;
-                            generatedImage.alt = 'Transformed image based on input';
-                            
-                            // Enable download button
-                            downloadBtn.disabled = false;
-                            
-                            // Save the current URL for download
-                            window.currentImagePath = data.image_path;
-                            
-                            // Update the seed field with the used seed for reproducibility
-                            if (data.seed && document.getElementById('seed')) {
-                                document.getElementById('seed').value = data.seed;
-                            }
-                        } else {
-                            // Show error
-                            error.classList.remove('hidden');
-                            error.querySelector('p').textContent = data.error || 'An error occurred during image transformation';
-                        }
-                    })
-                    .catch(err => {
-                        loading.classList.add('hidden');
-                        error.classList.remove('hidden');
-                        error.querySelector('p').textContent = 'Network error: ' + err.message;
-                    });
+                        // Show the modal
+                        authModal.classList.add('active');
+                        document.body.style.overflow = 'hidden';
+                    }
                 });
+            });
+            
+            // Function to update modal content based on mode
+            function updateModalContent(mode) {
+                const authModalTitle = document.getElementById('authModalTitle');
+                const authModalSubtitle = document.getElementById('authModalSubtitle');
+                const googleBtnText = document.getElementById('googleBtnText');
+                const authSwitchText = document.getElementById('authSwitchText');
+                
+                if (!authModalTitle || !authModalSubtitle || !googleBtnText || !authSwitchText) {
+                    console.error("Modal elements not found");
+                    return;
+                }
+                
+                if (mode === 'login') {
+                    authModalTitle.textContent = 'Welcome Back';
+                    authModalSubtitle.textContent = 'Sign in to continue your creative journey';
+                    googleBtnText.textContent = 'Sign in with Google';
+                    authSwitchText.innerHTML = 'Don\'t have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Sign up</a>';
+                } else {
+                    authModalTitle.textContent = 'Create Account';
+                    authModalSubtitle.textContent = 'Get started with your free AI Art account';
+                    googleBtnText.textContent = 'Sign up with Google';
+                    authSwitchText.innerHTML = 'Already have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Login</a>';
+                }
+                
+                // Add event listener to the switch button
+                document.getElementById('authSwitchBtn').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    updateModalContent(mode === 'login' ? 'signup' : 'login');
+                });
+            }
+            
+            // Function to create the auth modal
+            function createAuthModal() {
+                const modalHTML = `
+                <div class="auth-modal-overlay" id="authModal">
+                    <div class="auth-modal">
+                        <button class="auth-modal-close" id="closeAuthModal">×</button>
+                        
+                        <div class="auth-modal-left">
+                            <div class="auth-modal-logo">
+                                <span class="auth-modal-logo-text">AI Art</span>
+                            </div>
+                            
+                            <h2 class="auth-modal-title" id="authModalTitle">Welcome Back</h2>
+                            <p class="auth-modal-subtitle" id="authModalSubtitle">Sign in to continue your creative journey</p>
+                            
+                            <button id="googleAuthBtn" class="auth-provider-button">
+                                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" class="auth-provider-icon">
+                                <span class="auth-provider-text" id="googleBtnText">Sign in with Google</span>
+                            </button>
+                            
+                            <!-- Future auth providers would go here -->
+                            <div class="auth-provider-button" style="opacity: 0.6; cursor: not-allowed;">
+                                <svg class="auth-provider-icon" viewBox="0 0 24 24" fill="#000000"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+                                <span class="auth-provider-text">More options coming soon</span>
+                            </div>
+                            
+                            <div class="auth-modal-footer">
+                                <p id="authSwitchText">Don't have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Sign up</a></p>
+                                <p style="margin-top: 8px">By continuing, you agree to our <a href="/terms" class="auth-footer-link">Terms</a> and <a href="/privacy" class="auth-footer-link">Privacy Policy</a></p>
+                            </div>
+                        </div>
+                        
+                        <div class="auth-modal-right">
+                            <div class="auth-decorations">
+                                <div class="auth-decoration auth-deco-1"></div>
+                                <div class="auth-decoration auth-deco-2"></div>
+                                <div class="floating-icon icon-1">✨</div>
+                                <div class="floating-icon icon-2">🎨</div>
+                                <div class="floating-icon icon-3">🖌️</div>
+                            </div>
+                            
+                            <div class="auth-right-content">
+                                <img src="https://images.unsplash.com/photo-1581591524425-c7e0978865fc?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" alt="AI generated art" class="auth-right-image">
+                                <h3 class="auth-right-title">Unleash Your Creativity</h3>
+                                <p class="auth-right-description">Join our community and start creating stunning AI-generated artwork today.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                
+                const modalStylesHTML = `
+                <style>
+                    /* Auth Modal Styles */
+                    .auth-modal-overlay {
+                        position: fixed;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background-color: rgba(0, 0, 0, 0.5);
+                        backdrop-filter: blur(5px);
+                        display: none;
+                        justify-content: center;
+                        align-items: center;
+                        z-index: 1000;
+                        opacity: 0;
+                        transition: opacity 0.3s ease;
+                    }
+                    
+                    .auth-modal-overlay.active {
+                        display: flex;
+                        opacity: 1;
+                    }
+                    
+                    .auth-modal {
+                        background-color: white;
+                        border-radius: 16px;
+                        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+                        width: 90%;
+                        max-width: 900px;
+                        overflow: hidden;
+                        display: flex;
+                        position: relative;
+                        opacity: 0;
+                        transform: translateY(20px);
+                        transition: opacity 0.3s ease, transform 0.3s ease;
+                    }
+                    
+                    .auth-modal-overlay.active .auth-modal {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                    
+                    .auth-modal-left {
+                        flex: 1;
+                        padding: 40px;
+                        display: flex;
+                        flex-direction: column;
+                    }
+                    
+                    .auth-modal-right {
+                        flex: 1;
+                        background: linear-gradient(135deg, #4facfe, #00f2fe);
+                        position: relative;
+                        overflow: hidden;
+                        display: none;
+                    }
+                    
+                    @media (min-width: 768px) {
+                        .auth-modal-right {
+                            display: block;
+                        }
+                    }
+                    
+                    .auth-modal-logo {
+                        margin-bottom: 10px;
+                        display: inline-flex;
+                        align-items: center;
+                    }
+                    
+                    .auth-modal-logo-text {
+                        background: linear-gradient(135deg, #4facfe, #00f2fe);
+                        -webkit-background-clip: text;
+                        background-clip: text;
+                        -webkit-text-fill-color: transparent;
+                        font-size: 1.4rem;
+                        font-weight: 700;
+                        margin-left: 8px;
+                    }
+                    
+                    .auth-modal-close {
+                        position: absolute;
+                        top: 20px;
+                        right: 20px;
+                        background: none;
+                        border: none;
+                        font-size: 1.5rem;
+                        cursor: pointer;
+                        color: #666;
+                        z-index: 10;
+                        width: 32px;
+                        height: 32px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        border-radius: 50%;
+                        transition: all 0.2s;
+                    }
+                    
+                    .auth-modal-close:hover {
+                        background-color: rgba(0, 0, 0, 0.05);
+                        color: #333;
+                    }
+                    
+                    .auth-modal-title {
+                        font-size: 1.8rem;
+                        font-weight: 700;
+                        margin-bottom: 8px;
+                        color: #1f2937;
+                    }
+                    
+                    .auth-modal-subtitle {
+                        color: #6b7280;
+                        margin-bottom: 32px;
+                    }
+                    
+                    .auth-provider-button {
+                        display: flex;
+                        align-items: center;
+                        padding: 12px 16px;
+                        border-radius: 8px;
+                        margin-bottom: 16px;
+                        border: 1px solid #e5e7eb;
+                        background-color: white;
+                        cursor: pointer;
+                        transition: all 0.2s;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    
+                    .auth-provider-button::after {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(135deg, #4facfe, #00f2fe);
+                        opacity: 0;
+                        transition: opacity 0.3s;
+                        z-index: 1;
+                    }
+                    
+                    .auth-provider-button:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 5px 15px rgba(91, 143, 249, 0.2);
+                        border-color: transparent;
+                    }
+                    
+                    .auth-provider-button:hover::after {
+                        opacity: 1;
+                    }
+                    
+                    .auth-provider-button:hover .auth-provider-text {
+                        color: white;
+                        position: relative;
+                        z-index: 2;
+                    }
+                    
+                    .auth-provider-button:hover .auth-provider-icon {
+                        position: relative;
+                        z-index: 2;
+                    }
+                    
+                    .auth-provider-button:hover img {
+                        filter: brightness(10);
+                    }
+                    
+                    .auth-provider-icon {
+                        width: 24px;
+                        height: 24px;
+                        margin-right: 12px;
+                    }
+                    
+                    .auth-provider-text {
+                        font-weight: 500;
+                        color: #1f2937;
+                        flex-grow: 1;
+                        text-align: center;
+                    }
+                    
+                    .auth-modal-footer {
+                        margin-top: auto;
+                        text-align: center;
+                        color: #6b7280;
+                        font-size: 0.9rem;
+                    }
+                    
+                    .auth-footer-link {
+                        color: #6d28d9;
+                        text-decoration: none;
+                        font-weight: 500;
+                    }
+                    
+                    .auth-footer-link:hover {
+                        text-decoration: underline;
+                    }
+                    
+                    .auth-decorations {
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        width: 100%;
+                        height: 100%;
+                    }
+                    
+                    .auth-decoration {
+                        position: absolute;
+                        background-color: rgba(255, 255, 255, 0.1);
+                        border-radius: 50%;
+                    }
+                    
+                    .auth-deco-1 {
+                        width: 300px;
+                        height: 300px;
+                        top: -150px;
+                        right: -100px;
+                        animation: float 20s infinite alternate ease-in-out;
+                    }
+                    
+                    .auth-deco-2 {
+                        width: 200px;
+                        height: 200px;
+                        bottom: -100px;
+                        left: -50px;
+                        animation: float 15s infinite alternate-reverse ease-in-out;
+                    }
+                    
+                    .auth-right-content {
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100%;
+                        padding: 40px;
+                        position: relative;
+                        z-index: 2;
+                        color: white;
+                        text-align: center;
+                    }
+                    
+                    .auth-right-title {
+                        font-size: 2rem;
+                        font-weight: 700;
+                        margin-bottom: 20px;
+                    }
+                    
+                    .auth-right-description {
+                        font-size: 1.1rem;
+                        opacity: 0.9;
+                        line-height: 1.6;
+                        margin-bottom: 30px;
+                    }
+                    
+                    .auth-right-image {
+                        width: 80%;
+                        max-width: 300px;
+                        margin-bottom: 30px;
+                        border-radius: 10px;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                    }
+                    
+                    .floating-icon {
+                        position: absolute;
+                        z-index: 3;
+                        color: white;
+                        font-size: 2rem;
+                        filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+                        opacity: 0.7;
+                        animation-duration: 15s;
+                        animation-iteration-count: infinite;
+                        animation-timing-function: ease-in-out;
+                    }
+                    
+                    .icon-1 {
+                        top: 20%;
+                        left: 15%;
+                        animation-name: floatIcon1;
+                    }
+                    
+                    .icon-2 {
+                        top: 60%;
+                        left: 60%;
+                        animation-name: floatIcon2;
+                    }
+                    
+                    .icon-3 {
+                        top: 30%;
+                        left: 70%;
+                        animation-name: floatIcon3;
+                    }
+                    
+                    @keyframes floatIcon1 {
+                        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                        25% { transform: translate(15px, 15px) rotate(5deg); }
+                        50% { transform: translate(0, 30px) rotate(0deg); }
+                        75% { transform: translate(-15px, 15px) rotate(-5deg); }
+                    }
+                    
+                    @keyframes floatIcon2 {
+                        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                        25% { transform: translate(-15px, -10px) rotate(-5deg); }
+                        50% { transform: translate(0, -20px) rotate(0deg); }
+                        75% { transform: translate(15px, -10px) rotate(5deg); }
+                    }
+                    
+                    @keyframes floatIcon3 {
+                        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                        25% { transform: translate(10px, -15px) rotate(5deg); }
+                        50% { transform: translate(20px, 0) rotate(0deg); }
+                        75% { transform: translate(10px, 15px) rotate(-5deg); }
+                    }
+                    
+                    @keyframes float {
+                        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+                        50% { transform: translate(-20px, 20px) rotate(5deg); }
+                    }
+                </style>`;
+                
+                // Add styles to head
+                document.head.insertAdjacentHTML('beforeend', modalStylesHTML);
+                
+                // Add modal to body
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+                
+                // Add click event for close button
+                const closeButton = document.getElementById('closeAuthModal');
+                if (closeButton) {
+                    closeButton.addEventListener('click', function() {
+                        const modal = document.getElementById('authModal');
+                        if (modal) {
+                            modal.classList.remove('active');
+                            document.body.style.overflow = '';
+                        }
+                    });
+                }
+                
+                // Add click event for outside modal
+                const modal = document.getElementById('authModal');
+                if (modal) {
+                    modal.addEventListener('click', function(e) {
+                        if (e.target === this) {
+                            this.classList.remove('active');
+                            document.body.style.overflow = '';
+                        }
+                    });
+                }
+                
+                // Add Google authentication
+                const googleBtn = document.getElementById('googleAuthBtn');
+                if (googleBtn) {
+                    googleBtn.addEventListener('click', function() {
+                        if (typeof firebase !== 'undefined' && firebase.auth) {
+                            const provider = new firebase.auth.GoogleAuthProvider();
+                            firebase.auth().signInWithPopup(provider)
+                                .then((result) => {
+                                    return result.user.getIdToken();
+                                })
+                                .then((idToken) => {
+                                    // Determine endpoint based on current mode
+                                    const currentMode = document.getElementById('authModalTitle').textContent === 'Welcome Back' ? 'login' : 'signup';
+                                    const endpoint = currentMode === 'login' ? '/login' : '/signup';
+                                    
+                                    return fetch(endpoint, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({ idToken: idToken })
+                                    });
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        window.location.href = data.redirect;
+                                    } else {
+                                        console.error(data.error);
+                                        alert('Authentication error: ' + data.error);
+                                    }
+                                })
+                                .catch((error) => {
+                                    console.error('Authentication error:', error);
+                                    alert('Authentication error: ' + error.message);
+                                });
+                        } else {
+                            alert('Firebase authentication is not available. Please try again later.');
+                        }
+                    });
+                }
             }
         });
     </script>
+    <script src="/static/js/firebase-debug.js"></script>
+    <script src="/static/js/auth-modal.js"></script>
 </body>
 </html>

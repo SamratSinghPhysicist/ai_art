@@ -48,17 +48,29 @@ def load_user(user_id):
 @app.route('/')
 def index():
     """Render the main page with the form"""
-    return render_template('index.html')
+    return render_template('index.html',
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
 
 @app.route('/text-to-image')
 def text_to_image():
     """Render the text-to-image page"""
-    return render_template('text-to-image.html')
+    return render_template('text-to-image.html',
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
 
 @app.route('/image-to-image')
 def image_to_image():
     """Render the image-to-image page"""
-    return render_template('image-to-image.html')
+    return render_template('image-to-image.html',
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
 
 @app.route('/sitemap-page')
 def sitemap_page():
@@ -112,11 +124,8 @@ def login():
                 print(f"Token verification error: {e}")
                 return jsonify({'success': False, 'error': 'Invalid token'}), 401
     
-    return render_template('login.html',
-                          firebase_api_key=firebase_config.get('apiKey'),
-                          firebase_auth_domain=firebase_config.get('authDomain'),
-                          firebase_project_id=firebase_config.get('projectId'),
-                          firebase_app_id=firebase_config.get('appId'))
+    # For GET requests, redirect to homepage with login modal parameter
+    return redirect(url_for('index', action='login'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -161,11 +170,8 @@ def signup():
                 print(f"Token verification error: {e}")
                 return jsonify({'success': False, 'error': 'Invalid token'}), 401
     
-    return render_template('signup.html',
-                          firebase_api_key=firebase_config.get('apiKey'),
-                          firebase_auth_domain=firebase_config.get('authDomain'),
-                          firebase_project_id=firebase_config.get('projectId'),
-                          firebase_app_id=firebase_config.get('appId'))
+    # For GET requests, redirect to homepage with signup modal parameter
+    return redirect(url_for('index', action='signup'))
 
 @app.route('/reset-password')
 def reset_password():

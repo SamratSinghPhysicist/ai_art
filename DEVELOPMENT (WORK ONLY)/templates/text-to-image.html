@@ -14,6 +14,10 @@
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
     <!-- Google Adsense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
     crossorigin="anonymous"></script>
@@ -37,13 +41,8 @@
                     </div>
                     
                     <a href="/#api-info" class="nav-link">API</a>
-                    {% if current_user.is_authenticated %}
-                    <a href="/dashboard" class="nav-link">My Images</a>
-                    <a href="/logout" class="nav-link">Logout</a>
-                    {% else %}
-                    <a href="/login" class="nav-link">Login</a>
-                    <a href="/signup" class="nav-link">Sign Up</a>
-                    {% endif %}
+                    <a href="#" class="nav-link open-auth-modal" data-mode="login">Login</a>
+                    <a href="#" class="nav-link open-auth-modal" data-mode="signup">Sign Up</a>
                 </div>
             </nav>
         </div>
@@ -237,8 +236,503 @@
             </p>
         </div>
     </footer>
+
+    <!-- Auth Modal HTML -->
+    <div class="auth-modal-overlay" id="authModal">
+        <div class="auth-modal">
+            <button class="auth-modal-close" id="closeAuthModal">×</button>
+            
+            <div class="auth-modal-left">
+                <div class="auth-modal-logo">
+                    <span class="auth-modal-logo-text">AI Art</span>
+                </div>
+                
+                <h2 class="auth-modal-title" id="authModalTitle">Welcome Back</h2>
+                <p class="auth-modal-subtitle" id="authModalSubtitle">Sign in to continue your creative journey</p>
+                
+                <button id="googleAuthBtn" class="auth-provider-button">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" class="auth-provider-icon">
+                    <span class="auth-provider-text" id="googleBtnText">Sign in with Google</span>
+                </button>
+                
+                <!-- Future auth providers would go here -->
+                <div class="auth-provider-button" style="opacity: 0.6; cursor: not-allowed;">
+                    <svg class="auth-provider-icon" viewBox="0 0 24 24" fill="#000000"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
+                    <span class="auth-provider-text">More options coming soon</span>
+                </div>
+                
+                <div class="auth-modal-footer">
+                    <p id="authSwitchText">Don't have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Sign up</a></p>
+                </div>
+            </div>
+            
+            <div class="auth-modal-right">
+                <div class="auth-decorations">
+                    <div class="auth-decoration auth-deco-1"></div>
+                    <div class="auth-decoration auth-deco-2"></div>
+                    <div class="floating-icon icon-1">✨</div>
+                    <div class="floating-icon icon-2">🎨</div>
+                    <div class="floating-icon icon-3">🖌️</div>
+                </div>
+                
+                <div class="auth-right-content">
+                    <img src="https://images.unsplash.com/photo-1581591524425-c7e0978865fc?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" alt="AI generated art" class="auth-right-image">
+                    <h3 class="auth-right-title">Unleash Your Creativity</h3>
+                    <p class="auth-right-description">Join our community and start creating stunning AI-generated artwork today.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal Styles -->
+    <style>
+        /* Auth Modal Styles */
+        .auth-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .auth-modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .auth-modal {
+            background-color: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 900px;
+            overflow: hidden;
+            display: flex;
+            position: relative;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        
+        .auth-modal-overlay.active .auth-modal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .auth-modal-left {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .auth-modal-right {
+            flex: 1;
+            background: linear-gradient(135deg, var(--gradient-end, #00f2fe), var(--gradient-start, #4facfe));
+            position: relative;
+            overflow: hidden;
+            display: none;
+        }
+        
+        @media (min-width: 768px) {
+            .auth-modal-right {
+                display: block;
+            }
+        }
+        
+        .auth-modal-logo {
+            margin-bottom: 10px;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .auth-modal-logo-text {
+            background: linear-gradient(135deg, var(--gradient-start, #4facfe), var(--gradient-end, #00f2fe));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+        
+        .auth-modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+            z-index: 10;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        
+        .auth-modal-close:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: #333;
+        }
+        
+        .auth-modal-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+        
+        .auth-modal-subtitle {
+            color: #6b7280;
+            margin-bottom: 32px;
+        }
+
+        .auth-right-content {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+        padding: 40px;
+        position: relative;
+        z-index: 2;
+        color: white;
+        text-align: center;
+        }
+        
+        .auth-provider-button {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            border: 1px solid #e5e7eb;
+            background-color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .auth-provider-button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--gradient-start, #4facfe), var(--gradient-end, #00f2fe));
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1;
+        }
+        
+        .auth-provider-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(91, 143, 249, 0.2);
+            border-color: transparent;
+        }
+        
+        .auth-provider-button:hover::after {
+            opacity: 1;
+        }
+        
+        .auth-provider-button:hover .auth-provider-text {
+            color: white;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .auth-provider-button:hover .auth-provider-icon {
+            position: relative;
+            z-index: 2;
+        }
+        
+        .auth-provider-button:hover img {
+            filter: brightness(10);
+        }
+        
+        .auth-provider-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+        }
+        
+        .auth-provider-text {
+            font-weight: 500;
+            color: #1f2937;
+            flex-grow: 1;
+            text-align: center;
+        }
+        
+        .auth-modal-footer {
+            margin-top: auto;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        
+        .auth-footer-link {
+            color: var(--primary, #6d28d9);
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .auth-footer-link:hover {
+            text-decoration: underline;
+        }
+        
+        .auth-right-image {
+            width: 80%;
+            max-width: 300px;
+            margin-bottom: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .auth-decorations {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .auth-decoration {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+        }
+        
+        .auth-deco-1 {
+            width: 300px;
+            height: 300px;
+            top: -150px;
+            right: -100px;
+            animation: float 20s infinite alternate ease-in-out;
+        }
+        
+        .auth-deco-2 {
+            width: 200px;
+            height: 200px;
+            bottom: -100px;
+            left: -50px;
+            animation: float 15s infinite alternate-reverse ease-in-out;
+        }
+        
+        .floating-icon {
+            position: absolute;
+            z-index: 3;
+            color: white;
+            font-size: 2rem;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+            opacity: 0.7;
+            animation-duration: 15s;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+        }
+        
+        .icon-1 {
+            top: 20%;
+            left: 15%;
+            animation-name: floatIcon1;
+        }
+        
+        .icon-2 {
+            top: 60%;
+            left: 60%;
+            animation-name: floatIcon2;
+        }
+        
+        .icon-3 {
+            top: 30%;
+            left: 70%;
+            animation-name: floatIcon3;
+        }
+        
+        @keyframes floatIcon1 {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(15px, 15px) rotate(5deg); }
+            50% { transform: translate(0, 30px) rotate(0deg); }
+            75% { transform: translate(-15px, 15px) rotate(-5deg); }
+        }
+        
+        @keyframes floatIcon2 {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(-15px, -10px) rotate(-5deg); }
+            50% { transform: translate(0, -20px) rotate(0deg); }
+            75% { transform: translate(15px, -10px) rotate(5deg); }
+        }
+        
+        @keyframes floatIcon3 {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            25% { transform: translate(10px, -15px) rotate(5deg); }
+            50% { transform: translate(20px, 0) rotate(0deg); }
+            75% { transform: translate(10px, 15px) rotate(-5deg); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-20px, 20px) rotate(5deg); }
+        }
+    </style>
+
     <script src="/static/js/mobile-nav.js"></script>
     <script>
+        // Initialize Firebase config
+        const firebaseConfig = {
+            apiKey: "{{firebase_api_key}}",
+            authDomain: "{{firebase_auth_domain}}",
+            projectId: "{{firebase_project_id}}",
+            appId: "{{firebase_app_id}}"
+        };
+        
+        // Initialize Firebase
+        if (typeof firebase !== 'undefined') {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log("Firebase initialized");
+            }
+        } else {
+            console.error("Firebase SDK not available");
+        }
+        
+        // DOM content loaded event
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM loaded - initializing auth buttons");
+            
+            // Get all auth buttons
+            const authButtons = document.querySelectorAll('.open-auth-modal');
+            console.log("Found auth buttons:", authButtons.length);
+            
+            // Get modal elements
+            const authModal = document.getElementById('authModal');
+            const closeBtn = document.getElementById('closeAuthModal');
+            const authModalTitle = document.getElementById('authModalTitle');
+            const authModalSubtitle = document.getElementById('authModalSubtitle');
+            const googleBtnText = document.getElementById('googleBtnText');
+            const authSwitchText = document.getElementById('authSwitchText');
+            const googleAuthBtn = document.getElementById('googleAuthBtn');
+            
+            // Add click handler to each auth button
+            authButtons.forEach(button => {
+                button.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const mode = this.getAttribute('data-mode');
+                    console.log("Auth button clicked:", mode);
+                    
+                    // Update modal content based on mode
+                    if (mode === 'login') {
+                        authModalTitle.textContent = 'Welcome Back';
+                        authModalSubtitle.textContent = 'Sign in to continue your creative journey';
+                        googleBtnText.textContent = 'Sign in with Google';
+                        authSwitchText.innerHTML = 'Don\'t have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Sign up</a>';
+                    } else {
+                        authModalTitle.textContent = 'Create Account';
+                        authModalSubtitle.textContent = 'Get started with your free AI Art account';
+                        googleBtnText.textContent = 'Sign up with Google';
+                        authSwitchText.innerHTML = 'Already have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Login</a>';
+                    }
+                    
+                    // Re-attach switch button event handler
+                    const switchBtn = document.getElementById('authSwitchBtn');
+                    if (switchBtn) {
+                        switchBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            const newMode = mode === 'login' ? 'signup' : 'login';
+                            const button = document.querySelector(`.open-auth-modal[data-mode="${newMode}"]`);
+                            if (button) button.click();
+                        });
+                    }
+                    
+                    // Show the modal
+                    authModal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+            
+            // Close modal when close button is clicked
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function() {
+                    authModal.classList.remove('active');
+                    document.body.style.overflow = '';
+                });
+            }
+            
+            // Close modal when clicking outside
+            if (authModal) {
+                authModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        this.classList.remove('active');
+                        document.body.style.overflow = '';
+                    }
+                });
+            }
+            
+            // Handle Google authentication
+            if (googleAuthBtn) {
+                googleAuthBtn.addEventListener('click', function() {
+                    if (typeof firebase !== 'undefined' && firebase.auth) {
+                        const provider = new firebase.auth.GoogleAuthProvider();
+                        firebase.auth().signInWithPopup(provider)
+                            .then((result) => {
+                                return result.user.getIdToken();
+                            })
+                            .then((idToken) => {
+                                // Determine endpoint based on current mode
+                                const currentMode = document.getElementById('authModalTitle').textContent === 'Welcome Back' ? 'login' : 'signup';
+                                const endpoint = currentMode === 'login' ? '/login' : '/signup';
+                                
+                                return fetch(endpoint, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ idToken: idToken })
+                                });
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    window.location.href = data.redirect;
+                                } else {
+                                    console.error(data.error);
+                                    alert('Authentication error: ' + data.error);
+                                }
+                            })
+                            .catch((error) => {
+                                console.error('Authentication error:', error);
+                                alert('Authentication error: ' + error.message);
+                            });
+                    } else {
+                        alert('Firebase authentication is not available. Please try again later.');
+                    }
+                });
+            }
+            
+            // Close modal when pressing Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && authModal && authModal.classList.contains('active')) {
+                    authModal.classList.remove('active');
+                    document.body.style.overflow = '';
+                }
+            });
+        });
+        
         // Variables to store original and enhanced prompts
         let originalPrompt = '';
         
