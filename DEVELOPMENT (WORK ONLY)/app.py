@@ -756,6 +756,16 @@ def test_processed_folder():
             'absolute_path': absolute_path
         }), 500
 
+@app.route('/api-docs')
+def api_docs():
+    """Render the API documentation page"""
+    return render_template('api.html',
+                          user=current_user,
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
+
 if __name__ == '__main__':
     # Configure logging
     if not os.path.exists(LOGS_DIR):
