@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="/static/css/styles.css">
     <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
+    crossorigin="anonymous"></script>
 </head>
 <body>
     <header class="header">
@@ -19,7 +23,6 @@
                 <button class="mobile-menu-btn">☰</button>
                 <div class="nav-links">
                     <a href="/" class="nav-link">Home</a>
-                    <a href="/blog" class="nav-link">Blog</a>
                     <a href="/#api-info" class="nav-link">API</a>
                     {% if current_user.is_authenticated %}
                     <a href="/dashboard" class="nav-link">My Thumbnails</a>
@@ -56,10 +59,6 @@
                             <p class="text-sm text-gray-600">Generate AI-powered YouTube thumbnails instantly</p>
                         </li>
                         <li>
-                            <a href="/blog" class="text-primary hover:underline font-semibold">Blog</a>
-                            <p class="text-sm text-gray-600">Tips, tutorials and best practices for YouTube thumbnails</p>
-                        </li>
-                        <li>
                             <a href="/login" class="text-primary hover:underline font-semibold">Login</a>
                             <p class="text-sm text-gray-600">Access your account</p>
                         </li>
@@ -78,35 +77,6 @@
                     </ul>
                 </div>
                 
-                <div>
-                    <h2 class="text-2xl font-bold text-primary mb-4">Blog Articles</h2>
-                    <ul class="space-y-2">
-                        <li>
-                            <a href="/blog#why-thumbnails-matter" class="text-primary hover:underline font-semibold">Why Thumbnails Matter for YouTube Success</a>
-                            <p class="text-sm text-gray-600">Learn the importance of custom thumbnails</p>
-                        </li>
-                        <li>
-                            <a href="/blog#key-elements" class="text-primary hover:underline font-semibold">Key Elements of High-Converting Thumbnails</a>
-                            <p class="text-sm text-gray-600">Discover what makes thumbnails effective</p>
-                        </li>
-                        <li>
-                            <a href="/blog#common-mistakes" class="text-primary hover:underline font-semibold">Common Thumbnail Mistakes</a>
-                            <p class="text-sm text-gray-600">Avoid these thumbnail design errors</p>
-                        </li>
-                        <li>
-                            <a href="/blog#ai-revolution" class="text-primary hover:underline font-semibold">AI Thumbnail Revolution</a>
-                            <p class="text-sm text-gray-600">How AI is changing thumbnail creation</p>
-                        </li>
-                        <li>
-                            <a href="/blog#ab-testing" class="text-primary hover:underline font-semibold">Thumbnail A/B Testing</a>
-                            <p class="text-sm text-gray-600">Test and optimize your thumbnails</p>
-                        </li>
-                        <li>
-                            <a href="/blog-ai-image-generation" class="text-primary hover:underline font-semibold">AI Image Generation Guide</a>
-                            <p class="text-sm text-gray-600">Complete guide to AI image generation for content creators</p>
-                        </li>
-                    </ul>
-                </div>
             </div>
             
             <div class="mt-8">
@@ -133,7 +103,6 @@
             
             <div class="footer-links">
                 <a href="/" class="footer-link">Home</a>
-                <a href="/blog" class="footer-link">Blog</a>
                 <a href="#api-info" class="footer-link">API</a>
                 <a href="/terms" class="footer-link">Terms</a>
                 <a href="/privacy" class="footer-link">Privacy</a>
@@ -174,4 +143,4 @@
     <script src="/static/js/app.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
 </body>
-</html> 
+</html>
