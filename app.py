@@ -45,16 +45,6 @@ def index():
     """Render the main page with the form"""
     return render_template('index.html')
 
-@app.route('/blog')
-def blog():
-    """Render the blog page with SEO-focused content"""
-    return render_template('blog.html')
-
-@app.route('/blog-ai-image-generation')
-def blog_ai_image_generation():
-    """Render the AI image generation blog page"""
-    return render_template('blog-ai-image-generation.html')
-
 @app.route('/text-to-image')
 def text_to_image():
     """Render the text-to-image page"""
