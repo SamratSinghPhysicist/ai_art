@@ -58,6 +58,33 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    
+    <!-- Initialize Firebase -->
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "{{ firebase_api_key }}",
+            authDomain: "{{ firebase_auth_domain }}",
+            projectId: "{{ firebase_project_id }}",
+            appId: "{{ firebase_app_id }}"
+        };
+        
+        // Initialize Firebase
+        if (typeof firebase !== 'undefined') {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log("Firebase initialized");
+            }
+        } else {
+            console.error("Firebase SDK not available");
+        }
+    </script>
+    
+    <!-- Global Auth Handler (loads first) -->
+    <script src="/static/js/auth-global.js"></script>
+    
+    <!-- Auth Fix Script -->
+    <script src="/static/js/auth-fix.js"></script>
 
     <style>
         :root {
@@ -656,48 +683,26 @@ Content-Type: application/json
             </div>
             
             <div class="footer-links">
-                <a href="/" class="footer-link">Home</a>
-                <a href="#api-info" class="footer-link">API</a>
+                <a href="/about" class="footer-link">About</a>
                 <a href="/terms" class="footer-link">Terms</a>
                 <a href="/privacy" class="footer-link">Privacy</a>
+                <a href="/#api-info" class="footer-link">API</a>
+                <a href="mailto:support@aiart-zroo.onrender.com" class="footer-link">Contact</a>
             </div>
             
-            <p class="footer-description">
-                AI Art allows you to create and transform images using cutting-edge artificial intelligence. 
-                Powered by state-of-the-art diffusion models, our platform offers a simple and intuitive way to 
-                generate artwork, modify photos, and more.
-            </p>
-            
             <p class="footer-copyright">
-                © 2025 AI Art. All rights reserved. Powered by Stability AI.
+                &copy; 2023 AI Art. All rights reserved.
             </p>
         </div>
     </footer>
     
     <script src="/static/js/main.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/auth-modal.js"></script>
     <script>
-        // Initialize Firebase config
-        const firebaseConfig = {
-            apiKey: "{{firebase_api_key}}",
-            authDomain: "{{firebase_auth_domain}}",
-            projectId: "{{firebase_project_id}}",
-            appId: "{{firebase_app_id}}"
-        };
-        
-        // Wait for the DOM to be fully loaded
+        // DOM ready event handler
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM loaded - initializing auth");
-            
-            // Initialize Firebase if not already initialized
-            if (typeof firebase !== 'undefined') {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                    console.log("Firebase initialized");
-                }
-            } else {
-                console.error("Firebase SDK not available - check script loading");
-            }
+            console.log("DOM loaded - checking auth state");
             
             // Get all login/signup buttons
             const authButtons = document.querySelectorAll('.open-auth-modal');
@@ -713,21 +718,27 @@ Content-Type: application/json
                     const mode = this.getAttribute('data-mode');
                     console.log("Auth mode:", mode);
                     
-                    // Get or create the auth modal
-                    let authModal = document.getElementById('authModal');
-                    if (!authModal) {
-                        console.log("Creating auth modal");
-                        createAuthModal();
-                        authModal = document.getElementById('authModal');
-                    }
-                    
-                    if (authModal) {
-                        // Update modal content for login or signup
-                        updateModalContent(mode);
+                    // Use auth-modal.js openAuthModal function if available
+                    if (window.openAuthModal) {
+                        window.openAuthModal(mode);
+                    } else {
+                        // Fallback to local modal creation and handling
+                        // Get or create the auth modal
+                        let authModal = document.getElementById('authModal');
+                        if (!authModal) {
+                            console.log("Creating auth modal");
+                            createAuthModal();
+                            authModal = document.getElementById('authModal');
+                        }
                         
-                        // Show the modal
-                        authModal.classList.add('active');
-                        document.body.style.overflow = 'hidden';
+                        if (authModal) {
+                            // Update modal content for login or signup
+                            updateModalContent(mode);
+                            
+                            // Show the modal
+                            authModal.classList.add('active');
+                            document.body.style.overflow = 'hidden';
+                        }
                     }
                 });
             });
@@ -1207,6 +1218,5 @@ Content-Type: application/json
         });
     </script>
     <script src="/static/js/firebase-debug.js"></script>
-    <script src="/static/js/auth-modal.js"></script>
 </body>
 </html>

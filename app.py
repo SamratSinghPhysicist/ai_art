@@ -58,6 +58,7 @@ def index():
 def text_to_image():
     """Render the text-to-image page"""
     return render_template('text-to-image.html',
+                          user=current_user,
                           firebase_api_key=firebase_config.get('apiKey'),
                           firebase_auth_domain=firebase_config.get('authDomain'),
                           firebase_project_id=firebase_config.get('projectId'),
@@ -67,6 +68,7 @@ def text_to_image():
 def image_to_image():
     """Render the image-to-image page"""
     return render_template('image-to-image.html',
+                          user=current_user,
                           firebase_api_key=firebase_config.get('apiKey'),
                           firebase_auth_domain=firebase_config.get('authDomain'),
                           firebase_project_id=firebase_config.get('projectId'),
@@ -630,6 +632,75 @@ def enhance_prompt():
         print(f"Error in enhance_prompt: {str(e)}")
         print(traceback.format_exc())
         return jsonify({'error': str(e)}), 500
+
+@app.route('/validate-token', methods=['POST'])
+def validate_token():
+    """Validate a Firebase ID token"""
+    try:
+        if not request.json:
+            return jsonify({'valid': False, 'error': 'Invalid request format'}), 400
+            
+        # Check for token in different possible formats
+        token = None
+        if 'token' in request.json:
+            token = request.json['token']
+        elif 'idToken' in request.json:
+            token = request.json['idToken']
+            
+        if not token:
+            return jsonify({'valid': False, 'error': 'No token provided'}), 400
+        
+        try:
+            # Try to verify the token with Firebase
+            decoded_token = firebase_admin_auth.verify_id_token(token)
+            
+            # Token is valid, get user info
+            uid = decoded_token['uid']
+            
+            # Check if user exists in database
+            user = User.find_by_firebase_uid(uid)
+            if user:
+                # User exists, token is valid
+                return jsonify({
+                    'valid': True, 
+                    'uid': uid,
+                    'email': user.email if hasattr(user, 'email') else None
+                })
+            else:
+                # Token is valid but user doesn't exist in our database
+                # This is unusual but might happen if the database is out of sync
+                # Let's create the user record from Firebase
+                try:
+                    firebase_user = firebase_admin_auth.get_user(uid)
+                    
+                    # Create user record
+                    user_data = {
+                        'uid': uid,
+                        'email': firebase_user.email,
+                        'displayName': firebase_user.display_name,
+                        'emailVerified': firebase_user.email_verified
+                    }
+                    
+                    user_obj = User.create_or_update_from_firebase(user_data)
+                    if user_obj:
+                        return jsonify({
+                            'valid': True, 
+                            'uid': uid,
+                            'email': firebase_user.email
+                        })
+                    else:
+                        return jsonify({'valid': False, 'error': 'Failed to create user record'}), 500
+                except Exception as user_error:
+                    print(f"Error creating user from token: {user_error}")
+                    # Still consider the token valid even if we couldn't create the user
+                    return jsonify({'valid': True, 'uid': uid})
+                
+        except Exception as e:
+            print(f"Token validation error: {e}")
+            return jsonify({'valid': False, 'error': 'Invalid token'})
+    except Exception as e:
+        print(f"Validate token error: {e}")
+        return jsonify({'valid': False, 'error': str(e)})
 
 @app.route('/google4732be05fe4d2482.html')
 def google_verification():

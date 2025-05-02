@@ -18,6 +18,33 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 
+    <!-- Initialize Firebase First -->
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "{{ firebase_api_key }}",
+            authDomain: "{{ firebase_auth_domain }}",
+            projectId: "{{ firebase_project_id }}",
+            appId: "{{ firebase_app_id }}"
+        };
+        
+        // Initialize Firebase
+        if (typeof firebase !== 'undefined') {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log("Firebase initialized");
+            }
+        } else {
+            console.error("Firebase SDK not available");
+        }
+    </script>
+
+    <!-- Global Auth Handler (loads first) -->
+    <script src="/static/js/auth-global.js"></script>
+    
+    <!-- Auth Fix Script -->
+    <script src="/static/js/auth-fix.js"></script>
+
     <!-- Google Adsense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
     crossorigin="anonymous"></script>
@@ -47,7 +74,6 @@
             </nav>
         </div>
     </header>
-
 
     <main class="main-content">
         <div class="container my-4">
@@ -243,52 +269,7 @@
         </div>
     </footer>
 
-    <!-- Auth Modal HTML -->
-    <div class="auth-modal-overlay" id="authModal">
-        <div class="auth-modal">
-            <button class="auth-modal-close" id="closeAuthModal">×</button>
-            
-            <div class="auth-modal-left">
-                <div class="auth-modal-logo">
-                    <span class="auth-modal-logo-text">AI Art</span>
-                </div>
-                
-                <h2 class="auth-modal-title" id="authModalTitle">Welcome Back</h2>
-                <p class="auth-modal-subtitle" id="authModalSubtitle">Sign in to continue your creative journey</p>
-                
-                <button id="googleAuthBtn" class="auth-provider-button">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" class="auth-provider-icon">
-                    <span class="auth-provider-text" id="googleBtnText">Sign in with Google</span>
-                </button>
-                
-                <!-- Future auth providers would go here -->
-                <div class="auth-provider-button" style="opacity: 0.6; cursor: not-allowed;">
-                    <svg class="auth-provider-icon" viewBox="0 0 24 24" fill="#000000"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/></svg>
-                    <span class="auth-provider-text">More options coming soon</span>
-                </div>
-                
-                <div class="auth-modal-footer">
-                    <p id="authSwitchText">Don't have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Sign up</a></p>
-                </div>
-            </div>
-            
-            <div class="auth-modal-right">
-                <div class="auth-decorations">
-                    <div class="auth-decoration auth-deco-1"></div>
-                    <div class="auth-decoration auth-deco-2"></div>
-                    <div class="floating-icon icon-1">✨</div>
-                    <div class="floating-icon icon-2">🎨</div>
-                    <div class="floating-icon icon-3">🖌️</div>
-                </div>
-                
-                <div class="auth-right-content">
-                    <img src="https://images.unsplash.com/photo-1581591524425-c7e0978865fc?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" alt="AI generated art" class="auth-right-image">
-                    <h3 class="auth-right-title">Unleash Your Creativity</h3>
-                    <p class="auth-right-description">Join our community and start creating stunning AI-generated artwork today.</p>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Auth Modal will be created by auth-modal.js -->
 
     <!-- Auth Modal Styles -->
     <style>
@@ -597,145 +578,32 @@
         }
     </style>
 
+    <script src="/static/js/app.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
+    <script src="/static/js/auth-modal.js"></script>
     <script>
-        // Initialize Firebase config
-        const firebaseConfig = {
-            apiKey: "{{firebase_api_key}}",
-            authDomain: "{{firebase_auth_domain}}",
-            projectId: "{{firebase_project_id}}",
-            appId: "{{firebase_app_id}}"
-        };
-        
-        // Initialize Firebase
-        if (typeof firebase !== 'undefined') {
-            if (!firebase.apps.length) {
-                firebase.initializeApp(firebaseConfig);
-                console.log("Firebase initialized");
-            }
-        } else {
-            console.error("Firebase SDK not available");
-        }
-        
-        // DOM content loaded event
+        // We no longer need this manual auth check as auth-global.js handles it
+        // The script is kept for compatibility but does not run
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM loaded - initializing auth buttons");
-            
-            // Get all auth buttons
-            const authButtons = document.querySelectorAll('.open-auth-modal');
-            console.log("Found auth buttons:", authButtons.length);
-            
-            // Get modal elements
-            const authModal = document.getElementById('authModal');
-            const closeBtn = document.getElementById('closeAuthModal');
-            const authModalTitle = document.getElementById('authModalTitle');
-            const authModalSubtitle = document.getElementById('authModalSubtitle');
-            const googleBtnText = document.getElementById('googleBtnText');
-            const authSwitchText = document.getElementById('authSwitchText');
-            const googleAuthBtn = document.getElementById('googleAuthBtn');
-            
-            // Add click handler to each auth button
-            authButtons.forEach(button => {
+            // Setup auth modal buttons (in case they weren't set up by auth-modal.js)
+            document.querySelectorAll('.open-auth-modal').forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
                     const mode = this.getAttribute('data-mode');
-                    console.log("Auth button clicked:", mode);
-                    
-                    // Update modal content based on mode
-                    if (mode === 'login') {
-                        authModalTitle.textContent = 'Welcome Back';
-                        authModalSubtitle.textContent = 'Sign in to continue your creative journey';
-                        googleBtnText.textContent = 'Sign in with Google';
-                        authSwitchText.innerHTML = 'Don\'t have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Sign up</a>';
+                    if (window.openAuthModal) {
+                        window.openAuthModal(mode);
                     } else {
-                        authModalTitle.textContent = 'Create Account';
-                        authModalSubtitle.textContent = 'Get started with your free AI Art account';
-                        googleBtnText.textContent = 'Sign up with Google';
-                        authSwitchText.innerHTML = 'Already have an account? <a href="#" class="auth-footer-link" id="authSwitchBtn">Login</a>';
-                    }
-                    
-                    // Re-attach switch button event handler
-                    const switchBtn = document.getElementById('authSwitchBtn');
-                    if (switchBtn) {
-                        switchBtn.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            const newMode = mode === 'login' ? 'signup' : 'login';
-                            const button = document.querySelector(`.open-auth-modal[data-mode="${newMode}"]`);
-                            if (button) button.click();
-                        });
-                    }
-                    
-                    // Show the modal
-                    authModal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                });
-            });
-            
-            // Close modal when close button is clicked
-            if (closeBtn) {
-                closeBtn.addEventListener('click', function() {
-                    authModal.classList.remove('active');
-                    document.body.style.overflow = '';
-                });
-            }
-            
-            // Close modal when clicking outside
-            if (authModal) {
-                authModal.addEventListener('click', function(e) {
-                    if (e.target === this) {
-                        this.classList.remove('active');
-                        document.body.style.overflow = '';
+                        console.error("openAuthModal not available");
+                        // Create the auth modal manually if needed
+                        const authModal = document.getElementById('authModal');
+                        if (!authModal) {
+                            alert("Please go to the homepage to log in. Authentication on this page is experiencing issues.");
+                            window.location.href = '/?action=' + mode;
+                        } else {
+                            authModal.classList.add('active');
+                        }
                     }
                 });
-            }
-            
-            // Handle Google authentication
-            if (googleAuthBtn) {
-                googleAuthBtn.addEventListener('click', function() {
-                    if (typeof firebase !== 'undefined' && firebase.auth) {
-                        const provider = new firebase.auth.GoogleAuthProvider();
-                        firebase.auth().signInWithPopup(provider)
-                            .then((result) => {
-                                return result.user.getIdToken();
-                            })
-                            .then((idToken) => {
-                                // Determine endpoint based on current mode
-                                const currentMode = document.getElementById('authModalTitle').textContent === 'Welcome Back' ? 'login' : 'signup';
-                                const endpoint = currentMode === 'login' ? '/login' : '/signup';
-                                
-                                return fetch(endpoint, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({ idToken: idToken })
-                                });
-                            })
-                            .then(response => response.json())
-                            .then(data => {
-                                if (data.success) {
-                                    window.location.href = data.redirect;
-                                } else {
-                                    console.error(data.error);
-                                    alert('Authentication error: ' + data.error);
-                                }
-                            })
-                            .catch((error) => {
-                                console.error('Authentication error:', error);
-                                alert('Authentication error: ' + error.message);
-                            });
-                    } else {
-                        alert('Firebase authentication is not available. Please try again later.');
-                    }
-                });
-            }
-            
-            // Close modal when pressing Escape key
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape' && authModal && authModal.classList.contains('active')) {
-                    authModal.classList.remove('active');
-                    document.body.style.overflow = '';
-                }
             });
         });
     </script>
