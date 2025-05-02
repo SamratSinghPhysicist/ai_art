@@ -124,8 +124,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Current auth mode (login or signup)
     let currentAuthMode = 'login';
     
-    // Open modal with specific mode
-    function openAuthModal(mode) {
+    // Open modal with specific mode - making it globally available
+    window.openAuthModal = function(mode) {
         if (!authModal) {
             console.error("Auth modal not found!");
             return;
@@ -135,10 +135,10 @@ document.addEventListener('DOMContentLoaded', function() {
         updateAuthModalContent();
         authModal.classList.add('active');
         document.body.style.overflow = 'hidden'; // Prevent scrolling when modal is open
-    }
+    };
     
-    // Close modal
-    function closeAuthModal() {
+    // Close modal - making it globally available
+    window.closeAuthModal = function() {
         if (!authModal) {
             console.error("Auth modal not found!");
             return;
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         authModal.classList.remove('active');
         document.body.style.overflow = ''; // Restore scrolling
-    }
+    };
     
     // Update modal content based on mode
     function updateAuthModalContent() {
@@ -178,6 +178,109 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         currentAuthMode = currentAuthMode === 'login' ? 'signup' : 'login';
         updateAuthModalContent();
+    }
+    
+    // UI update functions shared with other scripts
+    updateUIForLoggedInUser = function(user) {
+        console.log('[Auth Modal] Updating UI for logged in user:', user.email);
+        
+        // Force update navbar if available
+        if (typeof window.forceUpdateNavbar === 'function') {
+            window.forceUpdateNavbar(true);
+        }
+        
+        // Close modal if it's open
+        if (authModal && authModal.classList.contains('active')) {
+            closeAuthModal();
+        }
+    };
+    
+    updateUIForLoggedOutUser = function() {
+        console.log('[Auth Modal] Updating UI for logged out user');
+        
+        // Force update navbar if available
+        if (typeof window.forceUpdateNavbar === 'function') {
+            window.forceUpdateNavbar(false);
+        }
+    };
+    
+    // Event Listeners - Only add these if we found the elements
+    function setupEventListeners() {
+        // Find all open modal buttons
+        const openAuthModalBtns = document.querySelectorAll('.open-auth-modal');
+        
+        if (openAuthModalBtns.length > 0) {
+            openAuthModalBtns.forEach(btn => {
+                // Remove any existing listeners to avoid duplicates
+                const newBtn = btn.cloneNode(true);
+                if (btn.parentNode) {
+                    btn.parentNode.replaceChild(newBtn, btn);
+                }
+                
+                // Add fresh listener
+                newBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    console.log("Auth modal button clicked");
+                    const mode = this.getAttribute('data-mode') || 'login';
+                    openAuthModal(mode);
+                });
+            });
+        } else {
+            console.warn("No auth modal buttons found on page");
+        }
+        
+        if (closeAuthModal) {
+            closeAuthModal.addEventListener('click', function() {
+                window.closeAuthModal();
+            });
+        }
+        
+        // Close modal when clicking outside the modal content
+        if (authModal) {
+            authModal.addEventListener('click', (e) => {
+                if (e.target === authModal) {
+                    window.closeAuthModal();
+                }
+            });
+        }
+        
+        // Handle Google auth
+        if (googleAuthBtn) {
+            googleAuthBtn.addEventListener('click', handleGoogleAuth);
+        } else {
+            console.warn("Google auth button not found");
+        }
+    }
+    
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Close modal when pressing Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && authModal && authModal.classList.contains('active')) {
+            window.closeAuthModal();
+        }
+    });
+    
+    // Check URL for login/signup parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('action')) {
+        const action = urlParams.get('action');
+        if (action === 'login' || action === 'signup') {
+            openAuthModal(action);
+        }
+    }
+    
+    // Redirect handling for direct access to login/signup URLs
+    if (window.location.pathname === '/login') {
+        // Redirect to home with login modal
+        window.history.replaceState({}, document.title, '/?action=login');
+        openAuthModal('login');
+    }
+    else if (window.location.pathname === '/signup') {
+        // Redirect to home with signup modal
+        window.history.replaceState({}, document.title, '/?action=signup');
+        openAuthModal('signup');
     }
     
     // Handle Google authentication
@@ -219,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then((data) => {
                 if (data.success) {
                     // Close the modal first
-                    closeAuthModal();
+                    window.closeAuthModal();
                     
                     // Force update UI immediately before redirecting
                     updateUIForLoggedInUser({ email: "user@example.com" });
@@ -237,77 +340,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Authentication error:', error);
                 alert('Authentication error: ' + error.message);
             });
-    }
-    
-    // Event Listeners - Only add these if we found the elements
-    if (openAuthModalBtns.length > 0) {
-        openAuthModalBtns.forEach(btn => {
-            // Remove any existing listeners to avoid duplicates
-            const newBtn = btn.cloneNode(true);
-            if (btn.parentNode) {
-                btn.parentNode.replaceChild(newBtn, btn);
-            }
-            
-            // Add fresh listener
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const mode = this.getAttribute('data-mode');
-                openAuthModal(mode);
-                return false; // Ensure no navigation occurs
-            });
-        });
-    } else {
-        console.warn("No auth modal buttons found on page");
-    }
-    
-    if (closeAuthModal) {
-        closeAuthModal.addEventListener('click', function() {
-            closeAuthModal();
-        });
-    }
-    
-    // Close modal when clicking outside the modal content
-    if (authModal) {
-        authModal.addEventListener('click', (e) => {
-            if (e.target === authModal) {
-                closeAuthModal();
-            }
-        });
-    }
-    
-    // Handle Google auth
-    if (googleAuthBtn) {
-        googleAuthBtn.addEventListener('click', handleGoogleAuth);
-    } else {
-        console.warn("Google auth button not found");
-    }
-    
-    // Close modal when pressing Escape key
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && authModal && authModal.classList.contains('active')) {
-            closeAuthModal();
-        }
-    });
-    
-    // Check URL for login/signup parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('action')) {
-        const action = urlParams.get('action');
-        if (action === 'login' || action === 'signup') {
-            openAuthModal(action);
-        }
-    }
-    
-    // Redirect handling for direct access to login/signup URLs
-    if (window.location.pathname === '/login') {
-        // Redirect to home with login modal
-        window.history.replaceState({}, document.title, '/?action=login');
-        openAuthModal('login');
-    }
-    else if (window.location.pathname === '/signup') {
-        // Redirect to home with signup modal
-        window.history.replaceState({}, document.title, '/?action=signup');
-        openAuthModal('signup');
     }
     
     // Function to create the modal if it doesn't exist
@@ -727,283 +759,4 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add modal to body
         document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
-    
-    // Make functions available globally
-    window.openAuthModal = openAuthModal;
-    window.closeAuthModal = closeAuthModal;
-});
-    
-// Function to update navigation for logged-out user
-updateUIForLoggedOutUser = function() {
-    // Give DOM a moment to update if needed
-    setTimeout(() => {
-        console.log("Updating UI for logged-out user");
-        
-        // Target the container for the nav links
-        const navLinksContainer = document.querySelector('.nav-links');
-        if (!navLinksContainer) {
-            console.error("Could not find .nav-links container");
-            return;
-        }
-        
-        // Find potential placeholders for Login/Signup (My Images/Logout or username/email)
-        let myImagesLink = navLinksContainer.querySelector('a.nav-link[href="/dashboard"]');
-        let logoutLink = navLinksContainer.querySelector('a.nav-link[href="/logout"]');
-        
-        // Restore Login link if necessary
-        if (myImagesLink) {
-            const loginLink = document.createElement('a');
-            loginLink.textContent = 'Login';
-            loginLink.href = '#';
-            loginLink.className = 'nav-link open-auth-modal';
-            loginLink.setAttribute('data-mode', 'login');
-            
-            // Add event listener to the new link
-            loginLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (typeof window.openAuthModal === 'function') {
-                    window.openAuthModal('login');
-                }
-            });
-            
-            myImagesLink.parentNode.replaceChild(loginLink, myImagesLink);
-        } else {
-            // Ensure Login link exists even if My Images wasn't found
-            if (!navLinksContainer.querySelector('a.nav-link[data-mode="login"]') && 
-                !navLinksContainer.querySelector('a.nav-link.open-auth-modal')) {
-                const loginLink = document.createElement('a');
-                loginLink.textContent = 'Login';
-                loginLink.href = '#';
-                loginLink.className = 'nav-link open-auth-modal';
-                loginLink.setAttribute('data-mode', 'login');
-                
-                // Add event listener
-                loginLink.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    if (typeof window.openAuthModal === 'function') {
-                        window.openAuthModal('login');
-                    }
-                });
-                
-                navLinksContainer.appendChild(loginLink);
-            }
-        }
-        
-        // Restore Sign Up link if necessary
-        if (logoutLink) {
-            const signupLink = document.createElement('a');
-            signupLink.textContent = 'Sign Up';
-            signupLink.href = '#';
-            signupLink.className = 'nav-link open-auth-modal';
-            signupLink.setAttribute('data-mode', 'signup');
-            
-            // Add event listener to the new link
-            signupLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (typeof window.openAuthModal === 'function') {
-                    window.openAuthModal('signup');
-                }
-            });
-            
-            logoutLink.parentNode.replaceChild(signupLink, logoutLink);
-        } else {
-            // Ensure Sign Up link exists even if Logout wasn't found
-            if (!navLinksContainer.querySelector('a.nav-link[data-mode="signup"]') && 
-                navLinksContainer.querySelector('a.nav-link.open-auth-modal')) {
-                const signupLink = document.createElement('a');
-                signupLink.textContent = 'Sign Up';
-                signupLink.href = '#';
-                signupLink.className = 'nav-link open-auth-modal';
-                signupLink.setAttribute('data-mode', 'signup');
-                
-                // Add event listener
-                signupLink.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    if (typeof window.openAuthModal === 'function') {
-                        window.openAuthModal('signup');
-                    }
-                });
-                
-                navLinksContainer.appendChild(signupLink);
-            }
-        }
-        
-        // Re-attach event listeners to the newly created links
-        document.querySelectorAll('.open-auth-modal').forEach(btn => {
-            // Remove existing listeners first to avoid duplicates
-            const newBtn = btn.cloneNode(true);
-            if (btn.parentNode) {
-                btn.parentNode.replaceChild(newBtn, btn);
-            }
-            
-            newBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                const mode = this.getAttribute('data-mode');
-                if (typeof window.openAuthModal === 'function') {
-                    window.openAuthModal(mode);
-                }
-            });
-        });
-        
-    }, 0); // Use setTimeout to ensure DOM updates have occurred
-};
-    
-// Update UI for logged-in user
-updateUIForLoggedInUser = function(user) {
-    // Give DOM a moment to update if needed
-    setTimeout(() => {
-        if (user && user.email) {
-            console.log('Updating UI for logged-in user:', user.email);
-        } else {
-            console.log('Updating UI for logged-in user (no email available)');
-        }
-        
-        // Target the container for the nav links
-        const navLinksContainer = document.querySelector('.nav-links');
-        if (!navLinksContainer) {
-            console.error("Could not find .nav-links container");
-            return;
-        }
-        
-        // Find login and signup links if they exist
-        let loginLink = navLinksContainer.querySelector('a.nav-link[data-mode="login"]');
-        let signupLink = navLinksContainer.querySelector('a.nav-link[data-mode="signup"]');
-        
-        // Check for existing auth links in case they don't have data-mode
-        if (!loginLink) {
-            loginLink = navLinksContainer.querySelector('a.nav-link.open-auth-modal');
-        }
-        
-        if (!signupLink && loginLink) {
-            signupLink = Array.from(navLinksContainer.querySelectorAll('a.nav-link.open-auth-modal'))
-                .find(link => link !== loginLink);
-        }
-        
-        // Create My Images link
-        if (loginLink) {
-            const myImagesLink = document.createElement('a');
-            myImagesLink.textContent = 'My Images';
-            myImagesLink.href = '/dashboard';
-            myImagesLink.className = 'nav-link';
-            
-            // Replace login link with My Images link
-            if (loginLink.parentNode) {
-                loginLink.parentNode.replaceChild(myImagesLink, loginLink);
-            }
-        } else if (!navLinksContainer.querySelector('a.nav-link[href="/dashboard"]')) {
-            // Add My Images link if it doesn't exist and there's no login link to replace
-            const myImagesLink = document.createElement('a');
-            myImagesLink.textContent = 'My Images';
-            myImagesLink.href = '/dashboard';
-            myImagesLink.className = 'nav-link';
-            navLinksContainer.appendChild(myImagesLink);
-        }
-        
-        // Create Logout link
-        if (signupLink) {
-            const logoutLink = document.createElement('a');
-            logoutLink.textContent = 'Logout';
-            logoutLink.href = '/logout';
-            logoutLink.className = 'nav-link';
-            
-            // Add logout click handler
-            logoutLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (typeof window.ensureCompleteLogout === 'function') {
-                    window.ensureCompleteLogout();
-                } else {
-                    window.location.href = '/logout';
-                }
-            });
-            
-            // Replace signup link with logout link
-            if (signupLink.parentNode) {
-                signupLink.parentNode.replaceChild(logoutLink, signupLink);
-            }
-        } else if (!navLinksContainer.querySelector('a.nav-link[href="/logout"]')) {
-            // Add Logout link if it doesn't exist and there's no signup link to replace
-            const logoutLink = document.createElement('a');
-            logoutLink.textContent = 'Logout';
-            logoutLink.href = '/logout';
-            logoutLink.className = 'nav-link';
-            
-            // Add logout click handler
-            logoutLink.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (typeof window.ensureCompleteLogout === 'function') {
-                    window.ensureCompleteLogout();
-                } else {
-                    window.location.href = '/logout';
-                }
-            });
-            
-            navLinksContainer.appendChild(logoutLink);
-        }
-    }, 0); // Use setTimeout to ensure DOM updates have occurred
-};
-
-// Check auth state and update UI immediately when the script loads
-(function() {
-    console.log("Auth modal script initialized - Immediate auth check");
-    
-    // First, check localStorage for an existing token
-    const storedToken = localStorage.getItem('authToken');
-    if (storedToken) {
-        console.log("Found token in localStorage, validating...");
-        
-        // Validate the token with the server
-        fetch('/validate-token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ token: storedToken })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.valid) {
-                console.log("Token is valid, updating UI for logged in user");
-                // Force update UI for logged in user
-                if (typeof updateUIForLoggedInUser === 'function') {
-                    updateUIForLoggedInUser({ email: data.email || "user@example.com" });
-                } else {
-                    console.error("updateUIForLoggedInUser function not available yet");
-                    // Try again after a short delay
-                    setTimeout(() => {
-                        if (typeof updateUIForLoggedInUser === 'function') {
-                            updateUIForLoggedInUser({ email: data.email || "user@example.com" });
-                        }
-                    }, 500);
-                }
-            } else {
-                console.log("Token is invalid, updating UI for logged out user");
-                localStorage.removeItem('authToken');
-                if (typeof updateUIForLoggedOutUser === 'function') {
-                    updateUIForLoggedOutUser();
-                }
-            }
-        })
-        .catch(error => {
-            console.error("Error validating token:", error);
-            // Remove the token and update UI for logged out user
-            localStorage.removeItem('authToken');
-            if (typeof updateUIForLoggedOutUser === 'function') {
-                updateUIForLoggedOutUser();
-            }
-        });
-    } else {
-        console.log("No token found in localStorage, ensuring logged out UI");
-        // Ensure UI is updated for logged out user
-        if (typeof updateUIForLoggedOutUser === 'function') {
-            updateUIForLoggedOutUser();
-        } else {
-            console.log("updateUIForLoggedOutUser function not available yet");
-            // Try again after a short delay
-            setTimeout(() => {
-                if (typeof updateUIForLoggedOutUser === 'function') {
-                    updateUIForLoggedOutUser();
-                }
-            }, 500);
-        }
-    }
-})(); 
+}); 

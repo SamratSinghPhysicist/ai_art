@@ -427,6 +427,9 @@ input[type="file"].form-input {
   display: flex;
   gap: 1.5rem;
   align-items: center;
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.3s ease;
 }
 
 .nav-link {
@@ -1790,4 +1793,36 @@ html {
 
 .mr-2 {
     margin-right: 0.5rem;
+}
+
+/* Auth initialization styling */
+.auth-initializing .nav-links {
+    visibility: hidden;
+    opacity: 0;
+    transition: none; /* No transition during initialization phase */
+}
+
+/* Ensure login/signup buttons are properly styled */
+.nav-link.open-auth-modal {
+    cursor: pointer;
+}
+
+/* Add login/logout state classes */
+.auth-logged-in .nav-link[data-mode="login"],
+.auth-logged-in .nav-link[data-mode="signup"],
+.auth-logged-out .nav-link[href="/dashboard"],
+.auth-logged-out .nav-link[href="/logout"] {
+    display: none !important; /* Hide inappropriate auth state buttons */
+}
+
+/* Delay initial load state transition */
+body::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    z-index: -1;
+    transition: opacity 0.3s ease;
 }

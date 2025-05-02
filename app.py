@@ -54,6 +54,7 @@ def load_user(user_id):
 def index():
     """Render the main page with the form"""
     return render_template('index.html',
+                          user=current_user,
                           firebase_api_key=firebase_config.get('apiKey'),
                           firebase_auth_domain=firebase_config.get('authDomain'),
                           firebase_project_id=firebase_config.get('projectId'),
@@ -82,7 +83,12 @@ def image_to_image():
 @app.route('/sitemap-page')
 def sitemap_page():
     """Render the human-readable sitemap page"""
-    return render_template('sitemap.html')
+    return render_template('sitemap.html',
+                          user=current_user,
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
 
 @app.route('/sitemap.xml')
 def serve_sitemap():
@@ -196,14 +202,42 @@ def verify_email():
 def logout():
     """Handle user logout"""
     logout_user()
-    return redirect(url_for('login'))
+    # Return a JSON response if it's an AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'success': True, 'redirect': url_for('login')})
+    return redirect(url_for('index'))
+
+@app.route('/check-auth-status')
+def check_auth_status():
+    """Check if the user is authenticated and return the status"""
+    if current_user.is_authenticated:
+        return jsonify({
+            'authenticated': True,
+            'user': {
+                'email': current_user.email if hasattr(current_user, 'email') else None,
+                'name': current_user.name if hasattr(current_user, 'name') else None
+            }
+        })
+    else:
+        return jsonify({'authenticated': False})
 
 @app.route('/dashboard')
 @login_required
 def dashboard():
     """Display user's saved images"""
-    images = current_user.get_thumbnails()
-    return render_template('dashboard.html', user=current_user, thumbnails=images)
+    # Double check authentication - sometimes this can happen with stale sessions
+    if not current_user.is_authenticated:
+        print(f"Dashboard access attempted without valid auth")
+        return redirect(url_for('index', action='login'))
+    
+    try:
+        images = current_user.get_thumbnails()
+        return render_template('dashboard.html', user=current_user, thumbnails=images)
+    except Exception as e:
+        print(f"Error loading dashboard: {str(e)}")
+        # If there's an error loading the dashboard, log the user out and redirect
+        logout_user()
+        return redirect(url_for('index', action='login', error='session_expired'))
 
 @app.route('/image/<image_id>/delete', methods=['POST'])
 @login_required
@@ -780,7 +814,7 @@ def test_processed_folder():
 @app.route('/api-docs')
 def api_docs():
     """Render the API documentation page"""
-    return render_template('api.html',
+    return render_template('api.html', 
                           user=current_user,
                           firebase_api_key=firebase_config.get('apiKey'),
                           firebase_auth_domain=firebase_config.get('authDomain'),

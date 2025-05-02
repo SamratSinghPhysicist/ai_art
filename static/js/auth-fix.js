@@ -77,6 +77,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set a flag indicating logout in progress to avoid navigation before complete
         localStorage.setItem('logout_in_progress', 'true');
         
+        // Immediately update UI to logged out state
+        if (typeof forceUpdateNavbar === 'function') {
+            forceUpdateNavbar(false);
+        }
+        
         // Clear all auth-related localStorage items immediately
         localStorage.removeItem('authToken');
         
@@ -108,7 +113,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Promise for server logout
         const serverLogoutPromise = fetch('/logout', {
             method: 'GET',
-            credentials: 'same-origin'
+            credentials: 'same-origin',
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            }
         })
         .then(response => {
             console.log('Server-side logout response:', response.status);
@@ -148,13 +157,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Force reload from server (not from cache) to ensure fresh state
                 console.log('Redirecting to home page with forced reload');
-                window.location.href = '/?nocache=' + new Date().getTime();
+                
+                // Specify a full cache-busting reload
+                const reloadUrl = '/?nocache=' + new Date().getTime();
+                
+                // Reset auth-related data one last time before reload
+                localStorage.removeItem('authToken');
+                sessionStorage.clear();
+                
+                // Use different reload method based on browser support
+                if (navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > -1) {
+                    // IE-specific reload
+                    document.execCommand('ClearAuthenticationCache');
+                    window.location.href = reloadUrl;
+                } else {
+                    // Modern browser - use location.replace for cleaner history
+                    window.location.replace(reloadUrl);
+                }
             })
             .catch(error => {
                 console.error('Error during logout process:', error);
                 
                 // Still redirect even if there was an error
                 localStorage.removeItem('logout_in_progress');
+                localStorage.removeItem('authToken');
                 window.location.href = '/?nocache=' + new Date().getTime();
             });
     };
@@ -174,10 +200,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (authToken) {
             console.log('Found auth token in localStorage, syncing with server...');
             
-            // Force immediate UI update based on token presence
-            if (typeof window.hasAuthToken !== 'undefined' && window.hasAuthToken) {
-                forceUpdateNavbar(true);
-            }
+            // Immediately force UI to loading state instead of assuming logged in
+            console.log('Setting UI to indeterminate state while validating token');
             
             // We need to validate the token with our server
             // This ensures the session is recognized on both client and server
@@ -191,17 +215,19 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Token validation failed');
+                    console.error('Server responded with error status:', response.status);
+                    throw new Error('Token validation failed with status: ' + response.status);
                 }
                 return response.json();
             })
             .then(data => {
                 if (!data.valid) {
+                    console.error('Server reported token as invalid');
                     throw new Error('Invalid token');
                 }
                 console.log('Token validated successfully');
                 
-                // Force update navbar UI
+                // Force update navbar UI - ONLY after server confirms the token is valid
                 forceUpdateNavbar(true);
                 
                 // Check if auth-modal.js has loaded and expose functions to it
@@ -243,91 +269,163 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error validating token:', error);
+                
+                // Token is invalid, remove it
+                console.log('Removing invalid auth token from localStorage');
                 localStorage.removeItem('authToken');
+                
+                // Update UI to logged out state
+                console.log('Updating UI to logged out state due to invalid token');
+                forceUpdateNavbar(false);
                 
                 // Check if auth-modal.js has loaded
                 if (typeof updateUIForLoggedOutUser === 'function') {
                     console.log('Calling updateUIForLoggedOutUser after validation error');
                     updateUIForLoggedOutUser();
-                } else {
-                    console.log('updateUIForLoggedOutUser not available, fixing UI manually');
-                    forceUpdateNavbar(false);
                 }
             });
         } else {
-            console.log('No auth token found, ensuring logged out UI');
-            // No token, definitely logged out
-            if (typeof updateUIForLoggedOutUser === 'function') {
-                updateUIForLoggedOutUser();
-            } else {
-                forceUpdateNavbar(false);
-            }
+            console.log('No auth token found in localStorage');
+            forceUpdateNavbar(false);
         }
     }
     
-    // Force update navbar function - works independently of auth-modal.js
-    function forceUpdateNavbar(isLoggedIn) {
-        console.log('Manually fixing navbar, isLoggedIn:', isLoggedIn);
+    // Helper function to forcibly update the navbar (used when other methods don't work)
+    window.forceUpdateNavbar = function forceUpdateNavbar(isLoggedIn) {
+        console.log('Forcibly updating navbar UI, isLoggedIn:', isLoggedIn);
+        
+        // First update document classes to reflect auth state
+        if (isLoggedIn) {
+            document.documentElement.classList.remove('auth-logged-out');
+            document.documentElement.classList.add('auth-logged-in');
+        } else {
+            document.documentElement.classList.remove('auth-logged-in');
+            document.documentElement.classList.add('auth-logged-out');
+        }
+        
+        // Make sure initializing state is removed to show the navbar
+        document.documentElement.classList.remove('auth-initializing');
+        
         const navLinksContainer = document.querySelector('.nav-links');
+        
         if (!navLinksContainer) {
-            console.error("Could not find .nav-links container");
+            console.warn('Nav links container not found, will retry soon');
+            setTimeout(() => forceUpdateNavbar(isLoggedIn), 200);
             return;
         }
         
-        // Find existing auth links
-        const existingLoginLink = navLinksContainer.querySelector('a.nav-link[data-mode="login"], a.nav-link.open-auth-modal');
-        const existingSignupLink = navLinksContainer.querySelector('a.nav-link[data-mode="signup"]') || 
-                                  (existingLoginLink ? Array.from(navLinksContainer.querySelectorAll('a.nav-link.open-auth-modal'))
-                                   .find(link => link !== existingLoginLink) : null);
-        const existingMyImagesLink = navLinksContainer.querySelector('a.nav-link[href="/dashboard"]');
-        const existingLogoutLink = navLinksContainer.querySelector('a.nav-link[href="/logout"]');
+        // Target all possible login/signup link selectors to find them reliably
+        const loginLinks = [
+            ...navLinksContainer.querySelectorAll('a[data-mode="login"]'),
+            ...navLinksContainer.querySelectorAll('a.open-auth-modal[data-mode="login"]'),
+            ...navLinksContainer.querySelectorAll('a[href="/login"]'),
+            ...navLinksContainer.querySelectorAll('a[href="#"][class*="login"]')
+        ];
+        
+        const signupLinks = [
+            ...navLinksContainer.querySelectorAll('a[data-mode="signup"]'),
+            ...navLinksContainer.querySelectorAll('a.open-auth-modal[data-mode="signup"]'),
+            ...navLinksContainer.querySelectorAll('a[href="/signup"]'),
+            ...navLinksContainer.querySelectorAll('a[href="#"][class*="signup"]'),
+            ...navLinksContainer.querySelectorAll('a[href="#"][class*="sign-up"]')
+        ];
+        
+        const myImagesLinks = [...navLinksContainer.querySelectorAll('a[href="/dashboard"]')];
+        const logoutLinks = [...navLinksContainer.querySelectorAll('a[href="/logout"]')];
+        
+        const loginLink = loginLinks.length > 0 ? loginLinks[0] : null;
+        const signupLink = signupLinks.length > 0 ? signupLinks[0] : null;
+        const myImagesLink = myImagesLinks.length > 0 ? myImagesLinks[0] : null;
+        const logoutLink = logoutLinks.length > 0 ? logoutLinks[0] : null;
         
         if (isLoggedIn) {
-            // User is logged in, show My Images & Logout
-            if (existingLoginLink && !existingMyImagesLink) {
-                const myImagesLink = document.createElement('a');
-                myImagesLink.textContent = 'My Images';
-                myImagesLink.href = '/dashboard';
-                myImagesLink.className = 'nav-link';
-                existingLoginLink.parentNode.replaceChild(myImagesLink, existingLoginLink);
+            // User is logged in, show My Images and Logout
+            if (loginLink && !myImagesLink) {
+                const newMyImagesLink = document.createElement('a');
+                newMyImagesLink.href = '/dashboard';
+                newMyImagesLink.className = 'nav-link';
+                newMyImagesLink.textContent = 'My Images';
+                loginLink.parentNode.replaceChild(newMyImagesLink, loginLink);
             }
             
-            if (existingSignupLink && !existingLogoutLink) {
-                const logoutLink = document.createElement('a');
-                logoutLink.textContent = 'Logout';
-                logoutLink.href = '/logout';
-                logoutLink.className = 'nav-link';
-                // Add click handler
-                logoutLink.addEventListener('click', function(e) {
+            if (signupLink && !logoutLink) {
+                const newLogoutLink = document.createElement('a');
+                newLogoutLink.href = '/logout';
+                newLogoutLink.className = 'nav-link';
+                newLogoutLink.textContent = 'Logout';
+                
+                // Add logout handler
+                newLogoutLink.addEventListener('click', function(e) {
                     e.preventDefault();
-                    if (typeof window.ensureCompleteLogout === 'function') {
-                        window.ensureCompleteLogout();
-                    } else {
-                        localStorage.setItem('logout_in_progress', 'true');
-                        window.location.href = '/logout';
-                    }
+                    window.ensureCompleteLogout();
                 });
-                existingSignupLink.parentNode.replaceChild(logoutLink, existingSignupLink);
+                
+                signupLink.parentNode.replaceChild(newLogoutLink, signupLink);
             }
         } else {
-            // User is logged out, show Login & Signup
-            if (existingMyImagesLink && !existingLoginLink) {
-                const loginLink = document.createElement('a');
-                loginLink.textContent = 'Login';
-                loginLink.href = '#';
-                loginLink.className = 'nav-link open-auth-modal';
-                loginLink.setAttribute('data-mode', 'login');
-                existingMyImagesLink.parentNode.replaceChild(loginLink, existingMyImagesLink);
+            // User is logged out, show Login and Signup
+            if (myImagesLink && !loginLink) {
+                const newLoginLink = document.createElement('a');
+                newLoginLink.href = '#';
+                newLoginLink.className = 'nav-link open-auth-modal';
+                newLoginLink.setAttribute('data-mode', 'login');
+                newLoginLink.textContent = 'Login';
+                
+                // Add click handler
+                newLoginLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof window.openAuthModal === 'function') {
+                        window.openAuthModal('login');
+                    } else {
+                        window.location.href = '/?action=login';
+                    }
+                });
+                
+                myImagesLink.parentNode.replaceChild(newLoginLink, myImagesLink);
             }
             
-            if (existingLogoutLink && !existingSignupLink) {
-                const signupLink = document.createElement('a');
-                signupLink.textContent = 'Sign Up';
-                signupLink.href = '#';
-                signupLink.className = 'nav-link open-auth-modal';
-                signupLink.setAttribute('data-mode', 'signup');
-                existingLogoutLink.parentNode.replaceChild(signupLink, existingLogoutLink);
+            if (logoutLink && !signupLink) {
+                const newSignupLink = document.createElement('a');
+                newSignupLink.href = '#';
+                newSignupLink.className = 'nav-link open-auth-modal';
+                newSignupLink.setAttribute('data-mode', 'signup');
+                newSignupLink.textContent = 'Sign Up';
+                
+                // Add click handler
+                newSignupLink.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    if (typeof window.openAuthModal === 'function') {
+                        window.openAuthModal('signup');
+                    } else {
+                        window.location.href = '/?action=signup';
+                    }
+                });
+                
+                logoutLink.parentNode.replaceChild(newSignupLink, logoutLink);
             }
         }
-    }
+        
+        // Make sure navbar is visible after update
+        navLinksContainer.style.visibility = 'visible';
+        navLinksContainer.style.opacity = '1';
+    };
+    
+    // Last resort check - if the auth state doesn't match after 2 seconds
+    setTimeout(() => {
+        const hasToken = !!localStorage.getItem('authToken');
+        const hasMyImagesLink = !!document.querySelector('.nav-links a[href="/dashboard"]');
+        const hasLogoutLink = !!document.querySelector('.nav-links a[href="/logout"]');
+        
+        // If logged in but no dashboard/logout links, force update
+        if (hasToken && (!hasMyImagesLink || !hasLogoutLink)) {
+            console.log('Auth state mismatch detected: has token but no My Images/Logout links, fixing...');
+            forceUpdateNavbar(true);
+        }
+        
+        // If not logged in but has dashboard/logout links, force update
+        if (!hasToken && (hasMyImagesLink || hasLogoutLink)) {
+            console.log('Auth state mismatch detected: no token but has My Images/Logout links, fixing...');
+            forceUpdateNavbar(false);
+        }
+    }, 2000);
 }); 
