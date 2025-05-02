@@ -122,8 +122,10 @@ def main_image_function(image_description, testMode, api_key_gemini,
                      style_preset=None, output_format="png"):
     if testMode == False:
         try:
-            # Generate the enhanced prompt
-            image_prompt = generate_prompt_with_gemini(image_description, api_key_gemini)
+            # # Generate the enhanced prompt
+            # image_prompt = generate_prompt_with_gemini(image_description, api_key_gemini)
+
+            image_prompt = image_description
             
             # Use Stability AI for image generation
             generated_image_path = generate_image_stability(

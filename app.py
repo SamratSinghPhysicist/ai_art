@@ -25,6 +25,11 @@ app.config['UPLOAD_FOLDER'] = os.path.join(app_dir, 'images')
 app.config['TEST_ASSETS'] = os.path.join(app_dir, 'test_assets')
 app.config['PROCESSED_FOLDER'] = os.path.join(app_dir, 'processed_images')
 
+# URL path prefixes for images (not file system paths)
+app.config['IMAGES_URL_PATH'] = 'images'
+app.config['TEST_ASSETS_URL_PATH'] = 'test_assets'
+app.config['PROCESSED_URL_PATH'] = 'processed_images'
+
 # Configure Flask-Login
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_secret_key')
 login_manager = LoginManager()
@@ -343,37 +348,53 @@ def api_generate_image():
         # Extract just the filename from the path
         image_filename = os.path.basename(generated_image_path)
         
-        # Determine which folder the image is in
+        # Determine which route to use based on the folder
         if 'test_assets' in generated_image_path:
-            folder = app.config['TEST_ASSETS']
+            image_url = url_for('serve_test_asset', filename=image_filename, _external=True)
+            folder = 'test_assets'
         elif 'processed_images' in generated_image_path:
-            folder = app.config['PROCESSED_FOLDER']
+            image_url = url_for('serve_processed_image', filename=image_filename, _external=True)
+            folder = 'processed_images'
         else:
-            folder = app.config['UPLOAD_FOLDER']
+            image_url = url_for('serve_image', filename=image_filename, _external=True)
+            folder = 'images'
         
-        # Return the image URL and success message
+        # Create a simple direct URL as a fallback
+        direct_url = f"{request.host_url.rstrip('/')}/{folder}/{image_filename}"
+        
+        print(f"Generated URL: {image_url}")
+        print(f"Direct URL: {direct_url}")
+        
+        # Return both formats of the URL
         return jsonify({
             'success': True,
             'message': 'Image generated successfully',
-            'image_url': f'{request.host_url}{folder}/{image_filename}'
+            'image_url': image_url,
+            'direct_url': direct_url,
+            'filename': image_filename,
+            'folder': folder
         })
     
     except Exception as e:
+        print(f"Error in API generate: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
-@app.route('/images/<filename>')
+@app.route('/images/<path:filename>')
 def serve_image(filename):
-    """Serve the generated images"""
+    """Serve generated images"""
+    print(f"Serving image: {filename}")
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-@app.route('/test_assets/<filename>')
+@app.route('/test_assets/<path:filename>')
 def serve_test_asset(filename):
-    """Serve the test assets"""
+    """Serve test assets"""
+    print(f"Serving test asset: {filename}")
     return send_from_directory(app.config['TEST_ASSETS'], filename)
 
-@app.route('/processed_images/<filename>')
+@app.route('/processed_images/<path:filename>')
 def serve_processed_image(filename):
-    """Serve the processed images"""
+    """Serve processed images"""
+    print(f"Serving processed image: {filename}")
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
 @app.route('/img2img', methods=['POST'])
@@ -783,6 +804,15 @@ if __name__ == '__main__':
     # Initialize visitor logger to track IP addresses and locations
     visitor_logger = VisitorLogger(app, LOGS_DIR)
     app.logger.info('Visitor logging initialized')
+    
+    # Print debugging information about image paths
+    print("=" * 50)
+    print("IMAGE FOLDER CONFIGURATION:")
+    print(f"Upload Folder: {os.path.abspath(app.config['UPLOAD_FOLDER'])}")
+    print(f"Test Assets: {os.path.abspath(app.config['TEST_ASSETS'])}")
+    print(f"Processed Folder: {os.path.abspath(app.config['PROCESSED_FOLDER'])}")
+    print(f"App directory: {app_dir}")
+    print("=" * 50)
     
     # Start the app in debug mode (development only)
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)

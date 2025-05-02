@@ -646,5 +646,231 @@
             });
         });
     </script>
+
+<script>
+    // Variables to store original and enhanced prompts
+    let originalPrompt = '';
+    
+    // Developer mode toggle with keyboard shortcut (Ctrl+Shift+D)
+    document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+            const testModeContainer = document.getElementById('test-mode-container');
+            if (testModeContainer.style.display === 'none') {
+                testModeContainer.style.display = 'flex';
+                console.log('Developer mode activated');
+            } else {
+                testModeContainer.style.display = 'none';
+                console.log('Developer mode deactivated');
+            }
+        }
+    });
+    
+    // Enhance prompt button click handler
+    document.getElementById('enhance-prompt-btn').addEventListener('click', function() {
+        const promptInput = document.getElementById('video-description');
+        const userPrompt = promptInput.value.trim();
+        
+        if (!userPrompt) {
+            alert('Please enter a description first');
+            return;
+        }
+        
+        // Store the original prompt
+        originalPrompt = userPrompt;
+        
+        // Show loading state on the button
+        this.disabled = true;
+        this.innerHTML = '<div class="loading-dots"><div></div><div></div><div></div></div>';
+        
+        // Create form data for the API request
+        const formData = new FormData();
+        formData.append('prompt', userPrompt);
+        
+        // Call the enhance-prompt API
+        fetch('/api/enhance-prompt', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Reset button state
+            this.disabled = false;
+            this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
+            
+            if (data.success) {
+                // Update the prompt with the enhanced version
+                promptInput.value = data.enhanced_prompt;
+                
+                // Show the revert button
+                document.getElementById('revert-prompt-btn').style.display = 'block';
+            } else {
+                alert('Failed to enhance prompt: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            // Reset button state
+            this.disabled = false;
+            this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
+            
+            console.error('Error:', error);
+            alert('Failed to enhance prompt: ' + error.message);
+        });
+    });
+    
+    // Toggle advanced options
+    document.getElementById('toggle-advanced-options').addEventListener('click', function() {
+        const container = document.getElementById('advanced-options-container');
+        const icon = document.getElementById('advanced-options-icon');
+        
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+            icon.textContent = '▲';
+            this.classList.add('active');
+        } else {
+            container.style.display = 'none';
+            icon.textContent = '▼';
+            this.classList.remove('active');
+        }
+    });
+    
+    document.getElementById('revert-prompt-btn').addEventListener('click', function() {
+        // Restore the original prompt
+        document.getElementById('video-description').value = originalPrompt;
+        
+        // Hide the revert button
+        this.style.display = 'none';
+    });
+    
+    // Form submission handler
+    document.getElementById('image-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Show loading, hide results and errors
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('result').classList.add('hidden');
+        document.getElementById('error').classList.add('hidden');
+        
+        // Get form data
+        const description = document.getElementById('video-description').value;
+        const testMode = document.getElementById('test-mode')?.checked || false;
+        
+        // Create form data object
+        const formData = new FormData();
+        formData.append('video_description', description);
+        formData.append('test_mode', testMode ? 'true' : 'false');
+        
+        // Add advanced options if visible
+        if (document.getElementById('advanced-options-container').style.display !== 'none') {
+            // Add negative prompt
+            const negativePrompt = document.getElementById('txt2img-negative-prompt').value;
+            if (negativePrompt) {
+                formData.append('negative_prompt', negativePrompt);
+            }
+            
+            // Add style preset
+            const stylePreset = document.getElementById('txt2img-style-preset').value;
+            if (stylePreset) {
+                formData.append('style_preset', stylePreset);
+            }
+            
+            // Add aspect ratio
+            const aspectRatio = document.getElementById('txt2img-aspect-ratio').value;
+            formData.append('aspect_ratio', aspectRatio);
+            
+            // Add output format
+            const outputFormat = document.getElementById('txt2img-output-format').value;
+            formData.append('output_format', outputFormat);
+            
+            // Add seed (if random seed is requested, let server handle it)
+            const seedValue = parseInt(document.getElementById('txt2img-seed').value);
+            if (!isNaN(seedValue) && seedValue >= 0) {
+                formData.append('seed', seedValue.toString());
+            } else {
+                formData.append('seed', '0');
+            }
+        }
+        
+        // Send request
+        fetch('/generate', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Hide loading
+            document.getElementById('loading').classList.add('hidden');
+            
+            if (data.success) {
+                // Show result
+                document.getElementById('result').classList.remove('hidden');
+                document.getElementById('generated-image').src = data.image_path + '?t=' + new Date().getTime();
+                
+                // Enable download button
+                document.getElementById('download-btn').disabled = false;
+                // Save the current URL for download
+                window.currentImagePath = data.image_path;
+                
+                // Add download handler
+                document.getElementById('download-btn').onclick = function() {
+                    downloadImage(data.image_path);
+                };
+            } else {
+                // Show error
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').querySelector('p').textContent = data.error || 'An error occurred';
+            }
+        })
+        .catch(error => {
+            // Hide loading, show error
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('error').classList.remove('hidden');
+            document.getElementById('error').querySelector('p').textContent = 'Network error: ' + error.message;
+            console.error('Error:', error);
+        });
+    });
+    
+    // Function to handle image download
+    function downloadImage(imagePath) {
+        if (!imagePath) {
+            console.error('No image path found for download');
+            return;
+        }
+        
+        // Create a filename from the path
+        const pathParts = imagePath.split('/');
+        const filename = pathParts[pathParts.length - 1];
+        
+        // Fetch the image as a blob
+        fetch(imagePath)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                // Create a URL for the blob
+                const url = window.URL.createObjectURL(blob);
+                
+                // Create a temporary link element
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = filename; // Set the filename
+                
+                // Add to document, click it, and remove it
+                document.body.appendChild(a);
+                a.click();
+                
+                // Clean up
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                console.error('Error downloading image:', error);
+                alert('Failed to download image. Please try again later.');
+            });
+    }
+</script>
 </body>
 </html>
