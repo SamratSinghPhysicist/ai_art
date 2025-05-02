@@ -12,7 +12,7 @@ def generate_gemini(prompt, api_key_gemini):
         
         # Call the Gemini API to generate content
         response = client.models.generate_content(
-            model="gemini-2.0-flash",
+            model="gemini-2.0-flash-lite",
             contents=prompt,
         )
         
