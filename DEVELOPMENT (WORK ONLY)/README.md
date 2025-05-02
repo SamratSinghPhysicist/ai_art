@@ -6,7 +6,7 @@ An AI-powered application that generates eye-catching images using Pollinations.
 
 - Generate images based on text descriptions
 - Transform existing images with AI (using Stability AI)
-- User authentication and image management
+- User authentication and image management with Firebase Authentication
 - API endpoints for integration with other services
 
 ## Installation
@@ -16,6 +16,7 @@ An AI-powered application that generates eye-catching images using Pollinations.
 - Python 3.11+
 - Node.js 18+
 - MongoDB
+- Firebase project (for authentication)
 
 ### Setup
 
@@ -36,12 +37,36 @@ npm install
 MONGO_URI=your_mongodb_connection_string
 SECRET_KEY=your_flask_secret_key
 STABILITY_API_KEY=your_stability_ai_api_key
+
+# If using Firebase config files (recommended)  --- Only for DEVELOPMENT:
+FIREBASE_SERVICE_ACCOUNT_PATH=./firebase-service-account.json
+FIREBASE_CONFIG_PATH=./firebase-config.json
+
+# If using Firebase config files (recommended)  --- Only for PRODUCTION in render (See FIREBASE_SETUP.md for more details):
+FIREBASE_SERVICE_ACCOUNT_PATH=/etc/secrets/firebase-service-account.json
+FIREBASE_CONFIG_PATH=/etc/secrets/firebase-config.json
 ```
 
-4. Run the application:
+4. Set up Firebase Authentication:
+   - Create a Firebase project at [Firebase Console](https://console.firebase.google.com/)
+   - Enable Email/Password and Google authentication methods
+   - Follow the detailed Firebase setup guide in [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+
+5. Run the application:
 ```bash
 python app.py
 ```
+
+## Firebase Authentication
+
+This project uses Firebase Authentication to provide secure user management:
+
+- Email/Password authentication with email verification
+- Google Sign-in integration
+- Password reset functionality
+- User data synchronization with MongoDB
+
+**For detailed setup instructions, please see [FIREBASE_SETUP.md](FIREBASE_SETUP.md).**
 
 ## Using the Image-to-Image Feature
 

@@ -8,6 +8,11 @@ import logging
 from logging.handlers import RotatingFileHandler
 from flask import send_file
 from visitor_logger import VisitorLogger
+import json
+from firebase_admin import auth as firebase_admin_auth
+from firebase_config import firebase_auth, firebase_config
+import requests
+from werkzeug.exceptions import BadRequest
 
 # Load environment variables
 load_dotenv()
@@ -72,18 +77,46 @@ def login():
         return redirect(url_for('dashboard'))
         
     if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        user = User.find_by_email(email)
-        
-        if user and user.check_password(password):
-            login_user(user)
-            return redirect(url_for('dashboard'))
-        else:
-            return render_template('login.html', error='Invalid email or password')
+        # Check if it's a Firebase token (Google Sign-in)
+        if request.json and 'idToken' in request.json:
+            try:
+                # Verify the token
+                token = request.json['idToken']
+                decoded_token = firebase_admin_auth.verify_id_token(token)
+                
+                # Get user info
+                uid = decoded_token['uid']
+                firebase_user = firebase_admin_auth.get_user(uid)
+                
+                # Create or update user in our database
+                user_data = {
+                    'uid': uid,
+                    'email': firebase_user.email,
+                    'displayName': firebase_user.display_name,
+                    'emailVerified': firebase_user.email_verified
+                }
+                
+                print(f"Google Sign-in for user: {firebase_user.email}")
+                user_obj = User.create_or_update_from_firebase(user_data)
+                
+                if not user_obj:
+                    print(f"Failed to create or update user for Google Sign-in: {firebase_user.email}")
+                    return jsonify({'success': False, 'error': 'Failed to create user account'}), 500
+                
+                # Log in the user
+                login_user(user_obj)
+                print(f"Google user logged in successfully: {firebase_user.email}")
+                return jsonify({'success': True, 'redirect': url_for('dashboard')})
+            
+            except Exception as e:
+                print(f"Token verification error: {e}")
+                return jsonify({'success': False, 'error': 'Invalid token'}), 401
     
-    return render_template('login.html')
+    return render_template('login.html',
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -92,31 +125,65 @@ def signup():
         return redirect(url_for('dashboard'))
         
     if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        password = request.form.get('password')
-        
-        # Check if user already exists
-        existing_user = User.find_by_email(email)
-        if existing_user:
-            return render_template('signup.html', error='Email already registered')
-        
-        # Create new user
-        user = User(email=email, password=password, name=name)
-        user.save()
-        
-        # Log in the new user
-        login_user(user)
-        return redirect(url_for('dashboard'))
+        # Check if it's a Google sign-in
+        if request.json and 'idToken' in request.json:
+            try:
+                # Verify the token
+                token = request.json['idToken']
+                decoded_token = firebase_admin_auth.verify_id_token(token)
+                
+                # Get user info
+                uid = decoded_token['uid']
+                firebase_user = firebase_admin_auth.get_user(uid)
+                
+                print(f"Google Sign-up for user: {firebase_user.email}")
+                
+                # Create or update user in our database
+                user_data = {
+                    'uid': uid,
+                    'email': firebase_user.email,
+                    'displayName': firebase_user.display_name,
+                    'emailVerified': firebase_user.email_verified
+                }
+                
+                user_obj = User.create_or_update_from_firebase(user_data)
+                
+                if not user_obj:
+                    print(f"Failed to create or update Google user in database: {firebase_user.email}")
+                    return jsonify({'success': False, 'error': 'Failed to create user account in database'}), 500
+                
+                # Log in the user
+                login_user(user_obj)
+                print(f"Google user signed up and logged in successfully: {firebase_user.email}")
+                return jsonify({'success': True, 'redirect': url_for('dashboard')})
+            
+            except Exception as e:
+                print(f"Token verification error: {e}")
+                return jsonify({'success': False, 'error': 'Invalid token'}), 401
     
-    return render_template('signup.html')
+    return render_template('signup.html',
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
+
+@app.route('/reset-password')
+def reset_password():
+    """Redirect reset-password requests to login since we only use Google auth now"""
+    flash('Please use Google sign-in to access your account', 'info')
+    return redirect(url_for('login'))
+
+@app.route('/verify-email')
+def verify_email():
+    """Handle email verification confirmation - redirect to login for Google auth"""
+    return redirect(url_for('login'))
 
 @app.route('/logout')
 @login_required
 def logout():
     """Handle user logout"""
     logout_user()
-    return redirect(url_for('index'))
+    return redirect(url_for('login'))
 
 @app.route('/dashboard')
 @login_required

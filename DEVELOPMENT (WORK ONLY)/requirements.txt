@@ -22,3 +22,6 @@ argparse==1.4.0
 selenium==4.16.0
 webdriver-manager==4.0.1
 pyperclip==1.8.2
+# Added for Firebase Authentication
+firebase-admin==6.3.0
+pyrebase4==4.7.1

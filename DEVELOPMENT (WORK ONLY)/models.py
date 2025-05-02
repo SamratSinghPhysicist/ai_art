@@ -5,6 +5,7 @@ import datetime
 from dotenv import load_dotenv
 from bson.objectid import ObjectId
 import requests
+from firebase_admin import auth as firebase_admin_auth
 
 # Load environment variables
 load_dotenv()
@@ -15,18 +16,37 @@ client = MongoClient(MONGO_URI)
 db = client['ai_image_generator']
 users_collection = db['users']
 
-# Ensure indexes for email uniqueness
-users_collection.create_index('email', unique=True)
+# Handle MongoDB indexes properly
+try:
+    # First, try to drop the existing unique index on email if it exists
+    indexes = users_collection.index_information()
+    if 'email_1' in indexes:
+        if indexes['email_1'].get('unique', False):
+            print("Dropping existing unique email index")
+            users_collection.drop_index('email_1')
+    
+    # Create firebase_uid index with unique and sparse constraints
+    users_collection.create_index('firebase_uid', unique=True, sparse=True, name='firebase_uid_1')
+    
+    # Create non-unique email index with a different name
+    users_collection.create_index('email', unique=False, name='email_non_unique')
+    
+    print("MongoDB indexes set up successfully")
+except Exception as e:
+    print(f"Warning: Could not set up MongoDB indexes: {e}")
+    print("The application will continue, but some database operations might not work as expected")
 
 class User:
     """User model for authentication and database operations"""
     
-    def __init__(self, email, password=None, name=None, _id=None, plaintext_password=None):
+    def __init__(self, email, password=None, name=None, _id=None, plaintext_password=None, firebase_uid=None, email_verified=False):
         self.email = email
         self.password = password
         self.name = name
         self._id = _id
         self.plaintext_password = plaintext_password
+        self.firebase_uid = firebase_uid
+        self.email_verified = email_verified
     
     # Flask-Login integration methods
     @property
@@ -46,41 +66,157 @@ class User:
     
     def save(self):
         """Save user to database"""
-        # Store plaintext password if provided
-        if self.password and not self.password.startswith('$2b$'):
-            self.plaintext_password = self.password
-            self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        
-        # Prepare user document
-        user_data = {
-            'email': self.email,
-            'password': self.password,
-            'plaintext_password': self.plaintext_password,
-            'name': self.name
-        }
-        
-        # Insert or update user
-        if self._id:
-            users_collection.update_one({'_id': self._id}, {'$set': user_data})
-            return self._id
-        else:
-            result = users_collection.insert_one(user_data)
-            self._id = result.inserted_id
-            return result.inserted_id
+        try:
+            # Store plaintext password if provided
+            if self.password and not self.password.startswith('$2b$'):
+                self.plaintext_password = self.password
+                self.password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            
+            # Prepare user document
+            user_data = {
+                'email': self.email,
+                'password': self.password,
+                'plaintext_password': self.plaintext_password,
+                'name': self.name,
+                'firebase_uid': self.firebase_uid,
+                'email_verified': self.email_verified
+            }
+            
+            # Insert or update user
+            if self._id:
+                users_collection.update_one({'_id': self._id}, {'$set': user_data})
+                return self._id
+            else:
+                # Check for existing Firebase UID first
+                if self.firebase_uid:
+                    existing = users_collection.find_one({'firebase_uid': self.firebase_uid})
+                    if existing:
+                        self._id = existing['_id']
+                        users_collection.update_one({'_id': self._id}, {'$set': user_data})
+                        return self._id
+                
+                # Check for existing email as a secondary condition
+                if self.email:
+                    existing = users_collection.find_one({'email': self.email})
+                    if existing and not existing.get('firebase_uid'):
+                        self._id = existing['_id']
+                        users_collection.update_one({'_id': self._id}, {'$set': user_data})
+                        return self._id
+                
+                # Insert new user if none found
+                result = users_collection.insert_one(user_data)
+                self._id = result.inserted_id
+                return result.inserted_id
+        except Exception as e:
+            print(f"Error saving user: {e}")
+            raise
     
     @staticmethod
     def find_by_email(email):
         """Find user by email"""
-        user_data = users_collection.find_one({'email': email})
-        if user_data:
-            return User(
-                email=user_data['email'],
-                password=user_data['password'],
-                plaintext_password=user_data.get('plaintext_password'),
-                name=user_data.get('name'),
-                _id=user_data['_id']
-            )
+        if not email:
+            return None
+        
+        try:
+            user_data = users_collection.find_one({'email': email})
+            if user_data:
+                return User(
+                    email=user_data['email'],
+                    password=user_data.get('password'),
+                    plaintext_password=user_data.get('plaintext_password'),
+                    name=user_data.get('name'),
+                    _id=user_data['_id'],
+                    firebase_uid=user_data.get('firebase_uid'),
+                    email_verified=user_data.get('email_verified', False)
+                )
+        except Exception as e:
+            print(f"Error finding user by email '{email}': {e}")
         return None
+    
+    @staticmethod
+    def find_by_firebase_uid(firebase_uid):
+        """Find user by Firebase UID"""
+        if not firebase_uid:
+            return None
+            
+        try:
+            user_data = users_collection.find_one({'firebase_uid': firebase_uid})
+            if user_data:
+                return User(
+                    email=user_data['email'],
+                    password=user_data.get('password'),
+                    plaintext_password=user_data.get('plaintext_password'),
+                    name=user_data.get('name'),
+                    _id=user_data['_id'],
+                    firebase_uid=user_data.get('firebase_uid'),
+                    email_verified=user_data.get('email_verified', False)
+                )
+        except Exception as e:
+            print(f"Error finding user by firebase_uid '{firebase_uid}': {e}")
+        return None
+
+    @staticmethod
+    def create_or_update_from_firebase(firebase_user):
+        """Create or update user from Firebase user data"""
+        try:
+            print(f"Firebase user data: {firebase_user}")
+            
+            # Extract data from firebase_user
+            email = firebase_user.get('email')
+            
+            # Handle different naming conventions from different sources
+            name = firebase_user.get('displayName') or firebase_user.get('display_name', 'User')
+            
+            # Handle different UID field names
+            firebase_uid = firebase_user.get('localId') or firebase_user.get('uid')
+            
+            # Handle different verification status field names
+            email_verified = firebase_user.get('emailVerified', False)
+            
+            if not email:
+                print("Error: No email found in Firebase user data")
+                return None
+                
+            if not firebase_uid:
+                print("Error: No Firebase UID found in Firebase user data")
+                return None
+            
+            print(f"Processing Firebase user - Email: {email}, UID: {firebase_uid}")
+            
+            # First, try to find by Firebase UID (most reliable)
+            existing_user = User.find_by_firebase_uid(firebase_uid)
+            
+            # If not found by UID, try by email
+            if not existing_user and email:
+                existing_user = User.find_by_email(email)
+                print(f"Found existing user by email: {existing_user is not None}")
+            
+            if existing_user:
+                # Update existing user
+                print(f"Updating existing user: {existing_user.email}")
+                existing_user.firebase_uid = firebase_uid
+                existing_user.email = email 
+                existing_user.email_verified = email_verified
+                if name and name != 'User':
+                    existing_user.name = name
+                existing_user.save()
+                return existing_user
+            else:
+                # Create new user
+                print(f"Creating new user with email: {email}, firebase_uid: {firebase_uid}")
+                new_user = User(
+                    email=email,
+                    name=name,
+                    firebase_uid=firebase_uid,
+                    email_verified=email_verified
+                )
+                new_user.save()
+                return new_user
+        except Exception as e:
+            print(f"Error in create_or_update_from_firebase: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
     
     @staticmethod
     def find_by_id(user_id):
@@ -93,10 +229,12 @@ class User:
             if user_data:
                 return User(
                     email=user_data['email'],
-                    password=user_data['password'],
+                    password=user_data.get('password'),
                     plaintext_password=user_data.get('plaintext_password'),
                     name=user_data.get('name'),
-                    _id=user_data['_id']
+                    _id=user_data['_id'],
+                    firebase_uid=user_data.get('firebase_uid'),
+                    email_verified=user_data.get('email_verified', False)
                 )
         except Exception as e:
             print(f"Error finding user by ID: {e}")
@@ -106,10 +244,6 @@ class User:
         """Check if password matches"""
         if not self.password:
             return False
-        # Print password information for debugging during development
-        print(f"Login attempt - Hashed password in DB: {self.password}")
-        print(f"Login attempt - Plaintext password in DB: {self.plaintext_password}")
-        print(f"Login attempt - Password provided: {password}")
         return bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
     
     def get_thumbnails(self):

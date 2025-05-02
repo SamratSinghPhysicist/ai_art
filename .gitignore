@@ -10,3 +10,11 @@
 *.pyo
 __pycache__/
 .DS_Store
+
+# Environment variables and sensitive files
+.env
+firebase-service-account.json
+firebase-config.json
+*-firebase-adminsdk-*.json
+*.key
+*.pem

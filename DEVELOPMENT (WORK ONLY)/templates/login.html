@@ -14,6 +14,10 @@
     <!-- Google Adsense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
     crossorigin="anonymous"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
 </head>
 <body>
     <header class="header">
@@ -53,21 +57,28 @@
                 </div>
                 {% endif %}
                 
-                <form action="/login" method="POST" class="my-6">
-                    <div class="form-group mb-4">
-                        <label for="email" class="form-label">Email:</label>
-                        <input type="email" id="email" name="email" class="form-input" required>
-                    </div>
-                    
-                    <div class="form-group mb-6">
-                        <label for="password" class="form-label">Password:</label>
-                        <input type="password" id="password" name="password" class="form-input" required>
-                    </div>
-                    
-                    <div class="text-center mt-6">
-                        <button type="submit" class="btn btn-primary px-8 py-3 text-lg w-full">Login</button>
-                    </div>
-                </form>
+                {% if message %}
+                <div class="success-message mb-4 p-3 bg-green-100 text-green-700 rounded">
+                    {{ message }}
+                </div>
+                {% endif %}
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="{% if category == 'error' %}error-message mb-4 p-3 bg-red-100 text-red-700 rounded{% else %}success-message mb-4 p-3 bg-green-100 text-green-700 rounded{% endif %}">
+                        {{ message }}
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+                
+                <div class="text-center mb-4">
+                    <button id="google-login-btn" class="btn btn-primary w-full py-3 flex items-center justify-center">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" class="w-5 h-5 mr-2">
+                        Sign in with Google
+                    </button>
+                </div>
                 
                 <div class="text-center mt-4">
                     <p>Don't have an account? <a href="/signup" class="text-primary hover:underline">Sign up</a></p>
@@ -100,10 +111,55 @@
             </p>
         </div>
     </footer>
+    
+    <script>
+        // Initialize Firebase with your config
+        const firebaseConfig = {
+            apiKey: "{{firebase_api_key}}",
+            authDomain: "{{firebase_auth_domain}}",
+            projectId: "{{firebase_project_id}}",
+            appId: "{{firebase_app_id}}"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        
+        // Google sign-in
+        document.getElementById('google-login-btn').addEventListener('click', function() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            firebase.auth().signInWithPopup(provider)
+                .then((result) => {
+                    // Get ID token
+                    return result.user.getIdToken();
+                })
+                .then((idToken) => {
+                    // Send token to server
+                    return fetch('/login', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ idToken: idToken })
+                    });
+                })
+                .then((response) => response.json())
+                .then((data) => {
+                    if (data.success) {
+                        window.location.href = data.redirect;
+                    } else {
+                        console.error(data.error);
+                        alert('Authentication error: ' + data.error);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Sign in error:', error);
+                    alert('Sign in error: ' + error.message);
+                });
+        });
+    </script>
+    
     <script src="/static/js/app.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
 
-
 </body>
-<!DOCTYPE html>
 </html>
