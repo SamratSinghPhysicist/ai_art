@@ -343,19 +343,19 @@ def api_generate_image():
         # Extract just the filename from the path
         image_filename = os.path.basename(generated_image_path)
         
-        # Determine which folder the image is in
+        # Determine which folder the image is in and create proper URL
         if 'test_assets' in generated_image_path:
-            folder = app.config['TEST_ASSETS']
+            image_url = url_for('serve_test_asset', filename=image_filename, _external=True)
         elif 'processed_images' in generated_image_path:
-            folder = app.config['PROCESSED_FOLDER']
+            image_url = url_for('serve_processed_image', filename=image_filename, _external=True)
         else:
-            folder = app.config['UPLOAD_FOLDER']
+            image_url = url_for('serve_image', filename=image_filename, _external=True)
         
         # Return the image URL and success message
         return jsonify({
             'success': True,
             'message': 'Image generated successfully',
-            'image_url': f'{request.host_url}{folder}/{image_filename}'
+            'image_url': image_url
         })
     
     except Exception as e:
