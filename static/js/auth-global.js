@@ -59,14 +59,14 @@
                 navLinksContainer.querySelector('a[href="/logout"]');
             
             if (isLoggedIn) {
-                // User is logged in, show My Images and Logout
+                // User is logged in, show Dashboard and Logout
                 
-                // Handle Login → My Images
+                // Handle Login → Dashboard
                 if (loginLink && !myImagesLink) {
                     const newMyImagesLink = document.createElement('a');
                     newMyImagesLink.href = '/dashboard';
                     newMyImagesLink.className = loginLink.className.replace('open-auth-modal', '');
-                    newMyImagesLink.textContent = 'My Images';
+                    newMyImagesLink.textContent = 'Dashboard';
                     loginLink.parentNode.replaceChild(newMyImagesLink, loginLink);
                 }
                 
@@ -90,7 +90,7 @@
             } else {
                 // User is logged out, show Login and Signup
                 
-                // Handle My Images → Login
+                // Handle Dashboard → Login
                 if (myImagesLink && !loginLink) {
                     const newLoginLink = document.createElement('a');
                     newLoginLink.href = '#';

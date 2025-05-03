@@ -13,6 +13,9 @@ from firebase_admin import auth as firebase_admin_auth
 from firebase_config import firebase_auth, firebase_config
 import requests
 from werkzeug.exceptions import BadRequest
+import uuid
+import base64
+from img2img_stability import img2img, save_image
 
 # Load environment variables
 load_dotenv()
@@ -224,45 +227,19 @@ def check_auth_status():
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    """Display user's saved images"""
+    """Display user dashboard"""
     # Double check authentication - sometimes this can happen with stale sessions
     if not current_user.is_authenticated:
         print(f"Dashboard access attempted without valid auth")
         return redirect(url_for('index', action='login'))
     
     try:
-        images = current_user.get_thumbnails()
-        return render_template('dashboard.html', user=current_user, thumbnails=images)
+        return render_template('dashboard.html', user=current_user)
     except Exception as e:
         print(f"Error loading dashboard: {str(e)}")
         # If there's an error loading the dashboard, log the user out and redirect
         logout_user()
         return redirect(url_for('index', action='login', error='session_expired'))
-
-@app.route('/image/<image_id>/delete', methods=['POST'])
-@login_required
-def delete_image(image_id):
-    """Delete a user's image"""
-    try:
-        # Convert string ID to ObjectId
-        from bson.objectid import ObjectId
-        image_id = ObjectId(image_id)
-        
-        # Find the image before deleting it (to check if it has image_data)
-        image = db['images'].find_one({'_id': image_id, 'user_id': current_user._id})
-        
-        if not image:
-            return jsonify({'success': False, 'error': 'Image not found or you do not have permission to delete it'}), 404
-        
-        # Delete the image from the database
-        result = db['images'].delete_one({'_id': image_id, 'user_id': current_user._id})
-        
-        if result.deleted_count > 0:
-            return jsonify({'success': True})
-        else:
-            return jsonify({'success': False, 'error': 'Image not found or you do not have permission to delete it'}), 404
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/generate', methods=['POST'])
 def generate_image():
@@ -314,10 +291,6 @@ def generate_image():
             folder = app.config['PROCESSED_FOLDER']
         else:
             folder = app.config['UPLOAD_FOLDER']
-        
-        # Save the image to the user's collection if logged in
-        if current_user.is_authenticated:
-            current_user.save_thumbnail(f'/{folder}/{image_filename}', image_description)
         
         # Construct the URL using url_for for consistent URL handling
         if 'test_assets' in generated_image_path:
@@ -433,111 +406,115 @@ def serve_processed_image(filename):
 
 @app.route('/img2img', methods=['POST'])
 def img2img_transform():
-    """Transform an uploaded image based on the prompt provided"""
-    # Check if file and prompt are provided
-    if 'image' not in request.files or not request.form.get('prompt'):
-        return jsonify({'error': 'Both image and prompt are required'}), 400
+    """Transform an image based on text prompt and uploaded image"""
+    # IMPORTANT: Base64 images are not handled by Flask's request.files
+    # They must be extracted from request.form
     
-    file = request.files['image']
-    prompt = request.form.get('prompt')
+    # Get the prompt from the form
+    prompt = request.form.get('video_description')
+    
+    # Get advanced options
     negative_prompt = request.form.get('negative_prompt', '')
-    strength = float(request.form.get('strength', 0.7))
-    
-    # Get the new parameters
     style_preset = request.form.get('style_preset', None)
     if style_preset == '':
         style_preset = None
     
-    aspect_ratio = request.form.get('aspect_ratio', '1:1')
-    output_format = request.form.get('output_format', 'png')
+    # Get strength (how much to transform the image)
+    try:
+        strength = float(request.form.get('strength', 0.75))
+        # Make sure strength is between 0 and 1
+        strength = max(0.1, min(1.0, strength))
+    except (ValueError, TypeError):
+        strength = 0.75
     
     # Get seed (0 means random)
     try:
         seed = int(request.form.get('seed', 0))
-    except ValueError:
+    except (ValueError, TypeError):
         seed = 0
     
-    # Validate the file
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+    # Check if we got a base64 image string
+    base64_data = request.form.get('image_data')
     
-    if file:
-        # Save the uploaded file temporarily
-        temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], 'temp_' + file.filename)
-        file.save(temp_image_path)
-        
-        try:
-            # Import the img2img function and StabilityApiKey from models
-            from img2img_stability import img2img
-            from models import StabilityApiKey
+    if not base64_data and 'image_file' not in request.files:
+        return jsonify({'error': 'No image provided'}), 400
+    
+    if not prompt:
+        return jsonify({'error': 'Text prompt is required'}), 400
+    
+    try:
+        # Process the image data
+        if base64_data:
+            # We already have the base64 data
+            # But need to save it temporarily to a file
+            # Remove data URL prefix if present
+            if 'base64,' in base64_data:
+                base64_data = base64_data.split('base64,')[1]
             
-            # Get API key from the database (oldest available key)
-            api_key_obj = StabilityApiKey.find_oldest_key()
-            if not api_key_obj:
-                return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
-                
-            stability_api_key = api_key_obj.api_key
+            image_data = base64.b64decode(base64_data)
             
-            # Perform the image transformation
-            image_data, result_info = img2img(
-                api_key=stability_api_key,
-                prompt=prompt,
-                image_path=temp_image_path,
-                negative_prompt=negative_prompt,
-                strength=strength,
-                aspect_ratio=aspect_ratio,
-                seed=seed,
-                style_preset=style_preset,
-                output_format=output_format
-            )
+            # Create a temporary file for the uploaded image
+            temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_upload_{str(uuid.uuid4())}.png')
             
-            # Generate output filename based on prompt
-            safe_prompt = ''.join(c if c.isalnum() else '_' for c in prompt)[:25]
-            output_filename = f"img2img_{safe_prompt}_{result_info['seed']}.{output_format}"
-            output_path = os.path.join(app.config['PROCESSED_FOLDER'], output_filename)
-            
-            # Save the generated image
-            with open(output_path, 'wb') as f:
+            with open(temp_image_path, 'wb') as f:
                 f.write(image_data)
+        else:
+            # Get the uploaded file from the form
+            file = request.files['image_file']
             
-            # Check if file was saved successfully and log info
-            if os.path.exists(output_path):
-                print(f"Image saved successfully at: {output_path}")
-                print(f"File size: {os.path.getsize(output_path)} bytes")
-            else:
-                print(f"WARNING: File was not saved at: {output_path}")
+            # Create a temporary file for the uploaded image
+            temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], f'temp_upload_{str(uuid.uuid4())}.png')
             
-            # Print current working directory and absolute path
-            print(f"Current working directory: {os.getcwd()}")
-            print(f"Absolute path to saved image: {os.path.abspath(output_path)}")
-            
-            # Clean up the temporary file
+            # Save the file
+            file.save(temp_image_path)
+        
+        # Now transform the saved image using img2img
+        # First, get result from the img2img function
+        aspect_ratio = "1:1"  # Default aspect ratio
+        output_format = "png"  # Default output format
+        
+        transformed_image_data, result_info = img2img(
+            api_key=None,  # Will get from database
+            prompt=prompt,
+            image_path=temp_image_path,
+            negative_prompt=negative_prompt,
+            strength=strength,
+            seed=seed,
+            style_preset=style_preset,
+            aspect_ratio=aspect_ratio,
+            output_format=output_format
+        )
+        
+        # Create safe filename from prompt
+        safe_prompt = ''.join(c if c.isalnum() else '_' for c in prompt)[:25]
+        output_filename = f"img2img_{safe_prompt}_{result_info['seed']}.png"
+        
+        # Save to processed_images folder
+        output_path = os.path.join(app.config['PROCESSED_FOLDER'], output_filename)
+        
+        # Save the image using save_image function
+        save_image(transformed_image_data, output_path, result_info['seed'])
+        
+        # Clean up temp file
+        try:
             os.remove(temp_image_path)
-            
-            # Save the image to the user's collection if logged in
-            if current_user.is_authenticated:
-                current_user.save_thumbnail(f'/{app.config["PROCESSED_FOLDER"]}/{output_filename}', prompt)
-            
-            # Construct the URL that will be used in the frontend
-            image_url = url_for('serve_processed_image', filename=output_filename)
-            print(f"Returning image URL to frontend: {image_url}")
-            
-            # Return success response
-            return jsonify({
-                'success': True,
-                'message': 'Image transformed successfully',
-                'image_path': image_url,
-                'seed': result_info['seed']
-            })
-            
-        except Exception as e:
-            print(f"Error in img2img_transform: {str(e)}")
-            # Clean up temporary file in case of error
-            if os.path.exists(temp_image_path):
-                os.remove(temp_image_path)
-            return jsonify({'error': str(e)}), 500
+        except:
+            pass
+        
+        # Construct the URL that will be used in the frontend
+        image_url = url_for('serve_processed_image', filename=output_filename)
+        
+        # Return success response with image URL
+        return jsonify({
+            'success': True,
+            'message': 'Image transformed successfully',
+            'image_path': image_url,
+            'seed': result_info['seed']
+        })
     
-    return jsonify({'error': 'Invalid file'}), 400
+    except Exception as e:
+        print(f"Error processing image upload: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/img2img', methods=['POST'])
 def api_img2img_transform():
@@ -610,8 +587,7 @@ def api_img2img_transform():
             output_path = os.path.join(app.config['PROCESSED_FOLDER'], output_filename)
             
             # Save the generated image
-            with open(output_path, 'wb') as f:
-                f.write(image_data)
+            save_image(image_data, output_path, result_info['seed'])
             
             # Clean up the temporary file
             os.remove(temp_image_path)

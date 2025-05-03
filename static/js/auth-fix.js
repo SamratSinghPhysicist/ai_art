@@ -339,12 +339,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const logoutLink = logoutLinks.length > 0 ? logoutLinks[0] : null;
         
         if (isLoggedIn) {
-            // User is logged in, show My Images and Logout
+            // User is logged in, show Dashboard and Logout
             if (loginLink && !myImagesLink) {
                 const newMyImagesLink = document.createElement('a');
                 newMyImagesLink.href = '/dashboard';
                 newMyImagesLink.className = 'nav-link';
-                newMyImagesLink.textContent = 'My Images';
+                newMyImagesLink.textContent = 'Dashboard';
                 loginLink.parentNode.replaceChild(newMyImagesLink, loginLink);
             }
             
@@ -418,13 +418,13 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // If logged in but no dashboard/logout links, force update
         if (hasToken && (!hasMyImagesLink || !hasLogoutLink)) {
-            console.log('Auth state mismatch detected: has token but no My Images/Logout links, fixing...');
+            console.log('Auth state mismatch detected: has token but no Dashboard/Logout links, fixing...');
             forceUpdateNavbar(true);
         }
         
         // If not logged in but has dashboard/logout links, force update
         if (!hasToken && (hasMyImagesLink || hasLogoutLink)) {
-            console.log('Auth state mismatch detected: no token but has My Images/Logout links, fixing...');
+            console.log('Auth state mismatch detected: no token but has Dashboard/Logout links, fixing...');
             forceUpdateNavbar(false);
         }
     }, 2000);

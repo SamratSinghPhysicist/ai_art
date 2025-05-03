@@ -252,9 +252,9 @@
             
             <div class="footer-links">
                 <a href="/" class="footer-link">Home</a>
+                <a href="/text-to-image" class="footer-link">Text to Image</a>
+                <a href="/image-to-image" class="footer-link">Image to Image</a>
                 <a href="/api-docs" class="footer-link">API</a>
-                <a href="/terms" class="footer-link">Terms</a>
-                <a href="/privacy" class="footer-link">Privacy</a>
             </div>
             
             <p class="footer-description">
@@ -604,6 +604,172 @@
                         }
                     }
                 });
+            });
+            
+            // IMAGE-TO-IMAGE FORM HANDLING
+            const form = document.getElementById('img2img-form');
+            const imageUpload = document.getElementById('image-upload');
+            const previewContainer = document.getElementById('preview-container');
+            const imagePreview = document.getElementById('image-preview');
+            const dropArea = document.getElementById('drop-area');
+            const loadingElement = document.getElementById('loading');
+            const resultElement = document.getElementById('result');
+            const errorElement = document.getElementById('error');
+            const generatedImage = document.getElementById('generated-image');
+            const downloadBtn = document.getElementById('download-btn');
+            const strengthSlider = document.getElementById('strength-slider');
+            const strengthValue = document.getElementById('strength-value');
+            
+            // Update strength value display when slider changes
+            strengthSlider.addEventListener('input', function() {
+                strengthValue.textContent = this.value;
+            });
+            
+            // Preview uploaded image
+            imageUpload.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        previewContainer.classList.remove('hidden');
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            // Handle drag and drop
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                dropArea.classList.add('highlight');
+            }
+            
+            function unhighlight() {
+                dropArea.classList.remove('highlight');
+            }
+            
+            dropArea.addEventListener('drop', handleDrop, false);
+            
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const file = dt.files[0];
+                imageUpload.files = dt.files;
+                
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        previewContainer.classList.remove('hidden');
+                    }
+                    reader.readAsDataURL(file);
+                }
+            }
+            
+            // Browse button functionality
+            document.querySelector('.browse-btn').addEventListener('click', function() {
+                imageUpload.click();
+            });
+            
+            // Form submission
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Show loading, hide result and error
+                loadingElement.classList.remove('hidden');
+                resultElement.classList.add('hidden');
+                errorElement.classList.add('hidden');
+                
+                // Get file and form data
+                const file = imageUpload.files[0];
+                if (!file) {
+                    alert('Please upload an image first');
+                    loadingElement.classList.add('hidden');
+                    return;
+                }
+                
+                const promptInput = document.getElementById('img2img-prompt');
+                if (!promptInput.value.trim()) {
+                    alert('Please enter a description for the transformation');
+                    loadingElement.classList.add('hidden');
+                    return;
+                }
+                
+                // Create FormData object
+                const formData = new FormData();
+                formData.append('image_file', file);
+                formData.append('video_description', promptInput.value);
+                
+                // Add other form fields
+                formData.append('negative_prompt', document.getElementById('negative-prompt').value);
+                formData.append('strength', document.getElementById('strength-slider').value);
+                formData.append('style_preset', document.getElementById('style-preset').value);
+                formData.append('aspect_ratio', document.getElementById('aspect-ratio').value);
+                formData.append('output_format', document.getElementById('output-format').value);
+                formData.append('seed', document.getElementById('seed').value);
+                
+                // Also add base64 image data
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    formData.append('image_data', e.target.result);
+                    
+                    // Make POST request to server
+                    fetch('/img2img', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Server returned error: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.success) {
+                            // Show result
+                            generatedImage.src = data.image_path;
+                            generatedImage.onload = function() {
+                                loadingElement.classList.add('hidden');
+                                resultElement.classList.remove('hidden');
+                                
+                                // Enable download button
+                                downloadBtn.disabled = false;
+                                downloadBtn.addEventListener('click', function() {
+                                    const link = document.createElement('a');
+                                    link.href = data.image_path;
+                                    link.download = 'transformed-image.png';
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                });
+                            };
+                        } else {
+                            throw new Error(data.error || 'Unknown error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        loadingElement.classList.add('hidden');
+                        errorElement.classList.remove('hidden');
+                        errorElement.querySelector('p').textContent = 'Error: ' + error.message;
+                    });
+                };
+                reader.readAsDataURL(file);
             });
         });
     </script>

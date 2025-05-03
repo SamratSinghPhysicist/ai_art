@@ -800,7 +800,7 @@ else:
                                     <td>style_preset</td>
                                     <td>string</td>
                                     <td>No</td>
-                                    <td>Style preset to influence the aesthetic of the transformation. Same options as the Text to Image API: "3d-model", "analog-film", "anime", "cinematic", etc.</td>
+                                    <td>Style preset to influence the aesthetic of the transformation. Same options as the Text to Image API: "3d-model", "analog-film", "anime", "cinematic", "digital-art", "enhance", "fantasy-art", "isometric", "line-art", "low-poly", "modeling-compound", "neon-punk", "origami", "photographic", "pixel-art", "tile-texture"</td>
                                 </tr>
                                 <tr>
                                     <td>aspect_ratio</td>
@@ -841,7 +841,7 @@ else:
   -F "prompt=Transform this into a watercolor painting with vibrant colors and detailed brushstrokes" \
   -F "negative_prompt=blurry, low quality, distorted" \
   -F "strength=0.8" \
-  -F "style_preset=watercolor" \
+  -F "style_preset=cinematic" \
   -F "aspect_ratio=1:1" \
   -F "output_format=png" \
   -F "seed=0"</pre>
@@ -869,7 +869,7 @@ with open('/path/to/your/image.jpg', 'rb') as img_file:
         'prompt': 'Transform this into a watercolor painting with vibrant colors and detailed brushstrokes',
         'negative_prompt': 'blurry, low quality, distorted',
         'strength': '0.8',
-        'style_preset': 'watercolor',
+        'style_preset': 'cinematic',
         'aspect_ratio': '1:1',
         'output_format': 'png',
         'seed': '0'
@@ -905,8 +905,8 @@ with open('/path/to/your/image.jpg', 'rb') as img_file:
   formData.append('image', imageFile);
   formData.append('prompt', 'Transform this into a watercolor painting with vibrant colors and detailed brushstrokes');
   formData.append('negative_prompt', 'blurry, low quality, distorted');
-  formData.append('strength', '0.8');
-  formData.append('style_preset', 'watercolor');
+  formData.append('strength', '0.7');
+  formData.append('style_preset', 'cinematic');
   formData.append('aspect_ratio', '1:1');
   formData.append('output_format', 'png');
   formData.append('seed', '0');
