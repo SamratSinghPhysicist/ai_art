@@ -16,6 +16,7 @@ from werkzeug.exceptions import BadRequest
 import uuid
 import base64
 from img2img_stability import img2img, save_image
+from img2video_stability import img2video, get_video_result
 
 # Load environment variables
 load_dotenv()
@@ -27,11 +28,13 @@ app_dir = os.path.dirname(os.path.abspath(__file__))
 app.config['UPLOAD_FOLDER'] = os.path.join(app_dir, 'images')
 app.config['TEST_ASSETS'] = os.path.join(app_dir, 'test_assets')
 app.config['PROCESSED_FOLDER'] = os.path.join(app_dir, 'processed_images')
+app.config['PROCESSED_VIDEOS_FOLDER'] = os.path.join(app_dir, 'processed_videos')
 
 # URL path prefixes for images (not file system paths)
 app.config['IMAGES_URL_PATH'] = 'images'
 app.config['TEST_ASSETS_URL_PATH'] = 'test_assets'
 app.config['PROCESSED_URL_PATH'] = 'processed_images'
+app.config['PROCESSED_VIDEOS_URL_PATH'] = 'processed_videos'
 
 # Configure Flask-Login
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default_secret_key')
@@ -45,6 +48,7 @@ GEMINI_API_KEY = "AIzaSyA0RYI9KRrNLi6KaX4g49UJD4G5YBEb6II"
 # Ensure the images directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROCESSED_FOLDER'], exist_ok=True)
+os.makedirs(app.config['PROCESSED_VIDEOS_FOLDER'], exist_ok=True)
 
 # Also fix the logs directory path
 LOGS_DIR = os.path.join(app_dir, 'logs')
@@ -77,6 +81,16 @@ def text_to_image():
 def image_to_image():
     """Render the image-to-image page"""
     return render_template('image-to-image.html',
+                          user=current_user,
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
+
+@app.route('/image-to-video')
+def image_to_video_page():
+    """Render the image-to-video page"""
+    return render_template('image-to-video.html',
                           user=current_user,
                           firebase_api_key=firebase_config.get('apiKey'),
                           firebase_auth_domain=firebase_config.get('authDomain'),
@@ -797,6 +811,224 @@ def api_docs():
                           firebase_project_id=firebase_config.get('projectId'),
                           firebase_app_id=firebase_config.get('appId'))
 
+@app.route('/api/img2video', methods=['POST'])
+def api_img2video_generate():
+    """API endpoint to generate a video from an image"""
+    try:
+        # Check if file was uploaded
+        if 'image' not in request.files:
+            return jsonify({'error': 'Image file is required'}), 400
+        
+        file = request.files['image']
+        
+        # Validate the file
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+        
+        # Additional file validation
+        allowed_extensions = {'jpg', 'jpeg', 'png'}
+        
+        file_ext = ''
+        if '.' in file.filename:
+            file_ext = file.filename.rsplit('.', 1)[1].lower()
+            
+        if file_ext not in allowed_extensions:
+            return jsonify({'error': f'File format not supported. Please use JPG or PNG images. Received: {file_ext}'}), 400
+        
+        # Get parameters from form
+        try:
+            seed = int(request.form.get('seed', 0))
+        except ValueError:
+            seed = 0
+        
+        try:
+            cfg_scale = float(request.form.get('cfg_scale', 1.5))
+            if cfg_scale < 0 or cfg_scale > 10:
+                return jsonify({'error': 'cfg_scale must be between 0 and 10'}), 400
+        except ValueError:
+            cfg_scale = 1.5
+        
+        try:
+            motion_bucket_id = int(request.form.get('motion_bucket_id', 127))
+            if motion_bucket_id < 1 or motion_bucket_id > 255:
+                return jsonify({'error': 'motion_bucket_id must be between 1 and 255'}), 400
+        except ValueError:
+            motion_bucket_id = 127
+        
+        if file:
+            # Create processed_videos directory if it doesn't exist
+            if not os.path.exists(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos')):
+                os.makedirs(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos'), exist_ok=True)
+            
+            # Create a safe filename
+            safe_filename = f"temp_{uuid.uuid4().hex}.{file_ext}"
+            temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+            
+            try:
+                # Save the file
+                file.save(temp_image_path)
+                
+                # Validate the image can be opened
+                try:
+                    from PIL import Image
+                    with Image.open(temp_image_path) as img:
+                        # Just checking it can be opened
+                        img_width, img_height = img.size
+                        print(f"Received image with dimensions: {img_width}x{img_height}")
+                except Exception as img_error:
+                    raise ValueError(f"Invalid image file: {str(img_error)}")
+                
+                # Import the img2video function
+                from img2video_stability import img2video, get_api_key
+                
+                # Get API key from the database (oldest available key)
+                api_key = get_api_key()
+                if not api_key:
+                    return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
+                
+                try:
+                    # Start the video generation
+                    generation_id, dimensions, api_key = img2video(
+                        api_key=api_key,
+                        image_path=temp_image_path,
+                        seed=seed,
+                        cfg_scale=cfg_scale,
+                        motion_bucket_id=motion_bucket_id
+                    )
+                    
+                    # Store dimensions in session for later retrieval
+                    session[f'img2video_dimensions_{generation_id}'] = dimensions
+                    # Store API key in session for later use (polling)
+                    session[f'img2video_api_key_{generation_id}'] = api_key
+                    
+                    # Clean up the temporary file
+                    os.remove(temp_image_path)
+                    
+                    # Return the generation ID to poll for results
+                    return jsonify({
+                        'success': True,
+                        'id': generation_id,
+                        'message': f'Video generation started. Image automatically resized to {dimensions}. Poll for results using the returned ID.',
+                        'dimensions': dimensions
+                    })
+                except Exception as e:
+                    error_str = str(e)
+                    if "402" in error_str and "credits" in error_str.lower():
+                        # Special handling for payment required errors
+                        return jsonify({
+                            'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
+                            'error_type': 'payment_required'
+                        }), 402
+                    else:
+                        raise e
+                
+            except Exception as e:
+                # Clean up temporary file if it exists
+                if os.path.exists(temp_image_path):
+                    os.remove(temp_image_path)
+                
+                print(f"Error in image-to-video generation: {str(e)}")
+                return jsonify({'error': str(e)}), 500
+    except Exception as e:
+        print(f"Unexpected error in image-to-video API: {str(e)}")
+        return jsonify({'error': f"An unexpected error occurred: {str(e)}"}), 500
+
+@app.route('/api/img2video/result/<generation_id>', methods=['GET'])
+def api_img2video_result(generation_id):
+    """API endpoint to check the status of a video generation or retrieve the result"""
+    try:
+        # Import necessary functions
+        from img2video_stability import get_video_result, save_video, get_api_key
+        
+        # Try to get the API key from session (stored from previous request)
+        api_key = session.get(f'img2video_api_key_{generation_id}')
+        
+        # If not in session, get a fresh key
+        if not api_key:
+            api_key = get_api_key()
+            if not api_key:
+                return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
+        
+        try:
+            # Check the status of the generation
+            result = get_video_result(api_key=api_key, generation_id=generation_id)
+            
+            if result['status'] == 'in-progress':
+                # Return 202 Accepted status for in-progress generations
+                return jsonify({
+                    'status': 'in-progress',
+                    'message': 'Video generation is still in progress. Try again in a few seconds.'
+                }), 202
+            
+            # If complete, determine if we should return the video directly or save it
+            # Default behavior: save the video and return its URL
+            
+            # Process the video for storage/return
+            videos_folder = app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos')
+            
+            # Create folder if it doesn't exist
+            if not os.path.exists(videos_folder):
+                os.makedirs(videos_folder, exist_ok=True)
+            
+            # Try to get the dimensions from session or use a default
+            dimensions = session.get(f'img2video_dimensions_{generation_id}', None)
+            
+            # Save the video with a prefix based on the generation ID
+            video_path = save_video(
+                video_data=result['video'],
+                output_directory=videos_folder,
+                filename_prefix=f"video_{generation_id[:8]}",
+                seed=result.get('seed')
+            )
+            
+            # Get just the filename for the URL
+            video_filename = os.path.basename(video_path)
+            
+            # Clean up session data as we no longer need it
+            if f'img2video_dimensions_{generation_id}' in session:
+                session.pop(f'img2video_dimensions_{generation_id}')
+            if f'img2video_api_key_{generation_id}' in session:
+                session.pop(f'img2video_api_key_{generation_id}')
+            
+            # Return the success response with the video URL
+            return jsonify({
+                'status': 'complete',
+                'video_url': url_for('serve_processed_video', filename=video_filename),
+                'finish_reason': result.get('finish_reason', 'SUCCESS'),
+                'seed': result.get('seed', 'unknown'),
+                'dimensions': dimensions
+            }), 200
+        except Exception as e:
+            error_str = str(e)
+            if "402" in error_str and "credits" in error_str.lower():
+                # Try with a new API key
+                new_api_key = get_api_key()
+                if new_api_key:
+                    # Store new key in session
+                    session[f'img2video_api_key_{generation_id}'] = new_api_key
+                    return jsonify({
+                        'status': 'retry',
+                        'message': 'API key refreshed due to insufficient credits. Please try again.'
+                    }), 200
+                else:
+                    return jsonify({
+                        'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
+                        'error_type': 'payment_required',
+                        'status': 'error'
+                    }), 402
+            else:
+                raise e
+        
+    except Exception as e:
+        print(f"Error checking image-to-video status: {str(e)}")
+        return jsonify({'error': str(e), 'status': 'error'}), 500
+
+@app.route('/processed_videos/<path:filename>')
+def serve_processed_video(filename):
+    """Serve a processed video file"""
+    videos_folder = app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos')
+    return send_from_directory(videos_folder, filename)
+
 if __name__ == '__main__':
     # Configure logging
     if not os.path.exists(LOGS_DIR):
@@ -821,6 +1053,7 @@ if __name__ == '__main__':
     print(f"Upload Folder: {os.path.abspath(app.config['UPLOAD_FOLDER'])}")
     print(f"Test Assets: {os.path.abspath(app.config['TEST_ASSETS'])}")
     print(f"Processed Folder: {os.path.abspath(app.config['PROCESSED_FOLDER'])}")
+    print(f"Processed Videos Folder: {os.path.abspath(app.config['PROCESSED_VIDEOS_FOLDER'])}")
     print(f"App directory: {app_dir}")
     print("=" * 50)
     

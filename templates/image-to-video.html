@@ -1,0 +1,1664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to Video - AI Art Generator</title>
+    <meta name="description" content="Transform still images into short videos with AI. Upload an image and see it come to life with natural motion.">
+    <meta name="keywords" content="image to video, video AI, AI animation, stable video diffusion, motion generation">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="AI Art">
+    
+    <link rel="canonical" href="https://aiart-zroo.onrender.com/image-to-video">
+    
+    <!-- Google Adsense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
+    crossorigin="anonymous"></script>
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://aiart-zroo.onrender.com/image-to-video">
+    <meta property="og:title" content="Image to Video - AI Art Generator">
+    <meta property="og:description" content="Transform still images into short videos with AI. Upload an image and see it come to life with natural motion.">
+    <meta property="og:image" content="https://aiart-zroo.onrender.com/static/images/og-image.jpg">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://aiart-zroo.onrender.com/image-to-video">
+    <meta property="twitter:title" content="Image to Video - AI Art Generator">
+    <meta property="twitter:description" content="Transform still images into short videos with AI. Upload an image and see it come to life with natural motion.">
+    <meta property="twitter:image" content="https://aiart-zroo.onrender.com/static/images/og-image.jpg">
+    
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+    
+    <!-- Initialize Firebase -->
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "{{ firebase_api_key }}",
+            authDomain: "{{ firebase_auth_domain }}",
+            projectId: "{{ firebase_project_id }}",
+            appId: "{{ firebase_app_id }}"
+        };
+        
+        // Initialize Firebase
+        if (typeof firebase !== 'undefined') {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+                console.log("Firebase initialized");
+            }
+        } else {
+            console.error("Firebase SDK not available");
+        }
+    </script>
+    
+    <!-- Global Auth Handler (loads first) -->
+    <script src="/static/js/auth-global.js"></script>
+    
+    <!-- Auth Fix Script -->
+    <script src="/static/js/auth-fix.js"></script>
+
+    <style>
+        /* General layout improvements */
+        :root {
+            --primary-rgb: 91, 143, 249;
+            --primary: #5B8FF9;
+            --primary-light: #8FB6FF;
+            --primary-dark: #3E6FD9;
+            --gradient-start: #5B8FF9;
+            --gradient-end: #83CFFF;
+            --bg-light: #F8FAFF;
+            --card-bg: #FFFFFF;
+            --text: #333F51;
+            --text-light: #6F7C8E;
+            --border: #E1E8F5;
+            --error: #EF4444;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --info: #3B82F6;
+            --shadow-color: rgba(91, 143, 249, 0.1);
+            --shadow-color-hover: rgba(91, 143, 249, 0.15);
+        }
+        
+        body {
+            overflow-x: hidden;
+            background-color: var(--bg-light);
+        }
+        
+        /* Modern hero section */
+        .hero-section {
+            background: linear-gradient(135deg, rgba(91, 143, 249, 0.08), rgba(131, 207, 255, 0.05));
+            border-radius: 1.5rem;
+            padding: 3rem 2rem;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 30px -5px rgba(91, 143, 249, 0.08);
+        }
+        
+        .hero-section::before {
+            content: "";
+            position: absolute;
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(91, 143, 249, 0.1) 0%, rgba(131, 207, 255, 0) 70%);
+            top: -100px;
+            right: -80px;
+            border-radius: 50%;
+            z-index: 0;
+        }
+        
+        .hero-section::after {
+            content: "";
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(91, 143, 249, 0.08) 0%, rgba(131, 207, 255, 0) 70%);
+            bottom: -60px;
+            left: -60px;
+            border-radius: 50%;
+            z-index: 0;
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        .gradient-text {
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: inline;
+        }
+        
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--card-bg);
+            color: var(--text);
+            font-weight: 500;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(91, 143, 249, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(91, 143, 249, 0.15);
+            background-color: rgba(91, 143, 249, 0.05);
+        }
+        
+        .action-button svg {
+            margin-right: 0.5rem;
+        }
+        
+        /* Main content grid */
+        .generator-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+        
+        /* Upload container */
+        .upload-container, 
+        .results-container {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            box-shadow: 0 8px 20px rgba(91, 143, 249, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+        
+        .upload-container:hover,
+        .results-container:hover {
+            box-shadow: 0 12px 28px rgba(91, 143, 249, 0.12);
+        }
+        
+        .upload-header,
+        .results-header,
+        .parameters-header {
+            background: linear-gradient(to right, rgba(91, 143, 249, 0.05), rgba(131, 207, 255, 0.02));
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+        }
+        
+        .upload-header-icon,
+        .results-header-icon,
+        .parameters-header-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            border-radius: 10px;
+            margin-right: 1rem;
+        }
+        
+        .upload-header-icon svg,
+        .results-header-icon svg,
+        .parameters-header-icon svg {
+            color: white;
+            width: 20px;
+            height: 20px;
+        }
+        
+        /* Modern drop area styling */
+        .modern-drop-area {
+            background-color: rgba(248, 250, 255, 0.8);
+            border: 2px dashed var(--border);
+            border-radius: 1rem;
+            padding: 2.5rem 1.5rem;
+            margin: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .modern-drop-area:hover {
+            border-color: var(--primary);
+            background-color: rgba(91, 143, 249, 0.03);
+            transform: scale(1.005);
+        }
+        
+        .modern-drop-area.drag-over {
+            border-color: var(--primary);
+            background-color: rgba(91, 143, 249, 0.05);
+            transform: scale(1.01);
+        }
+        
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, rgba(91, 143, 249, 0.1), rgba(131, 207, 255, 0.1));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            color: var(--primary);
+        }
+        
+        .upload-icon svg {
+            width: 32px;
+            height: 32px;
+            color: var(--primary);
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 0.75rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+            object-fit: contain;
+            margin: 0 auto;
+            display: block;
+        }
+        
+        /* Parameters styling */
+        .parameters-container {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            margin: 1.5rem;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(91, 143, 249, 0.05);
+            border: 1px solid var(--border);
+        }
+        
+        .parameter-group {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .parameter-group:last-child {
+            border-bottom: none;
+        }
+        
+        .parameter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        
+        .parameter-label {
+            display: flex;
+            align-items: center;
+            font-weight: 500;
+            color: var(--text);
+        }
+        
+        .parameter-icon {
+            width: 18px;
+            height: 18px;
+            margin-right: 0.75rem;
+            color: var(--primary);
+        }
+        
+        .parameter-help-trigger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background-color: rgba(91, 143, 249, 0.1);
+            color: var(--primary);
+            font-size: 12px;
+            margin-left: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .parameter-help {
+            background-color: rgba(91, 143, 249, 0.05);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .parameter-value {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        /* Slider styling */
+        .parameter-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(to right, var(--primary-light), var(--primary));
+            border-radius: 3px;
+            outline: none;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+            margin: 0.75rem 0 0.5rem;
+        }
+        
+        .parameter-slider:hover {
+            opacity: 1;
+        }
+        
+        .parameter-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(91, 143, 249, 0.3);
+            transition: all 0.3s;
+        }
+        
+        .parameter-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 8px rgba(91, 143, 249, 0.4);
+        }
+        
+        .parameter-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(91, 143, 249, 0.3);
+            transition: all 0.3s;
+            border: none;
+        }
+        
+        .parameter-slider::-moz-range-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 0 3px 8px rgba(91, 143, 249, 0.4);
+        }
+        
+        .parameter-input {
+            width: 100%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+            background-color: var(--bg-light);
+            color: var(--text);
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+        
+        .parameter-input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 3px rgba(91, 143, 249, 0.1);
+        }
+        
+        /* Result States */
+        .placeholder-state,
+        .processing-state,
+        .error-state,
+        .success-state {
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Initial (placeholder) state */
+        .placeholder-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, rgba(91, 143, 249, 0.1), rgba(131, 207, 255, 0.1));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .placeholder-icon svg {
+            width: 40px;
+            height: 40px;
+            color: var(--primary);
+        }
+        
+        /* Processing state */
+        .processing-spinner {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        
+        .processing-spinner:before {
+            content: "";
+            box-sizing: border-box;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: var(--primary);
+            border-bottom-color: var(--primary-light);
+            animation: spin 1.5s linear infinite;
+        }
+        
+        .processing-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .processing-icon svg {
+            width: 24px;
+            height: 24px;
+            color: var(--primary);
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background-color: rgba(91, 143, 249, 0.1);
+            border-radius: 4px;
+            margin: 1.5rem 0;
+            overflow: hidden;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary-light), var(--primary));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        
+        /* Error state */
+        .error-icon {
+            width: 80px;
+            height: 80px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .error-icon svg {
+            width: 40px;
+            height: 40px;
+            color: var(--error);
+        }
+        
+        /* Success state */
+        .video-result {
+            width: 100%;
+            margin-bottom: 1.5rem;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .video-player {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background-color: #000;
+            border-radius: 0.5rem;
+        }
+        
+        .result-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+        }
+        
+        .result-item {
+            background-color: var(--bg-light);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border);
+            min-width: 140px;
+        }
+        
+        .result-icon {
+            width: 36px;
+            height: 36px;
+            background: rgba(91, 143, 249, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.75rem;
+        }
+        
+        .result-icon svg {
+            width: 20px;
+            height: 20px;
+            color: var(--primary);
+        }
+        
+        .result-content {
+            flex: 1;
+        }
+        
+        .result-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-bottom: 0.25rem;
+        }
+        
+        .result-value {
+            font-weight: 600;
+            color: var(--text);
+        }
+        
+        /* Message boxes */
+        .message-box {
+            background: white;
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            margin: 1rem auto;
+            max-width: 90%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: flex-start;
+            text-align: left;
+            border-left: 4px solid;
+        }
+        
+        .error-message {
+            border-color: var(--error);
+            background-color: rgba(254, 242, 242, 0.5);
+        }
+        
+        .error-message svg {
+            color: var(--error);
+        }
+        
+        .info-message {
+            border-color: var(--info);
+            background-color: rgba(239, 246, 255, 0.5);
+        }
+        
+        .info-message svg {
+            color: var(--info);
+        }
+        
+        .message-icon {
+            margin-right: 0.75rem;
+            flex-shrink: 0;
+        }
+        
+        /* Buttons */
+        .btn-primary,
+        #generateBtn,
+        #downloadLink,
+        button[type="submit"] {
+            background: linear-gradient(to right, var(--primary-dark), var(--primary)) !important;
+            color: white !important;
+            font-weight: 500 !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem 1.5rem !important;
+            border: none !important;
+            box-shadow: 0 4px 12px rgba(91, 143, 249, 0.25) !important;
+            transition: all 0.3s ease !important;
+            text-decoration: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        
+        .btn-primary:hover,
+        #generateBtn:hover,
+        #downloadLink:hover,
+        button[type="submit"]:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 6px 16px rgba(91, 143, 249, 0.35) !important;
+            background: linear-gradient(to right, #3963c8, #5a85e5) !important;
+        }
+        
+        .btn-secondary,
+        #removeImageBtn,
+        #regenerateBtn,
+        #tryAgainBtn {
+            background-color: var(--bg-light) !important;
+            color: var(--text) !important;
+            font-weight: 500 !important;
+            border-radius: 0.75rem !important;
+            padding: 0.75rem 1.5rem !important;
+            border: 1px solid var(--border) !important;
+            transition: all 0.3s ease !important;
+            text-decoration: none !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        
+        .btn-secondary:hover,
+        #removeImageBtn:hover,
+        #regenerateBtn:hover,
+        #tryAgainBtn:hover {
+            background-color: rgba(91, 143, 249, 0.05) !important;
+            border-color: var(--primary-light) !important;
+            transform: translateY(-2px) !important;
+        }
+        
+        .generate-btn {
+            margin-top: 1rem;
+        }
+        
+        /* General utilities */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .hero-section {
+                padding: 2rem 1rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+            
+            .action-button {
+                width: 100%;
+            }
+            
+            .modern-drop-area {
+                padding: 1.5rem 1rem;
+            }
+            
+            .upload-icon, .placeholder-icon, .processing-spinner, .error-icon {
+                width: 64px;
+                height: 64px;
+            }
+            
+            .upload-icon svg, .placeholder-icon svg, .processing-icon svg, .error-icon svg {
+                width: 32px;
+                height: 32px;
+            }
+            
+            .btn-primary, .btn-secondary, #generateBtn, #downloadLink, #removeImageBtn, #regenerateBtn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Button icon size control */
+        button svg,
+        a svg {
+            width: 16px !important;
+            height: 16px !important;
+            flex-shrink: 0;
+        }
+
+        .btn-primary svg, 
+        .btn-secondary svg,
+        #generateBtn svg, 
+        #downloadLink svg, 
+        #removeImageBtn svg, 
+        #regenerateBtn svg,
+        #tryAgainBtn svg {
+            width: 16px !important;
+            height: 16px !important;
+            margin-right: 0.5rem !important;
+        }
+
+        /* Override for specific icons */
+        .parameter-icon {
+            width: 18px !important;
+            height: 18px !important;
+            margin-right: 0.75rem !important;
+            color: var(--primary);
+        }
+
+        .upload-icon svg, 
+        .placeholder-icon svg, 
+        .processing-icon svg, 
+        .error-icon svg {
+            width: 28px !important;
+            height: 28px !important;
+        }
+
+        .upload-header-icon svg,
+        .results-header-icon svg,
+        .parameters-header-icon svg {
+            width: 16px !important;
+            height: 16px !important;
+        }
+
+        .message-icon {
+            width: 16px !important;
+            height: 16px !important;
+            margin-right: 0.75rem !important;
+            flex-shrink: 0;
+        }
+
+        /* For the smaller icons in feature tags */
+        .flex-wrap .h-5,
+        .flex-wrap .w-5 {
+            width: 16px !important;
+            height: 16px !important;
+        }
+    </style>
+</head>
+<body class="bg-background text-text">
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="nav-logo">AI Art</a>
+                <button class="mobile-menu-btn">☰</button>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    
+                    <!-- AI Tools dropdown -->
+                    <div class="dropdown">
+                        <button type="button" class="dropdown-toggle nav-link">AI Tools <span class="dropdown-arrow">▼</span></button>
+                        <div class="dropdown-menu">
+                            <a href="/text-to-image" class="dropdown-item">Text to Image</a>
+                            <a href="/image-to-image" class="dropdown-item">Image to Image</a>
+                            <a href="/image-to-video" class="dropdown-item active">Image to Video</a>
+                        </div>
+                    </div>
+                    
+                    <a href="/api-docs" class="nav-link">API</a>
+                    
+                    <!-- User menu will be added by the auth-global.js -->
+                    <div id="auth-placeholder"></div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container mx-auto py-12 px-4">
+            <div class="hero-section">
+                <div class="hero-content">
+                    <h1 class="text-4xl font-bold mb-4 text-center">Image to <span class="gradient-text">Video</span> Generation</h1>
+                    <p class="text-text-light max-w-2xl mx-auto text-lg text-center">
+                        Transform your static images into immersive, dynamic videos using AI animation.
+                        Upload any image and watch it come to life with natural motion.
+                    </p>
+                    <p class="text-sm text-text-light max-w-2xl mx-auto text-center mt-4">
+                        Note: This feature utilizes Stable Video 1.1 by Stability AI. The quality of the generated video is dependent on their model.
+                    </p>
+                    
+                    <!-- Animation stats -->
+                    <div class="flex justify-center gap-6 mt-6 flex-wrap">
+                        <div class="flex items-center px-5 py-3 rounded-lg bg-white shadow-sm">
+                            <svg class="mr-3 text-primary" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                            <span class="text-sm font-medium">Realistic Motion</span>
+                        </div>
+                        <div class="flex items-center px-5 py-3 rounded-lg bg-white shadow-sm">
+                            <svg class="mr-3 text-primary" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <span class="text-sm font-medium">30-60 seconds processing</span>
+                        </div>
+                        <div class="flex items-center px-5 py-3 rounded-lg bg-white shadow-sm">
+                            <svg class="mr-3 text-primary" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Stable Video Diffusion</span>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <a href="/text-to-image" class="action-button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path>
+                            </svg>
+                            Try Text to Image
+                        </a>
+                        <a href="/image-to-image" class="action-button">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                <polyline points="21 15 16 10 5 21"></polyline>
+                            </svg>
+                            Try Image to Image
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- Left side: Form -->
+                <div class="lg:col-span-5">
+                    <div class="upload-container">
+                        <div class="upload-header">
+                            <div class="upload-header-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            </div>
+                            <h2 class="text-lg font-semibold">Upload an Image</h2>
+                        </div>
+                        
+                        <form id="img2videoForm" class="generator-form">
+                            <!-- Image upload -->
+                            <div class="form-group">
+                                <div id="dropArea" class="modern-drop-area">
+                                    <div id="dropPrompt">
+                                        <div class="upload-icon">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                <polyline points="21 15 16 10 5 21"></polyline>
+                                            </svg>
+                                        </div>
+                                        <p class="text-lg font-medium mb-2">Drop your image here or click to browse</p>
+                                        <p class="text-sm text-text-light">Supported formats: JPG, PNG (Max 10MB)</p>
+                                    </div>
+                                    <img id="imagePreview" class="image-preview hidden" alt="Preview">
+                                    <input type="file" id="imageInput" class="hidden" accept="image/jpeg, image/png">
+                                </div>
+                                <button type="button" id="removeImageBtn" class="btn-secondary mt-3 w-full hidden hover:bg-red-50 hover:text-red-600 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="inline" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    <span class="ml-2">Remove Image</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Motion Parameters -->
+                            <div class="parameters-container">
+                                <div class="parameters-header">
+                                    <div class="parameters-header-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-base font-semibold">Animation Controls</h3>
+                                </div>
+                                
+                                <div class="parameter-group">
+                                    <div class="parameter-header">
+                                        <div class="parameter-label">
+                                            <svg class="parameter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                            </svg>
+                                            Motion Intensity
+                                            <span class="parameter-help-trigger" id="motionHelpTrigger">?</span>
+                                        </div>
+                                        <span class="parameter-value" id="motionValue">127</span>
+                                    </div>
+                                    <div class="parameter-help" id="motionHelp">
+                                        Controls the amount of motion in the video. Higher values create more dramatic movement (range: 1-255).
+                                    </div>
+                                    <input type="range" id="motionAmount" min="1" max="255" value="127" class="parameter-slider">
+                                </div>
+                                
+                                <div class="parameter-group">
+                                    <div class="parameter-header">
+                                        <div class="parameter-label">
+                                            <svg class="parameter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                            </svg>
+                                            Image Fidelity
+                                            <span class="parameter-help-trigger" id="cfgHelpTrigger">?</span>
+                                        </div>
+                                        <span class="parameter-value" id="cfgValue">1.5</span>
+                                    </div>
+                                    <div class="parameter-help" id="cfgHelp">
+                                        Controls how closely the video adheres to the original image. Higher values preserve more details from the source image (range: 0-10).
+                                    </div>
+                                    <input type="range" id="cfgScale" min="0" max="10" step="0.1" value="1.5" class="parameter-slider">
+                                </div>
+                                
+                                <div class="parameter-group">
+                                    <div class="parameter-header">
+                                        <div class="parameter-label">
+                                            <svg class="parameter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                                            </svg>
+                                            Seed
+                                            <span class="parameter-help-trigger" id="seedHelpTrigger">?</span>
+                                        </div>
+                                        <span class="parameter-value" id="seedValue">Random</span>
+                                    </div>
+                                    <div class="parameter-help" id="seedHelp">
+                                        A value that controls randomness. Using the same seed with the same image and settings will produce similar results. Leave at 0 for random generation.
+                                    </div>
+                                    <input type="number" id="seedInput" class="parameter-input" min="0" max="2147483647" placeholder="Enter seed (0 for random)">
+                                </div>
+                            </div>
+                            
+                            <!-- Submit button -->
+                            <div class="mx-6 mb-6">
+                                <button type="submit" id="generateBtn" class="btn-primary w-full generate-btn">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                        <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Generate Video
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <!-- Right side: Results -->
+                <div class="lg:col-span-7">
+                    <div class="results-container">
+                        <div class="results-header">
+                            <div class="results-header-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                </svg>
+                            </div>
+                            <h2 class="text-lg font-semibold">Generated Video</h2>
+                        </div>
+                        
+                        <div class="results-body">
+                            <!-- Initial state -->
+                            <div id="initialState" class="placeholder-state">
+                                <div class="placeholder-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                    </svg>
+                                </div>
+                                <h3 class="text-xl font-semibold mb-2 text-gray-800">Your video will appear here</h3>
+                                <p class="text-gray-500 max-w-md mx-auto">Upload an image and adjust parameters to create beautiful, fluid motion videos with AI</p>
+                                
+                                <div class="flex flex-wrap justify-center gap-3 mt-8">
+                                    <div class="flex items-center px-4 py-2 rounded-lg bg-white shadow-sm border border-gray-100">
+                                        <svg class="mr-2 text-green-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                        <span class="text-sm font-medium">Quick Generation</span>
+                                    </div>
+                                    <div class="flex items-center px-4 py-2 rounded-lg bg-white shadow-sm border border-gray-100">
+                                        <svg class="mr-2 text-indigo-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                        <span class="text-sm font-medium">30-60 seconds processing</span>
+                                    </div>
+                                    <div class="flex items-center px-4 py-2 rounded-lg bg-white shadow-sm border border-gray-100">
+                                        <svg class="mr-2 text-blue-500" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                                            <circle cx="12" cy="13" r="4"></circle>
+                                        </svg>
+                                        <span class="text-sm font-medium">High-Quality Results</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Loading state -->
+                            <div id="loadingState" class="processing-state hidden">
+                                <div class="processing-spinner">
+                                    <div class="processing-icon">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                        </svg>
+                                    </div>
+                                </div>
+                                
+                                <div class="processing-content">
+                                    <h3 class="text-xl font-semibold mb-2 text-gray-800" id="statusMessage">Generating your video...</h3>
+                                    <p class="text-gray-500 max-w-md mx-auto">Our AI is bringing your image to life. This typically takes 30-60 seconds.</p>
+                                    
+                                    <div class="progress-track">
+                                        <div class="progress-bar" id="progressBar" style="width: 30%"></div>
+                                    </div>
+                                    
+                                    <div class="info-message message-box">
+                                        <svg class="message-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                        </svg>
+                                        <div>
+                                            <span>The process could take up to 60 seconds depending on the complexity of the animation. Please wait while we transform your image.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Error state -->
+                            <div id="errorState" class="error-state hidden">
+                                <div class="error-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                                    </svg>
+                                </div>
+                                
+                                <h3 class="text-xl font-semibold mb-2 text-gray-800">Generation Failed</h3>
+                                <p class="text-gray-500 max-w-md mx-auto mb-4">We encountered an issue while generating your video.</p>
+                                
+                                <div class="error-message message-box">
+                                    <svg class="message-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    <div id="errorMessage">Error message will appear here</div>
+                                </div>
+                                
+                                <button id="tryAgainBtn" class="btn-secondary mt-6">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                        <path d="M3 3v5h5"></path>
+                                        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                                        <path d="M16 21h5v-5"></path>
+                                    </svg>
+                                    Try Again
+                                </button>
+                            </div>
+                            
+                            <!-- Success state -->
+                            <div id="successState" class="success-state hidden">
+                                <div class="video-result">
+                                    <video id="generatedVideo" class="video-player" controls autoplay loop></video>
+                                </div>
+                                
+                                <div class="p-6">
+                                    <div class="flex items-center justify-center mb-3">
+                                        <div class="flex items-center bg-green-50 text-green-700 text-sm font-medium py-1 px-3 rounded-full">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                            </svg>
+                                            <span class="ml-1">Generation Successful</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="result-details">
+                                        <div class="result-item">
+                                            <div class="result-icon">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                </svg>
+                                            </div>
+                                            <div class="result-content">
+                                                <div class="result-label">Seed</div>
+                                                <div class="result-value" id="resultSeed">Random</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="result-item">
+                                            <div class="result-icon">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                                </svg>
+                                            </div>
+                                            <div class="result-content">
+                                                <div class="result-label">Status</div>
+                                                <div class="result-value" id="resultStatus">Complete</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="result-item">
+                                            <div class="result-icon">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                    <polyline points="21 15 16 10 5 21"></polyline>
+                                                </svg>
+                                            </div>
+                                            <div class="result-content">
+                                                <div class="result-label">Dimensions</div>
+                                                <div class="result-value" id="dimensionsInfo">576×320</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="action-buttons justify-center">
+                                        <a id="downloadLink" class="btn-primary" download="generated_video.mp4">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="7 10 12 15 17 10"></polyline>
+                                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                                            </svg>
+                                            Download Video
+                                        </a>
+                                        <button id="regenerateBtn" class="btn-secondary">
+                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                                <path d="M3 3v5h5"></path>
+                                                <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path>
+                                                <path d="M16 21h5v-5"></path>
+                                            </svg>
+                                            Generate Another
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">
+                <span class="footer-logo-text">AI Art</span>
+            </div>
+            
+            <div class="footer-links">
+                <a href="/" class="footer-link">Home</a>
+                <a href="/text-to-image" class="footer-link">Text to Image</a>
+                <a href="/image-to-image" class="footer-link">Image to Image</a>
+                <a href="/image-to-video" class="footer-link">Image to Video</a>
+                <a href="/api-docs" class="footer-link">API</a>
+            </div>
+            
+            <p class="footer-copyright">
+                &copy; 2025 AI Art. All rights reserved.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
+            const form = document.getElementById('img2videoForm');
+            const dropArea = document.getElementById('dropArea');
+            const imageInput = document.getElementById('imageInput');
+            const imagePreview = document.getElementById('imagePreview');
+            const dropPrompt = document.getElementById('dropPrompt');
+            const removeImageBtn = document.getElementById('removeImageBtn');
+            const generateBtn = document.getElementById('generateBtn');
+            const motionSlider = document.getElementById('motionAmount');
+            const cfgSlider = document.getElementById('cfgScale');
+            const seedInput = document.getElementById('seedInput');
+            const motionValue = document.getElementById('motionValue');
+            const cfgValue = document.getElementById('cfgValue');
+            const seedValue = document.getElementById('seedValue');
+            
+            // Result states
+            const initialState = document.getElementById('initialState');
+            const loadingState = document.getElementById('loadingState');
+            const errorState = document.getElementById('errorState');
+            const successState = document.getElementById('successState');
+            const statusMessage = document.getElementById('statusMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const progressBar = document.getElementById('progressBar');
+            const generatedVideo = document.getElementById('generatedVideo');
+            const resultSeed = document.getElementById('resultSeed');
+            const resultStatus = document.getElementById('resultStatus');
+            const downloadLink = document.getElementById('downloadLink');
+            const regenerateBtn = document.getElementById('regenerateBtn');
+            const tryAgainBtn = document.getElementById('tryAgainBtn');
+            
+            // Help tooltips
+            const motionHelpTrigger = document.getElementById('motionHelpTrigger');
+            const cfgHelpTrigger = document.getElementById('cfgHelpTrigger');
+            const seedHelpTrigger = document.getElementById('seedHelpTrigger');
+            const motionHelp = document.getElementById('motionHelp');
+            const cfgHelp = document.getElementById('cfgHelp');
+            const seedHelp = document.getElementById('seedHelp');
+            
+            // Variables for generation
+            let selectedFile = null;
+            let generationId = null;
+            let pollingInterval = null;
+            let attemptCount = 0;
+            const maxAttempts = 120; // 10 minutes at 5 seconds per poll
+            
+            // Set up tooltip triggers
+            setupTooltips();
+            
+            // Event Listeners for image upload
+            dropArea.addEventListener('click', () => {
+                imageInput.click();
+            });
+            
+            imageInput.addEventListener('change', handleFileSelect);
+            
+            dropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropArea.classList.add('drag-over');
+            });
+            
+            dropArea.addEventListener('dragleave', () => {
+                dropArea.classList.remove('drag-over');
+            });
+            
+            dropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropArea.classList.remove('drag-over');
+                
+                if (e.dataTransfer.files.length) {
+                    imageInput.files = e.dataTransfer.files;
+                    handleFileSelect();
+                }
+            });
+            
+            removeImageBtn.addEventListener('click', () => {
+                // Clear image
+                imageInput.value = '';
+                imagePreview.classList.add('hidden');
+                dropPrompt.classList.remove('hidden');
+                removeImageBtn.classList.add('hidden');
+                selectedFile = null;
+            });
+            
+            // Event listeners for parameter controls
+            motionSlider.addEventListener('input', () => {
+                motionValue.textContent = motionSlider.value;
+                updateSliderBackground(motionSlider);
+            });
+            
+            cfgSlider.addEventListener('input', () => {
+                cfgValue.textContent = parseFloat(cfgSlider.value).toFixed(1);
+                updateSliderBackground(cfgSlider);
+            });
+            
+            seedInput.addEventListener('input', () => {
+                seedValue.textContent = seedInput.value > 0 ? seedInput.value : 'Random';
+            });
+            
+            // Initialize slider backgrounds
+            updateSliderBackground(motionSlider);
+            updateSliderBackground(cfgSlider);
+            
+            // Form submission
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                if (!selectedFile) {
+                    showError('Please select an image to convert to video');
+                    return;
+                }
+                
+                startGeneration();
+            });
+            
+            // Result actions
+            regenerateBtn.addEventListener('click', () => {
+                // Reset to initial state
+                showInitialState();
+            });
+            
+            tryAgainBtn.addEventListener('click', () => {
+                // Reset to initial state
+                showInitialState();
+            });
+            
+            // Setup tooltip functionality
+            function setupTooltips() {
+                // Set up tooltip triggers
+                motionHelpTrigger.addEventListener('click', () => {
+                    toggleHelp(motionHelp);
+                });
+                
+                cfgHelpTrigger.addEventListener('click', () => {
+                    toggleHelp(cfgHelp);
+                });
+                
+                seedHelpTrigger.addEventListener('click', () => {
+                    toggleHelp(seedHelp);
+                });
+            }
+            
+            function toggleHelp(helpElement) {
+                if (helpElement.style.display === 'block') {
+                    helpElement.style.display = 'none';
+                } else {
+                    // Hide all help elements first
+                    [motionHelp, cfgHelp, seedHelp].forEach(el => {
+                        if (el) el.style.display = 'none';
+                    });
+                    // Show the selected help
+                    helpElement.style.display = 'block';
+                }
+            }
+            
+            // Update slider background gradient to show position
+            function updateSliderBackground(slider) {
+                const min = slider.min || 0;
+                const max = slider.max || 100;
+                const value = slider.value;
+                
+                // Calculate percentage
+                const percentage = ((value - min) / (max - min)) * 100;
+                
+                // Update background
+                slider.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`;
+            }
+            
+            function handleFileSelect() {
+                const file = imageInput.files[0];
+                
+                if (file) {
+                    // Validate file type
+                    const validTypes = ['image/jpeg', 'image/png'];
+                    if (!validTypes.includes(file.type)) {
+                        showError(`Please select a valid image file (JPG or PNG). The file type "${file.type}" is not supported.`);
+                        return;
+                    }
+                    
+                    // Validate file size (max 10MB)
+                    if (file.size > 10 * 1024 * 1024) {
+                        showError('Image size should be less than 10MB');
+                        return;
+                    }
+                    
+                    // Validate file extension
+                    const fileName = file.name.toLowerCase();
+                    const fileExt = fileName.split('.').pop();
+                    if (!['jpg', 'jpeg', 'png'].includes(fileExt)) {
+                        showError(`Invalid file extension: .${fileExt}. Please use .jpg, .jpeg, or .png`);
+                        return;
+                    }
+                    
+                    // Add loading animation to drop area
+                    dropArea.classList.add('loading');
+                    
+                    // Preview the image
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        // Create a new Image object to check if the image can be loaded
+                        const img = new Image();
+                        img.onload = function() {
+                            // Image loaded successfully
+                            dropArea.classList.remove('loading');
+                            imagePreview.src = e.target.result;
+                            imagePreview.classList.remove('hidden');
+                            dropPrompt.classList.add('hidden');
+                            removeImageBtn.classList.remove('hidden');
+                            selectedFile = file;
+                            
+                            // Show a subtle animation
+                            imagePreview.style.opacity = '0';
+                            setTimeout(() => {
+                                imagePreview.style.opacity = '1';
+                                imagePreview.style.transition = 'opacity 0.3s ease';
+                            }, 10);
+                        };
+                        img.onerror = function() {
+                            dropArea.classList.remove('loading');
+                            showError('The selected file appears to be corrupted or is not a valid image.');
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.onerror = function() {
+                        dropArea.classList.remove('loading');
+                        showError('Failed to read the image file. Please try another file.');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+            
+            function showInitialState() {
+                initialState.classList.remove('hidden');
+                loadingState.classList.add('hidden');
+                errorState.classList.add('hidden');
+                successState.classList.add('hidden');
+                
+                // Reset progress
+                progressBar.style.width = '0%';
+                attemptCount = 0;
+                
+                // Stop any ongoing polling
+                clearInterval(pollingInterval);
+            }
+            
+            function showLoadingState(message) {
+                initialState.classList.add('hidden');
+                loadingState.classList.remove('hidden');
+                errorState.classList.add('hidden');
+                successState.classList.add('hidden');
+                
+                statusMessage.textContent = message || 'Starting video generation...';
+                
+                // Add a subtle loading animation
+                progressBar.style.transition = 'width 0.5s ease';
+                setTimeout(() => {
+                    progressBar.style.width = '30%';
+                }, 300);
+            }
+            
+            function showErrorState(message) {
+                initialState.classList.add('hidden');
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+                successState.classList.add('hidden');
+                
+                errorMessage.textContent = message || 'An error occurred';
+            }
+            
+            function showSuccessState(videoUrl, seed, status, dimensions) {
+                initialState.classList.add('hidden');
+                loadingState.classList.add('hidden');
+                errorState.classList.add('hidden');
+                successState.classList.remove('hidden');
+                
+                // Set video source
+                generatedVideo.src = videoUrl;
+                
+                // Set download link
+                downloadLink.href = videoUrl;
+                
+                // Set result info
+                resultSeed.textContent = seed || 'Random';
+                resultStatus.textContent = status || 'Success';
+                
+                // Add dimensions to generation info if available
+                if (dimensions) {
+                    const dimensionsInfo = document.getElementById('dimensionsInfo');
+                    if (dimensionsInfo) {
+                        dimensionsInfo.textContent = dimensions;
+                    } else {
+                        const newDimensionsInfo = document.createElement('div');
+                        newDimensionsInfo.className = 'info-item';
+                        newDimensionsInfo.innerHTML = `
+                            <span class="info-label">Dimensions:</span>
+                            <span class="info-value" id="dimensionsInfo">${dimensions}</span>
+                        `;
+                        document.querySelector('.generation-info').appendChild(newDimensionsInfo);
+                    }
+                }
+            }
+            
+            function showError(message) {
+                // Display error message in the UI instead of using alert
+                showErrorState(message);
+            }
+            
+            function startGeneration() {
+                // Show loading state
+                showLoadingState();
+                
+                // Get form values
+                const motionBucketId = parseInt(motionSlider.value);
+                const cfgScale = parseFloat(cfgSlider.value);
+                const seed = parseInt(seedInput.value) || 0;
+                
+                // Create form data for the request
+                const formData = new FormData();
+                formData.append('image', selectedFile);
+                formData.append('motion_bucket_id', motionBucketId);
+                formData.append('cfg_scale', cfgScale);
+                formData.append('seed', seed);
+                
+                // Send the request - do NOT set Content-Type header, browser will set it automatically with boundary
+                fetch('/api/img2video', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(errData => {
+                            // Special handling for payment required errors
+                            if (response.status === 402 || (errData.error_type && errData.error_type === 'payment_required')) {
+                                throw new Error('Insufficient API credits. The service is currently unavailable due to API credit limitations. Please try again later.');
+                            }
+                            throw new Error(errData.error || `Server error: ${response.status}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Store the generation ID for polling
+                        generationId = data.id;
+                        
+                        // Update status message with resized dimensions info
+                        if (data.dimensions) {
+                            statusMessage.textContent = `Image resized to ${data.dimensions}. Starting video generation...`;
+                        }
+                        
+                        // Start polling for results
+                        startPolling();
+                    } else {
+                        showErrorState(data.error || 'Failed to start video generation');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showErrorState(error.message || 'Network error: Failed to connect to the server');
+                });
+            }
+            
+            function startPolling() {
+                // Start polling immediately
+                attemptCount = 0;
+                checkGenerationStatus();
+                
+                // Then set up interval
+                pollingInterval = setInterval(checkGenerationStatus, 5000);
+            }
+            
+            function checkGenerationStatus() {
+                // Update progress indicator
+                attemptCount++;
+                const progress = Math.min((attemptCount / maxAttempts) * 100, 99);
+                progressBar.style.width = `${progress}%`;
+                
+                // Update status message
+                statusMessage.textContent = `Checking video status... (attempt ${attemptCount}/${maxAttempts})`;
+                
+                // Check if we've hit the maximum attempts
+                if (attemptCount >= maxAttempts) {
+                    clearInterval(pollingInterval);
+                    showErrorState('Generation timed out after 10 minutes');
+                    return;
+                }
+                
+                // Make the API call to check status
+                fetch(`/api/img2video/result/${generationId}`)
+                .then(response => {
+                    // Check if still in progress (202)
+                    if (response.status === 202) {
+                        return { status: 'in-progress' };
+                    }
+                    
+                    // Check for payment required error (402)
+                    if (response.status === 402) {
+                        return response.json().then(data => {
+                            throw new Error('Insufficient API credits. The service is currently unavailable due to API credit limitations. Please try again later.');
+                        });
+                    }
+                    
+                    // Otherwise parse the JSON response
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'in-progress') {
+                        // Still in progress, continue polling
+                        return;
+                    } else if (data.status === 'retry') {
+                        // API key was refreshed, continue polling
+                        statusMessage.textContent = data.message || 'API key refreshed. Continuing...';
+                        return;
+                    } else if (data.status === 'complete') {
+                        // Generation complete, stop polling and show the result
+                        clearInterval(pollingInterval);
+                        showSuccessState(data.video_url, data.seed, data.finish_reason, data.dimensions);
+                    } else if (data.status === 'error') {
+                        // Error occurred
+                        clearInterval(pollingInterval);
+                        
+                        // Special handling for payment required errors
+                        if (data.error_type && data.error_type === 'payment_required') {
+                            showErrorState('Insufficient API credits. The service is currently unavailable due to API credit limitations. Please try again later.');
+                        } else {
+                            showErrorState(data.error || 'An error occurred during video generation');
+                        }
+                    } else {
+                        // Unknown status
+                        clearInterval(pollingInterval);
+                        showErrorState(data.error || 'An error occurred during video generation');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    
+                    // Special handling for known error types
+                    if (error.message && error.message.includes('Insufficient API credits')) {
+                        clearInterval(pollingInterval);
+                        showErrorState(error.message);
+                    } else {
+                        // Don't stop polling on network errors, they might be temporary
+                        statusMessage.textContent = `Network error, retrying... (attempt ${attemptCount}/${maxAttempts})`;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
