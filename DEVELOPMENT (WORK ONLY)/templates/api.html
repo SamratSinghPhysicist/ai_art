@@ -1114,17 +1114,18 @@ with open('/path/to/your/image.jpg', 'rb') as img_file:
                         </div>
                         
                         <h4 class="text-lg font-semibold mt-8 mb-3">Example Usage</h4>
-                        <div class="mb-2">
-                            <button class="lang-tab px-4 py-2 rounded-t-md bg-blue-500 text-white border border-transparent" onclick="changeTab(this, 'python-video')">Python</button>
-                            <button class="lang-tab px-4 py-2 rounded-t-md bg-gray-300 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border border-gray-400 dark:border-gray-600" onclick="changeTab(this, 'javascript-video')">JavaScript</button>
+                        <div class="tabs">
+                            <div class="tab active" data-tab="python-video">Python</div>
+                            <div class="tab" data-tab="javascript-video">JavaScript</div>
                         </div>
                         
-                        <div id="python-video" class="code-block mb-6 lang-content" style="display: block;">
-                            <div class="bg-gray-800 text-white px-4 py-2 flex justify-between items-center">
-                                <span>Python Example</span>
-                                <button class="copy-button" onclick="copyToClipboard(this)">Copy</button>
-                            </div>
-                            <pre class="bg-gray-100 dark:bg-gray-900 p-4 overflow-x-auto text-gray-800 dark:text-gray-200">
+                        <div id="python-video-content" class="tab-content active">
+                            <div class="code-container">
+                                <div class="code-header">
+                                    <button class="copy-btn" data-clipboard-target="#python-video-example">Copy</button>
+                                </div>
+                                <div class="code-block">
+<pre id="python-video-example">
 import requests
 import time
 import os
@@ -1187,15 +1188,18 @@ for attempt in range(max_attempts):
     break
 else:
     print("Generation timed out after 10 minutes")
-                            </pre>
+</pre>
+                                </div>
+                            </div>
                         </div>
                         
-                        <div id="javascript-video" class="code-block mb-6 lang-content" style="display: none;">
-                            <div class="bg-gray-800 text-white px-4 py-2 flex justify-between items-center">
-                                <span>JavaScript Example</span>
-                                <button class="copy-button" onclick="copyToClipboard(this)">Copy</button>
-                            </div>
-                            <pre class="bg-gray-100 dark:bg-gray-900 p-4 overflow-x-auto text-gray-800 dark:text-gray-200">
+                        <div id="javascript-video-content" class="tab-content">
+                             <div class="code-container">
+                                <div class="code-header">
+                                    <button class="copy-btn" data-clipboard-target="#javascript-video-example">Copy</button>
+                                </div>
+                                <div class="code-block">
+<pre id="javascript-video-example">
 async function generateVideo() {
   const imageInput = document.getElementById('imageInput');
   const statusDiv = document.getElementById('status');
@@ -1266,7 +1270,9 @@ async function generateVideo() {
     statusDiv.innerHTML = `Error: ${error.message}`;
   }
 }
-                            </pre>
+</pre>
+                                </div>
+                            </div>
                         </div>
                         
                         <h4 class="text-lg font-semibold mt-8 mb-3">Parameters Explanation</h4>
@@ -1570,42 +1576,6 @@ def generate_image_with_retry(prompt, max_retries=3, backoff_factor=2):
             });
         });
 
-        // Function for language tabs (Python/JS) in Image-to-Video section
-        function changeTab(button, tabId) {
-            // Define active/inactive classes
-            const activeClasses = ['bg-blue-500', 'text-white', 'border-transparent'];
-            const inactiveClasses = ['bg-gray-300', 'text-gray-700', 'dark:bg-gray-700', 'dark:text-gray-300', 'border', 'border-gray-400', 'dark:border-gray-600'];
-
-            // Remove active styles from all tabs in this group
-            const buttons = button.parentElement.querySelectorAll('.lang-tab');
-            buttons.forEach(btn => {
-                btn.classList.remove(...activeClasses);
-                btn.classList.add(...inactiveClasses);
-            });
-
-            // Add active styles to the clicked tab
-            button.classList.remove(...inactiveClasses);
-            button.classList.add(...activeClasses);
-
-            // Hide all content blocks in this group
-            // Find the parent container holding both buttons and code blocks (likely the div.endpoint)
-            const endpointDiv = button.closest('.endpoint'); 
-            if (endpointDiv) {
-                const contentBlocks = endpointDiv.querySelectorAll('.lang-content');
-                contentBlocks.forEach(block => {
-                    block.style.display = 'none';
-                });
-
-                // Show the selected content block
-                const selectedContent = endpointDiv.querySelector(`#${tabId}`);
-                if (selectedContent) {
-                    selectedContent.style.display = 'block';
-                }
-            } else {
-                console.error("Could not find parent endpoint container for tabs.");
-            }
-        }
-    
         // General tab switching functionality (for other sections)
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
