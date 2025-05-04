@@ -1,6 +1,6 @@
 # Stability AI Integration
 
-This document provides information on how the Stability AI API is integrated into our application for both text-to-image and image-to-image generation.
+This document provides information on how the Stability AI API is integrated into our application for text-to-image, image-to-image, and image-to-video generation.
 
 ## Stability AI Ultra API
 
@@ -67,6 +67,75 @@ image_data, result_info = img2img(
 )
 ```
 
+## Image-to-Video Generation
+
+Image-to-video generation is implemented in the `img2video_stability.py` file. The generation process is asynchronous, meaning you start a generation and then poll for results. The main functions to use are:
+
+1. `img2video()` - Starts a video generation:
+   - `api_key` (str): Your Stability AI API key
+   - `image_path` (str): Path to the input image file
+   - `seed` (int, optional): Randomness seed for generation (0 means random)
+   - `cfg_scale` (float, optional): How strongly the video sticks to the original image (0.0-10.0)
+   - `motion_bucket_id` (int, optional): Controls the amount of motion (1-255)
+
+2. `get_video_result()` - Checks the status of a generation and retrieves results:
+   - `api_key` (str): Your Stability AI API key
+   - `generation_id` (str): The ID of the generation to check
+
+3. `generate_video_from_image()` - Complete process that handles generation, polling, and saving:
+   - `image_path` (str): Path to the input image
+   - `output_directory` (str): Directory to save the output video
+   - `seed` (int, optional): Seed for generation randomness
+   - `cfg_scale` (float, optional): How strongly the video adheres to the image
+   - `motion_bucket_id` (int, optional): Amount of motion in the video
+   - `timeout` (int, optional): Maximum time to wait for generation in seconds
+
+Example usage:
+
+```python
+from img2video_stability import generate_video_from_image
+
+# Generate a video from an image
+video_path, generation_id = generate_video_from_image(
+    image_path="input_image.jpg",
+    output_directory="./processed_videos",
+    seed=0,  # Random seed
+    cfg_scale=1.5,  # Default value
+    motion_bucket_id=127  # Default value
+)
+
+if video_path:
+    print(f"Video generated successfully: {video_path}")
+```
+
+For more control over the process, you can use the individual functions:
+
+```python
+from img2video_stability import img2video, get_video_result, save_video
+import time
+
+# Start generation
+generation_id = img2video(
+    api_key=None,  # Will get from database
+    image_path="input_image.jpg"
+)
+
+# Poll for results (every 5 seconds)
+while True:
+    time.sleep(5)
+    result = get_video_result(api_key=None, generation_id=generation_id)
+    
+    if result["status"] == "complete":
+        # Save the video
+        video_path = save_video(
+            video_data=result["video"],
+            output_directory="./processed_videos",
+            filename_prefix="my_video"
+        )
+        print(f"Video saved to: {video_path}")
+        break
+```
+
 ## Available Style Presets
 
 Both text-to-image and image-to-image functions support the following style presets:
@@ -91,7 +160,7 @@ Both text-to-image and image-to-image functions support the following style pres
 
 ## Available Aspect Ratios
 
-The following aspect ratios are supported:
+The following aspect ratios are supported for image generation:
 
 - 16:9
 - 1:1
@@ -117,9 +186,17 @@ For image-to-image testing, you can use:
 python img2img_stability.py --prompt "Transform this into a winter scene" --image "input.jpg" --strength 0.7 --display
 ```
 
+For image-to-video testing, you can use:
+
+```bash
+python test_img2video.py --image "input.jpg" --cfg_scale 1.5 --motion 127
+```
+
 ## API Response Format
 
-The Stability AI API returns the generated image directly in the response body. Additional metadata is provided in the response headers, including:
+The Stability AI API returns generated images directly in the response body. Additional metadata is provided in the response headers, including:
 
 - `finish-reason`: The reason the generation finished (e.g., "SUCCESS", "CONTENT_FILTERED")
 - `seed`: The seed used for generation, useful for reproducibility 
+
+For video generation, the initial API call returns a generation ID, and subsequent calls to the result endpoint will return the video data once complete. 

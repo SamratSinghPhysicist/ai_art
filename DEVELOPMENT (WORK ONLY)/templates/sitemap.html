@@ -31,6 +31,15 @@
                     <a href="/login" class="nav-link">Login</a>
                     <a href="/signup" class="nav-link">Sign Up</a>
                     {% endif %}
+                    <!-- AI Tools dropdown -->
+                    <div class="dropdown">
+                        <button type="button" class="dropdown-toggle nav-link">AI Tools <span class="dropdown-arrow">▼</span></button>
+                        <div class="dropdown-menu">
+                            <a href="/text-to-image" class="dropdown-item">Text to Image</a>
+                            <a href="/image-to-image" class="dropdown-item">Image to Image</a>
+                            <a href="/image-to-video" class="dropdown-item">Image to Video</a>
+                        </div>
+                    </div>
                 </div>
             </nav>
         </div>
@@ -77,6 +86,23 @@
                     </ul>
                 </div>
                 
+                <div>
+                    <h2 class="text-2xl font-bold text-primary mb-4">AI Tools</h2>
+                    <ul class="space-y-2">
+                        <li>
+                            <a href="/text-to-image" class="text-primary hover:underline font-semibold">Text to Image</a>
+                            <p class="text-sm text-gray-600">Generate images from text descriptions</p>
+                        </li>
+                        <li>
+                            <a href="/image-to-image" class="text-primary hover:underline font-semibold">Image to Image</a>
+                            <p class="text-sm text-gray-600">Transform existing images using AI</p>
+                        </li>
+                        <li>
+                            <a href="/image-to-video" class="text-primary hover:underline font-semibold">Image to Video</a>
+                            <p class="text-sm text-gray-600">Convert static images into dynamic videos</p>
+                        </li>
+                    </ul>
+                </div>
             </div>
             
             <div class="mt-8">
@@ -105,6 +131,7 @@
                 <a href="/" class="footer-link">Home</a>
                 <a href="/text-to-image" class="footer-link">Text to Image</a>
                 <a href="/image-to-image" class="footer-link">Image to Image</a>
+                <a href="/image-to-video" class="footer-link">Image to Video</a>
                 <a href="/api-docs" class="footer-link">API</a>
             </div>
             
