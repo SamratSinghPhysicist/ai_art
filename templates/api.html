@@ -1131,7 +1131,7 @@ import time
 import os
 
 # API endpoint to start generation
-upload_url = "http://your-website.com/api/img2video"
+upload_url = "https://aiart-zroo.onrender.com/api/img2video"
 
 # Path to image file
 image_path = "path/to/your/image.jpg"
@@ -1161,7 +1161,7 @@ generation_id = generation_data["id"]
 print(f"Generation started with ID: {generation_id}")
 
 # Poll for results
-result_url = f"http://your-website.com/api/img2video/result/{generation_id}"
+result_url = f"https://aiart-zroo.onrender.com/api/img2video/result/{generation_id}"
 
 # Poll every 5 seconds for up to 10 minutes
 max_attempts = 120
@@ -1178,7 +1178,7 @@ for attempt in range(max_attempts):
         # Complete
         result = response.json()
         print(f"Video generation complete!")
-        print(f"Video URL: http://your-website.com{result['video_url']}")
+        print(f"Video URL: https://aiart-zroo.onrender.com{result['video_url']}")
         print(f"Finish reason: {result['finish_reason']}")
         print(f"Seed: {result['seed']}")
         break
