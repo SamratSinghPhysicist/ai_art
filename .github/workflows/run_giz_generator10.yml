@@ -1,6 +1,6 @@
 # This workflow runs the giz account generator script on a schedule.
 
-name: Run GIZ Account Generator 1
+name: Run GIZ Account Generator 10
 
 on:
   schedule:
