@@ -22,7 +22,7 @@ jobs:
         python-version: '3.11.9' # Use the latest Python 3 version
     
     - name: Install Chrome
-        run: |
+      run: |
           sudo apt-get update
           sudo apt-get install -y wget gnupg
           wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo gpg --dearmor -o /usr/share/keyrings/googlechrome-linux-keyring.gpg
