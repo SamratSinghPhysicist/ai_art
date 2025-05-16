@@ -95,20 +95,57 @@ class User:
                         users_collection.update_one({'_id': self._id}, {'$set': user_data})
                         return self._id
                 
-                # Check for existing email as a secondary condition
-                if self.email:
-                    existing = users_collection.find_one({'email': self.email})
-                    if existing and not existing.get('firebase_uid'):
-                        self._id = existing['_id']
-                        users_collection.update_one({'_id': self._id}, {'$set': user_data})
-                        return self._id
-                
-                # Insert new user if none found
-                result = users_collection.insert_one(user_data)
-                self._id = result.inserted_id
-                return result.inserted_id
+                # If no existing user found by firebase_uid or email (without firebase_uid),
+                # perform an upsert based on email and firebase_uid (which might be None)
+                # This handles cases where multiple users might have firebase_uid: null
+                # and prevents duplicate key errors on the sparse unique index.
+                filter_query = {'email': self.email}
+                if self.firebase_uid is None:
+                    # Explicitly filter for documents where firebase_uid is null
+                    filter_query['firebase_uid'] = None
+                else:
+                    # Filter by the specific firebase_uid if it exists
+                    filter_query['firebase_uid'] = self.firebase_uid
+
+                result = users_collection.update_one(
+                    filter_query,
+                    {'$set': user_data},
+                    upsert=True
+                )
+
+                if result.upserted_id:
+                    self._id = result.upserted_id
+                    print(f"Upserted new user with ID: {self._id}")
+                elif result.matched_count > 0:
+                    # Document was matched and updated
+                    existing_doc = users_collection.find_one(filter_query)
+                    if existing_doc:
+                        self._id = existing_doc['_id']
+                        print(f"Matched and updated existing user with ID: {self._id}")
+                    else:
+                         print("Matched existing user but could not retrieve ID after update.")
+                else:
+                    print("Upsert operation completed but no document was upserted or matched.")
+
+                # Ensure _id is set if it wasn't already
+                if self._id is None and self.email:
+                     # Attempt to find the document by email and firebase_uid=None if _id is still not set
+                     found_doc = users_collection.find_one({'email': self.email, 'firebase_uid': None})
+                     if found_doc:
+                         self._id = found_doc['_id']
+                         print(f"Found user ID after upsert attempt: {self._id}")
+
+
+                if self._id:
+                    return self._id
+                else:
+                    # Fallback error if _id is still not set after upsert attempt
+                    raise Exception("Failed to get user ID after save/upsert operation.")
+
         except Exception as e:
             print(f"Error saving user: {e}")
+            import traceback
+            traceback.print_exc() # Print traceback for better debugging
             raise
     
     @staticmethod
@@ -245,6 +282,46 @@ class User:
         if not self.password:
             return False
         return bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
+
+# New collection for Giz accounts
+giz_accounts_collection = db['giz_accounts']
+
+def save_giz_account(email, password):
+    """Save Giz account details to the giz_accounts collection"""
+    try:
+        account_data = {
+            'email': email,
+            'password': password, # Storing in plain text as requested for development
+            'created_at': datetime.datetime.now()
+        }
+        # Use upsert to avoid duplicate emails in giz_accounts collection
+        result = giz_accounts_collection.update_one(
+            {'email': email},
+            {'$set': account_data},
+            upsert=True
+        )
+        if result.upserted_id:
+            print(f"Upserted new giz account with ID: {result.upserted_id}")
+            return result.upserted_id
+        elif result.matched_count > 0:
+             print(f"Matched and updated existing giz account for email: {email}")
+             # Find the updated document to return its ID
+             updated_doc = giz_accounts_collection.find_one({'email': email})
+             if updated_doc:
+                 return updated_doc['_id']
+             else:
+                 print(f"Could not retrieve ID for updated giz account: {email}")
+                 return None
+        else:
+            print(f"Upsert operation completed for email {email} but no document was upserted or matched.")
+            return None # Should not happen with upsert=True, but as a safeguard
+
+    except Exception as e:
+        print(f"Error saving giz account: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
 
 class StabilityApiKey:
     """Model for managing Stability API keys"""

@@ -1,0 +1,22 @@
+2025-05-16 12:58:37,508 - INFO - TempMail initialized with base URL: https://api.mail.tm
+2025-05-16 12:58:37,508 - INFO - Fetching available domains...
+2025-05-16 12:58:39,346 - INFO - Using domain: dcpa.net
+2025-05-16 12:58:39,346 - INFO - Creating account with email: temp17473805198536@dcpa.net
+2025-05-16 12:58:41,433 - INFO - Temporary Email Created: temp17473805198536@dcpa.net
+2025-05-16 12:58:41,433 - INFO - Logging in with email: temp17473805198536@dcpa.net
+2025-05-16 12:58:43,483 - INFO - Login successful, token received
+2025-05-16 12:58:43,495 - INFO - ====== WebDriver manager ======
+2025-05-16 12:58:45,279 - INFO - Get LATEST chromedriver version for google-chrome
+2025-05-16 12:58:47,448 - INFO - Get LATEST chromedriver version for google-chrome
+2025-05-16 12:58:48,915 - INFO - Driver [C:\Users\Sachin Kumar\.wdm\drivers\chromedriver\win64\136.0.7103.94\chromedriver-win32/THIRD_PARTY_NOTICES.chromedriver] found in cache
+2025-05-16 12:59:06,526 - INFO - Waiting for emails...
+2025-05-16 12:59:06,526 - INFO - Fetching messages...
+2025-05-16 12:59:08,399 - INFO - Retrieved 0 messages
+2025-05-16 12:59:08,399 - INFO - No messages yet, checking again in 10 seconds...
+2025-05-16 12:59:18,415 - INFO - Fetching messages...
+2025-05-16 12:59:19,869 - INFO - Retrieved 1 messages
+2025-05-16 12:59:19,869 - INFO - Received 1 messages
+2025-05-16 12:59:19,869 - INFO - Fetching details for message ID: 6826e94920fd1942216d389c
+2025-05-16 12:59:21,404 - INFO - Retrieved message details: Subject 'GizAI e-mail verification code'
+2025-05-16 12:59:21,404 - INFO - HTML content type: <class 'list'>
+2025-05-16 12:59:21,404 - INFO - HTML content is a list with 1 elements
