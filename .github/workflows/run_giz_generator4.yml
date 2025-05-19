@@ -36,6 +36,16 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-
+    - name: Set up environment variables
+      run: |
+        # Set MongoDB URI from secrets
+        echo "MONGO_URI=${{ secrets.MONGO_URI }}" >> $GITHUB_ENV
+        # Check if MongoDB URI is set (without showing the value)
+        if [ -n "${{ secrets.MONGO_URI }}" ]; then
+          echo "MongoDB URI is set"
+        else
+          echo "MongoDB URI is NOT set"
+        fi
+    
     - name: Run the script
       run: python giz_video_generator/account_giz_generator.py
