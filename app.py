@@ -17,11 +17,22 @@ import uuid
 import base64
 from img2img_stability import img2img, save_image
 from img2video_stability import img2video, get_video_result
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+
+# Initialize Limiter
+limiter = Limiter(
+    get_remote_address, 
+    app=app,
+    default_limits=["2880 per day", "120 per hour"], # Default limits for other routes if needed
+    storage_uri="memory://",  # Use memory for storage, consider Redis for production
+    strategy="fixed-window" # or "moving-window"
+)
 
 # Configure the upload folder for storing generated images
 app_dir = os.path.dirname(os.path.abspath(__file__))
@@ -327,6 +338,7 @@ def generate_image():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate', methods=['POST'])
+@limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
 def api_generate_image():
     """API endpoint to generate an image"""
     # Get JSON data
@@ -531,6 +543,7 @@ def img2img_transform():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/img2img', methods=['POST'])
+@limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
 def api_img2img_transform():
     """API endpoint to transform an image"""
     # Check if file was uploaded
@@ -812,6 +825,7 @@ def api_docs():
                           firebase_app_id=firebase_config.get('appId'))
 
 @app.route('/api/img2video', methods=['POST'])
+@limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
 def api_img2video_generate():
     """API endpoint to generate a video from an image"""
     try:
