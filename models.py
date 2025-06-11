@@ -283,45 +283,6 @@ class User:
             return False
         return bcrypt.checkpw(password.encode('utf-8'), self.password.encode('utf-8'))
 
-# New collection for Giz accounts
-giz_accounts_collection = db['giz_accounts']
-
-def save_giz_account(email, password):
-    """Save Giz account details to the giz_accounts collection"""
-    try:
-        account_data = {
-            'email': email,
-            'password': password, # Storing in plain text as requested for development
-            'created_at': datetime.datetime.now()
-        }
-        # Use upsert to avoid duplicate emails in giz_accounts collection
-        result = giz_accounts_collection.update_one(
-            {'email': email},
-            {'$set': account_data},
-            upsert=True
-        )
-        if result.upserted_id:
-            print(f"Upserted new giz account with ID: {result.upserted_id}")
-            return result.upserted_id
-        elif result.matched_count > 0:
-             print(f"Matched and updated existing giz account for email: {email}")
-             # Find the updated document to return its ID
-             updated_doc = giz_accounts_collection.find_one({'email': email})
-             if updated_doc:
-                 return updated_doc['_id']
-             else:
-                 print(f"Could not retrieve ID for updated giz account: {email}")
-                 return None
-        else:
-            print(f"Upsert operation completed for email {email} but no document was upserted or matched.")
-            return None # Should not happen with upsert=True, but as a safeguard
-
-    except Exception as e:
-        print(f"Error saving giz account: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
-
 
 class StabilityApiKey:
     """Model for managing Stability API keys"""
