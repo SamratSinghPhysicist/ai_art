@@ -267,6 +267,7 @@ def dashboard():
         return redirect(url_for('index', action='login', error='session_expired'))
 
 @app.route('/generate', methods=['POST'])
+@limiter.limit("100/day")
 def generate_image():
     """Generate an image based on the description provided"""
     # Get the image description from the form
@@ -431,6 +432,7 @@ def serve_processed_image(filename):
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
 @app.route('/img2img', methods=['POST'])
+@limiter.limit("100/day")
 def img2img_transform():
     """Transform an image based on text prompt and uploaded image"""
     # IMPORTANT: Base64 images are not handled by Flask's request.files
@@ -825,7 +827,7 @@ def api_docs():
                           firebase_app_id=firebase_config.get('appId'))
 
 @app.route('/api/img2video', methods=['POST'])
-@limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
+@limiter.limit("100/day")  # Apply rate limit: 100 requests per day per IP for UI users
 def api_img2video_generate():
     """API endpoint to generate a video from an image"""
     try:
