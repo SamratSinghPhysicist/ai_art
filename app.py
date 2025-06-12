@@ -638,6 +638,7 @@ def api_img2img_transform():
     return jsonify({'error': 'Invalid file'}), 400
 
 @app.route('/api/enhance-prompt', methods=['POST'])
+@limiter.limit("100/day")
 def enhance_prompt():
     """API endpoint to enhance the given image prompt with AI"""
     try:
