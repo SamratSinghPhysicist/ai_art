@@ -308,7 +308,8 @@ def dashboard():
         return redirect(url_for('index', action='login', error='session_expired'))
 
 @app.route('/generate', methods=['POST'])
-@limiter.limit("100/day")
+@limiter.limit("3/minute")
+# @limiter.limit("100/day")  # Apply rate limit: 3 requests per minute, 100 per day per IP
 def generate_image():
     """Generate an image based on the description provided"""
     # Get the image description from the form
@@ -473,7 +474,7 @@ def serve_processed_image(filename):
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
 @app.route('/img2img', methods=['POST'])
-@limiter.limit("100/day")
+@limiter.limit("3/minute")
 def img2img_transform():
     """Transform an image based on text prompt and uploaded image"""
     # IMPORTANT: Base64 images are not handled by Flask's request.files
