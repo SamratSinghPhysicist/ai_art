@@ -56,6 +56,9 @@ login_manager.login_view = 'login'
 # API key
 GEMINI_API_KEY = "AIzaSyA0RYI9KRrNLi6KaX4g49UJD4G5YBEb6II"
 
+# reCAPTCHA Secret Key
+RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY')
+
 # Ensure the images directory exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['PROCESSED_FOLDER'], exist_ok=True)
@@ -213,6 +216,44 @@ def signup():
     
     # For GET requests, redirect to homepage with signup modal parameter
     return redirect(url_for('index', action='signup'))
+
+@app.route('/verify-captcha', methods=['POST'])
+def verify_captcha():
+    """Verify the reCAPTCHA token from the frontend."""
+    if not RECAPTCHA_SECRET_KEY:
+        app.logger.error("RECAPTCHA_SECRET_KEY is not set in environment variables.")
+        return jsonify({'success': False, 'message': 'Server CAPTCHA configuration error.'}), 500
+
+    recaptcha_token = request.json.get('recaptcha_token')
+    if not recaptcha_token:
+        return jsonify({'success': False, 'message': 'reCAPTCHA token missing.'}), 400
+
+    # Google reCAPTCHA verification URL
+    verify_url = 'https://www.google.com/recaptcha/api/siteverify'
+    payload = {
+        'secret': RECAPTCHA_SECRET_KEY,
+        'response': recaptcha_token,
+        'remoteip': request.remote_addr
+    }
+
+    try:
+        response = requests.post(verify_url, data=payload)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        result = response.json()
+
+        if result.get('success'):
+            app.logger.info(f"reCAPTCHA verification successful for IP: {request.remote_addr}")
+            return jsonify({'success': True})
+        else:
+            error_codes = result.get('error-codes', ['unknown-error'])
+            app.logger.warning(f"reCAPTCHA verification failed for IP: {request.remote_addr}, errors: {error_codes}")
+            return jsonify({'success': False, 'message': 'CAPTCHA verification failed.', 'error_codes': error_codes}), 400
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error during reCAPTCHA verification request: {e}")
+        return jsonify({'success': False, 'message': 'Error communicating with CAPTCHA service.'}), 500
+    except Exception as e:
+        app.logger.error(f"Unexpected error during reCAPTCHA verification: {e}")
+        return jsonify({'success': False, 'message': 'An unexpected error occurred.'}), 500
 
 @app.route('/reset-password')
 def reset_password():
