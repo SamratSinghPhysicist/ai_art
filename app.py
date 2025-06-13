@@ -19,20 +19,29 @@ from img2img_stability import img2img, save_image
 from img2video_stability import img2video, get_video_result
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import hashlib
+import time
+import secrets
+from datetime import datetime, timedelta
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 
-# Initialize Limiter
+# Initialize Limiter with stricter limits
 limiter = Limiter(
     get_remote_address, 
     app=app,
-    default_limits=["2880 per day", "120 per hour"], # Default limits for other routes if needed
+    default_limits=["1440 per day", "60 per hour"], # Stricter default limits
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
-    strategy="fixed-window" # or "moving-window"
+    strategy="moving-window" # Moving window for better abuse prevention
 )
+
+# Security tracking dictionaries
+captcha_verified_sessions = {}  # Track CAPTCHA verified sessions
+request_tokens = {}  # Track valid request tokens
+ip_request_history = {}  # Track request patterns per IP
 
 # Configure the upload folder for storing generated images
 app_dir = os.path.dirname(os.path.abspath(__file__))
@@ -70,6 +79,72 @@ LOGS_DIR = os.path.join(app_dir, 'logs')
 @login_manager.user_loader
 def load_user(user_id):
     return User.find_by_id(user_id)
+
+# Security helper functions
+def generate_request_token():
+    """Generate a unique request token"""
+    return secrets.token_urlsafe(32)
+
+def create_session_id(request):
+    """Create a unique session ID based on IP and user agent"""
+    ip = get_remote_address()
+    user_agent = request.headers.get('User-Agent', '')
+    session_string = f"{ip}:{user_agent}:{int(time.time() // 3600)}"  # Hour-based session
+    return hashlib.sha256(session_string.encode()).hexdigest()
+
+def is_captcha_verified(request):
+    """Check if the current session has verified CAPTCHA"""
+    session_id = create_session_id(request)
+    return captcha_verified_sessions.get(session_id, 0) > time.time()
+
+def verify_request_token(token):
+    """Verify and consume a request token"""
+    if token in request_tokens and request_tokens[token] > time.time():
+        del request_tokens[token]  # One-time use
+        return True
+    return False
+
+def check_suspicious_activity(request):
+    """Check for suspicious request patterns"""
+    ip = get_remote_address()
+    current_time = time.time()
+    
+    if ip not in ip_request_history:
+        ip_request_history[ip] = []
+    
+    # Clean old requests (older than 1 hour)
+    ip_request_history[ip] = [req_time for req_time in ip_request_history[ip] if current_time - req_time < 3600]
+    
+    # Add current request
+    ip_request_history[ip].append(current_time)
+    
+    # Check for suspicious patterns
+    recent_requests = [req_time for req_time in ip_request_history[ip] if current_time - req_time < 300]  # Last 5 minutes
+    
+    if len(recent_requests) > 10:  # More than 10 requests in 5 minutes
+        return True
+    
+    return False
+
+def cleanup_security_data():
+    """Clean up expired security data"""
+    current_time = time.time()
+    
+    # Clean expired CAPTCHA sessions
+    expired_sessions = [sid for sid, exp_time in captcha_verified_sessions.items() if exp_time <= current_time]
+    for sid in expired_sessions:
+        del captcha_verified_sessions[sid]
+    
+    # Clean expired request tokens
+    expired_tokens = [token for token, exp_time in request_tokens.items() if exp_time <= current_time]
+    for token in expired_tokens:
+        del request_tokens[token]
+    
+    # Clean old IP history (older than 24 hours)
+    for ip in list(ip_request_history.keys()):
+        ip_request_history[ip] = [req_time for req_time in ip_request_history[ip] if current_time - req_time < 86400]
+        if not ip_request_history[ip]:
+            del ip_request_history[ip]
 
 @app.route('/')
 def index():
@@ -220,6 +295,8 @@ def signup():
 @app.route('/verify-captcha', methods=['POST'])
 def verify_captcha():
     """Verify the reCAPTCHA token from the frontend."""
+    cleanup_security_data()  # Clean up expired data
+    
     if not RECAPTCHA_SECRET_KEY:
         app.logger.error("RECAPTCHA_SECRET_KEY is not set in environment variables.")
         return jsonify({'success': False, 'message': 'Server CAPTCHA configuration error.'}), 500
@@ -242,8 +319,20 @@ def verify_captcha():
         result = response.json()
 
         if result.get('success'):
+            # Mark session as CAPTCHA verified (valid for 30 minutes)
+            session_id = create_session_id(request)
+            captcha_verified_sessions[session_id] = time.time() + 1800  # 30 minutes
+            
+            # Generate a request token (valid for 10 minutes)
+            req_token = generate_request_token()
+            request_tokens[req_token] = time.time() + 600  # 10 minutes
+            
             app.logger.info(f"reCAPTCHA verification successful for IP: {request.remote_addr}")
-            return jsonify({'success': True})
+            return jsonify({
+                'success': True, 
+                'request_token': req_token,
+                'session_verified': True
+            })
         else:
             error_codes = result.get('error-codes', ['unknown-error'])
             app.logger.warning(f"reCAPTCHA verification failed for IP: {request.remote_addr}, errors: {error_codes}")
@@ -254,6 +343,25 @@ def verify_captcha():
     except Exception as e:
         app.logger.error(f"Unexpected error during reCAPTCHA verification: {e}")
         return jsonify({'success': False, 'message': 'An unexpected error occurred.'}), 500
+
+@app.route('/get-request-token', methods=['POST'])
+def get_request_token():
+    """Provide a request token for verified sessions"""
+    cleanup_security_data()
+    
+    # Check if session is CAPTCHA verified
+    if not is_captcha_verified(request):
+        return jsonify({'success': False, 'message': 'CAPTCHA verification required'}), 403
+    
+    # Generate new request token
+    req_token = generate_request_token()
+    request_tokens[req_token] = time.time() + 600  # Valid for 10 minutes
+    
+    return jsonify({
+        'success': True,
+        'request_token': req_token,
+        'expires_in': 600
+    })
 
 @app.route('/reset-password')
 def reset_password():
@@ -307,11 +415,35 @@ def dashboard():
         logout_user()
         return redirect(url_for('index', action='login', error='session_expired'))
 
-@app.route('/generate', methods=['POST'])
-@limiter.limit("3/minute")
-# @limiter.limit("100/day")  # Apply rate limit: 3 requests per minute, 100 per day per IP
+@app.route('/generate-txt2img-ui', methods=['POST'])
+@limiter.limit("3/minute")  # Stricter rate limit
+@limiter.limit("60/hour")   # Additional hourly limit
 def generate_image():
     """Generate an image based on the description provided"""
+    cleanup_security_data()  # Clean up expired data
+    
+    # Security checks
+    if check_suspicious_activity(request):
+        app.logger.warning(f"Suspicious activity detected from IP: {get_remote_address()}")
+        return jsonify({'error': 'Too many requests. Please try again later.'}), 429
+    
+    # Check CAPTCHA verification
+    if not is_captcha_verified(request):
+        app.logger.warning(f"Unverified CAPTCHA attempt from IP: {get_remote_address()}")
+        return jsonify({'error': 'CAPTCHA verification required. Please refresh the page.'}), 403
+    
+    # Verify request token
+    request_token = request.form.get('request_token')
+    if not request_token or not verify_request_token(request_token):
+        app.logger.warning(f"Invalid or missing request token from IP: {get_remote_address()}")
+        return jsonify({'error': 'Invalid request. Please refresh the page.'}), 403
+    
+    # Honeypot field check (should be empty)
+    honeypot = request.form.get('website_url', '')
+    if honeypot:
+        app.logger.warning(f"Honeypot triggered from IP: {get_remote_address()}")
+        return jsonify({'error': 'Invalid request detected.'}), 400
+    
     # Get the image description from the form
     image_description = request.form.get('video_description')
     
@@ -474,15 +606,39 @@ def serve_processed_image(filename):
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
 @app.route('/img2img', methods=['POST'])
-@limiter.limit("3/minute")
+@limiter.limit("3/minute")  # Stricter rate limit
+@limiter.limit("60/hour")   # Additional hourly limit
 def img2img_transform():
     """Transform an image based on text prompt and uploaded image"""
+    cleanup_security_data()  # Clean up expired data
+    
+    # Security checks
+    if check_suspicious_activity(request):
+        app.logger.warning(f"Suspicious activity detected from IP: {get_remote_address()}")
+        return jsonify({'error': 'Too many requests. Please try again later.'}), 429
+    
+    # Check CAPTCHA verification
+    if not is_captcha_verified(request):
+        app.logger.warning(f"Unverified CAPTCHA attempt from IP: {get_remote_address()}")
+        return jsonify({'error': 'CAPTCHA verification required. Please refresh the page.'}), 403
+    
+    # Verify request token
+    request_token = request.form.get('request_token')
+    if not request_token or not verify_request_token(request_token):
+        app.logger.warning(f"Invalid or missing request token from IP: {get_remote_address()}")
+        return jsonify({'error': 'Invalid request. Please refresh the page.'}), 403
+    
+    # Honeypot field check (should be empty)
+    honeypot = request.form.get('website', '')
+    if honeypot:
+        app.logger.warning(f"Honeypot triggered from IP: {get_remote_address()}")
+        return jsonify({'error': 'Invalid request detected.'}), 400
+    
     # IMPORTANT: Base64 images are not handled by Flask's request.files
     # They must be extracted from request.form
     
     # Get the prompt from the form
     prompt = request.form.get('video_description')
-    
     # Get advanced options
     negative_prompt = request.form.get('negative_prompt', '')
     style_preset = request.form.get('style_preset', None)
@@ -679,8 +835,7 @@ def api_img2img_transform():
     
     return jsonify({'error': 'Invalid file'}), 400
 
-@app.route('/api/enhance-prompt', methods=['POST'])
-@limiter.limit("100/day")
+@app.route('/api/enhance-prompt-ui', methods=['POST'])
 def enhance_prompt():
     """API endpoint to enhance the given image prompt with AI"""
     try:

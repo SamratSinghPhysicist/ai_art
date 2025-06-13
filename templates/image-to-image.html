@@ -202,6 +202,11 @@
                         <div class="help-text text-sm text-gray-500 mt-1">Use the same seed to get consistent results or 0 for random generation</div>
                     </div>
                     
+                    <!-- Honeypot field - hidden from users -->
+                    <div style="position: absolute; left: -9999px; opacity: 0; pointer-events: none;">
+                        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                    </div>
+                    
                     <div class="text-center mt-8">
                         <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
                             <span class="flex items-center">
@@ -607,9 +612,72 @@
     <script src="/static/js/mobile-nav.js"></script>
     <script src="/static/js/auth-modal.js"></script>
     <script>
+        // Security variables
+        let requestToken = null;
+        let sessionVerified = false;
+        
+        // Function to get a new request token
+        async function getNewRequestToken() {
+            if (!sessionVerified) {
+                showSecurityMessage('Please complete CAPTCHA verification first.', 'warning');
+                return false;
+            }
+            
+            try {
+                const response = await fetch('/get-request-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    requestToken = data.request_token;
+                    return true;
+                } else {
+                    showSecurityMessage('Failed to get security token. Please refresh and try again.', 'error');
+                    return false;
+                }
+            } catch (error) {
+                showSecurityMessage('Network error. Please check your connection and try again.', 'error');
+                return false;
+            }
+        }
+        
+        // Function to show security messages
+        function showSecurityMessage(message, type = 'info') {
+            // Create or update security message element
+            let messageEl = document.getElementById('security-message');
+            if (!messageEl) {
+                messageEl = document.createElement('div');
+                messageEl.id = 'security-message';
+                messageEl.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 10000; padding: 12px 20px; border-radius: 6px; color: white; font-weight: 500; max-width: 400px;';
+                document.body.appendChild(messageEl);
+            }
+            
+            // Set message and style based on type
+            messageEl.textContent = message;
+            messageEl.className = 'security-message-' + type;
+            
+            if (type === 'error') {
+                messageEl.style.backgroundColor = '#dc2626';
+            } else if (type === 'warning') {
+                messageEl.style.backgroundColor = '#d97706';
+            } else {
+                messageEl.style.backgroundColor = '#059669';
+            }
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                if (messageEl && messageEl.parentNode) {
+                    messageEl.parentNode.removeChild(messageEl);
+                }
+            }, 5000);
+        }
+
         // Function called when reCAPTCHA is successfully completed
         function onRecaptchaSuccess(token) {
-            console.log("reCAPTCHA token:", token);
             // Send the token to the backend for verification
             fetch('/verify-captcha', {
                 method: 'POST',
@@ -621,6 +689,8 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    sessionVerified = true;
+                    requestToken = data.request_token; // Store the request token
                     const captchaModal = document.getElementById('captchaModal');
                     captchaModal.classList.remove('active');
                     // Ensure the modal is completely hidden after transition
@@ -631,6 +701,7 @@
                         }
                     });
                     document.body.style.overflow = ''; // Re-enable scrolling
+                    showSecurityMessage('CAPTCHA verified successfully!', 'success');
                 } else {
                     document.getElementById('captchaErrorMessage').textContent = data.message || 'CAPTCHA verification failed. Please try again.';
                     grecaptcha.reset(); // Reset CAPTCHA on failure
@@ -838,6 +909,13 @@
                     return;
                 }
                 
+                // Check if we have a valid request token
+                if (!requestToken) {
+                    showSecurityMessage('Security verification required. Please complete the CAPTCHA first.', 'error');
+                    loadingElement.classList.add('hidden');
+                    return;
+                }
+                
                 // Create FormData object
                 const formData = new FormData();
                 formData.append('image_file', file);
@@ -850,6 +928,8 @@
                 formData.append('aspect_ratio', document.getElementById('aspect-ratio').value);
                 formData.append('output_format', document.getElementById('output-format').value);
                 formData.append('seed', document.getElementById('seed').value);
+                formData.append('request_token', requestToken);
+                formData.append('website', document.getElementById('website') ? document.getElementById('website').value : ''); // Honeypot field
                 
                 // Also add base64 image data
                 const reader = new FileReader();
@@ -886,8 +966,20 @@
                                     document.body.removeChild(link);
                                 });
                             };
+                            
+                            // Clear the request token as it's been used
+                            requestToken = null;
                         } else {
-                            throw new Error(data.error || 'Unknown error');
+                            // Handle security-related errors
+                            if (data.error && (data.error.includes('CAPTCHA') || data.error.includes('token') || data.error.includes('suspicious'))) {
+                                showSecurityMessage(data.error, 'error');
+                                // Clear the invalid token
+                                requestToken = null;
+                                sessionVerified = false;
+                                loadingElement.classList.add('hidden');
+                            } else {
+                                throw new Error(data.error || 'Unknown error');
+                            }
                         }
                     })
                     .catch(error => {

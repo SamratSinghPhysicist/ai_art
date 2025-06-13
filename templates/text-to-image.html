@@ -197,6 +197,11 @@
                         <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
                     </div>
                     
+                    <!-- Honeypot field - hidden from users -->
+                    <div style="position: absolute; left: -9999px; opacity: 0; pointer-events: none;">
+                        <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+                    </div>
+                    
                     <div class="text-center mt-8">
                         <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
                             <span class="flex items-center">
@@ -646,9 +651,12 @@
     <script src="/static/js/mobile-nav.js"></script>
     <script src="/static/js/auth-modal.js"></script>
     <script>
+        // Security variables
+        let currentRequestToken = null;
+        let sessionVerified = false;
+        
         // Function called when reCAPTCHA is successfully completed
         function onRecaptchaSuccess(token) {
-            console.log("reCAPTCHA token:", token);
             // Send the token to the backend for verification
             fetch('/verify-captcha', {
                 method: 'POST',
@@ -660,6 +668,9 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
+                    sessionVerified = true;
+                    currentRequestToken = data.request_token;
+                    
                     const captchaModal = document.getElementById('captchaModal');
                     captchaModal.classList.remove('active');
                     // Ensure the modal is completely hidden after transition
@@ -670,6 +681,9 @@
                         }
                     });
                     document.body.style.overflow = ''; // Re-enable scrolling
+                    
+                    // Show success message briefly
+                    showSecurityMessage('Security verification successful!', 'success');
                 } else {
                     document.getElementById('captchaErrorMessage').textContent = data.message || 'CAPTCHA verification failed. Please try again.';
                     grecaptcha.reset(); // Reset CAPTCHA on failure
@@ -680,6 +694,62 @@
                 document.getElementById('captchaErrorMessage').textContent = 'An error occurred during verification. Please try again.';
                 grecaptcha.reset(); // Reset CAPTCHA on error
             });
+        }
+        
+        // Function to get a new request token
+        function getNewRequestToken() {
+            return fetch('/get-request-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    currentRequestToken = data.request_token;
+                    return true;
+                } else {
+                    showSecurityMessage('Security verification expired. Please refresh the page.', 'error');
+                    return false;
+                }
+            })
+            .catch(error => {
+                console.error('Error getting request token:', error);
+                showSecurityMessage('Security error. Please refresh the page.', 'error');
+                return false;
+            });
+        }
+        
+        // Function to show security messages
+        function showSecurityMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `security-message ${type}`;
+            messageDiv.textContent = message;
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 6px;
+                color: white;
+                font-weight: 500;
+                z-index: 10000;
+                transition: all 0.3s ease;
+                background-color: ${type === 'success' ? '#10b981' : '#ef4444'};
+            `;
+            
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.style.opacity = '0';
+                messageDiv.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 300);
+            }, 3000);
         }
 
         // Add styles for the CAPTCHA modal
@@ -815,7 +885,7 @@
         formData.append('prompt', userPrompt);
         
         // Call the enhance-prompt API
-        fetch('/api/enhance-prompt', {
+        fetch('/api/enhance-prompt-ui', {
             method: 'POST',
             body: formData
         })
@@ -918,8 +988,20 @@
             }
         }
         
+        // Check if we have a valid request token
+        if (!currentRequestToken) {
+            showSecurityMessage('Security verification required. Please complete the CAPTCHA first.', 'error');
+            // Hide loading as the request won't proceed
+            document.getElementById('loading').classList.add('hidden');
+            return;
+        }
+        
+        // Add security fields to form data
+        formData.append('request_token', currentRequestToken);
+        formData.append('website', document.getElementById('website').value); // Honeypot field
+        
         // Send request
-        fetch('/generate', {
+        fetch('/generate-txt2img-ui', {
             method: 'POST',
             body: formData
         })
@@ -938,14 +1020,25 @@
                 // Save the current URL for download
                 window.currentImagePath = data.image_path;
                 
+                // Clear the request token as it's been used
+                currentRequestToken = null;
+                
                 // Add download handler
                 document.getElementById('download-btn').onclick = function() {
                     downloadImage(data.image_path);
                 };
             } else {
-                // Show error
-                document.getElementById('error').classList.remove('hidden');
-                document.getElementById('error').querySelector('p').textContent = data.error || 'An error occurred';
+                // Handle security-related errors
+                if (data.error && (data.error.includes('CAPTCHA') || data.error.includes('token') || data.error.includes('suspicious'))) {
+                    showSecurityMessage(data.error, 'error');
+                    // Clear the invalid token
+                    requestToken = null;
+                    sessionVerified = false;
+                } else {
+                    // Show general error
+                    document.getElementById('error').classList.remove('hidden');
+                    document.getElementById('error').querySelector('p').textContent = data.error || 'An error occurred while generating your image. Please try again.';
+                }
             }
         })
         .catch(error => {
