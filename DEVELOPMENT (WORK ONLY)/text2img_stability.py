@@ -119,9 +119,23 @@ def text2img(api_key,
         try:
             error_detail = response.json()
             print(f"Error response: {error_detail}")
+            # If the API key was used and the request failed, delete it from the database
+            try:
+                # Delete the key
+                StabilityApiKey.delete_key(api_key)
+                print(f"API key used and deleted from database")
+            except Exception as e:
+                print(f"Error deleting API key: {e}")
             raise Exception(f"API request failed: {response.status_code} - {error_detail}")
         except json.JSONDecodeError:
             print(f"Error response (not JSON): {response.text}")
+            # If the API key was used and the request failed, delete it from the database
+            try:
+                # Delete the key
+                StabilityApiKey.delete_key(api_key)
+                print(f"API key used and deleted from database")
+            except Exception as e:
+                print(f"Error deleting API key: {e}")
             raise Exception(f"API request failed: {response.status_code} - {response.text}")
     
     # Extract metadata from headers
