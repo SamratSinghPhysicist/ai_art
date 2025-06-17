@@ -1550,7 +1550,7 @@
                 formData.append('seed', seed);
                 
                 // Send the request - do NOT set Content-Type header, browser will set it automatically with boundary
-                fetch('/api/img2video', {
+                fetch('/img2video-ui', {
                     method: 'POST',
                     body: formData
                 })
@@ -1614,7 +1614,7 @@
                 }
                 
                 // Make the API call to check status
-                fetch(`/api/img2video/result/${generationId}`)
+                fetch(`/ui/img2video/result/${generationId}`)
                 .then(response => {
                     // Check if still in progress (202)
                     if (response.status === 202) {
