@@ -271,8 +271,6 @@ def dashboard():
         return redirect(url_for('index', action='login', error='session_expired'))
 
 @app.route('/generate-txt2img-ui', methods=['POST'])
-@limiter.limit("3/minute")  # Stricter rate limit
-@limiter.limit("60/hour")   # Additional hourly limit
 def generate_image():
     """Generate an image based on the description provided"""
     # Honeypot field check (should be empty)
