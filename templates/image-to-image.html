@@ -99,6 +99,19 @@
                 </h1>
                 <p class="text-center text-gray-500 mb-6">Transform your existing images using AI-powered style transfer</p>
                 
+                <!-- Content Policy Notice -->
+                <div class="alert-message bg-amber-50 border-l-4 border-amber-400 p-4 mb-6 text-sm rounded-lg shadow-sm">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-amber-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <div>
+                            <strong class="text-amber-800">Content Policy:</strong>
+                            <span class="text-amber-700">Creating harmful, explicit, or NSFW content is strictly prohibited. All requests are subject to content moderation and violations will be rejected.</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <form id="img2img-form" class="my-6" enctype="multipart/form-data">
                     <div class="form-group">
                         <label for="image-upload" class="form-label">Upload your image:</label>
@@ -229,7 +242,20 @@
                 <div id="error" class="hidden mt-8">
                     <div class="p-4 bg-red-100 text-red-700 rounded-lg">
                         <h2 class="text-xl font-bold mb-2">Error</h2>
-                        <p>An error occurred while transforming your image. Please try again.</p>
+                        <p id="error-message">An error occurred while transforming your image. Please try again.</p>
+                    </div>
+                </div>
+                
+                <!-- Content Moderation Alert -->
+                <div id="moderation-alert" class="hidden mt-8">
+                    <div class="p-4 bg-red-600 text-white rounded-lg shadow-lg border-l-4 border-red-800">
+                        <div class="flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <h2 class="text-xl font-bold">Content Violation Detected</h2>
+                        </div>
+                        <p class="mt-2">Your request was flagged by our content moderation system. NSFW, harmful, or explicit content is prohibited.</p>
                     </div>
                 </div>
             </div>
@@ -683,7 +709,7 @@
             imageUpload.click();
         });
         
-        // Form submission
+            // Form submission
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -691,6 +717,7 @@
             loadingElement.classList.remove('hidden');
             resultElement.classList.add('hidden');
             errorElement.classList.add('hidden');
+            document.getElementById('moderation-alert').classList.add('hidden');
             
             // Get file and form data
             const file = imageUpload.files[0];
@@ -757,14 +784,21 @@
                             });
                         };
                     } else {
-                        throw new Error(data.error || 'Unknown error');
+                        // Check if this is a content moderation error
+                        if (data.image_path && data.image_path.includes('placeholder.jpg')) {
+                            // Show moderation alert
+                            loadingElement.classList.add('hidden');
+                            document.getElementById('moderation-alert').classList.remove('hidden');
+                        } else {
+                            throw new Error(data.error || 'Unknown error');
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     loadingElement.classList.add('hidden');
                     errorElement.classList.remove('hidden');
-                    errorElement.querySelector('p').textContent = 'Error: ' + error.message;
+                    document.getElementById('error-message').textContent = 'Error: ' + error.message;
                 });
             };
             reader.readAsDataURL(file);
