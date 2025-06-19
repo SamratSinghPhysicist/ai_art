@@ -8,8 +8,6 @@
     // Check for auth token in localStorage
     const authToken = localStorage.getItem('authToken');
     if (authToken) {
-        console.log('Auth token found in localStorage - user should be logged in');
-        
         // This will be fixed when DOM is loaded
         // Just mark it for later checks
         window.hasAuthToken = true;
@@ -17,11 +15,8 @@
 })();
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Auth-fix script loaded');
-    
     // Check if logout was initiated on another page
     if (localStorage.getItem('logout_in_progress') === 'true') {
-        console.log('Detected logout in progress from another page');
         // Continue logout process on this page
         ensureCompleteLogout();
         return; // Stop further execution of this script
@@ -50,7 +45,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     return response;
                 })
                 .catch(error => {
-                    console.error('Authentication request error:', error);
                     // Remove any existing session data on error
                     localStorage.removeItem('authToken');
                     throw error;
@@ -72,8 +66,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to ensure complete logout across all pages
     window.ensureCompleteLogout = function() {
-        console.log('Performing complete logout across all pages');
-        
         // Set a flag indicating logout in progress to avoid navigation before complete
         localStorage.setItem('logout_in_progress', 'true');
         
@@ -94,12 +86,10 @@ document.addEventListener('DOMContentLoaded', function() {
                      key.includes('firebaseui') || 
                      key.includes('auth') || 
                      key.includes('token'))) {
-                    console.log('Removing localStorage item:', key);
                     localStorage.removeItem(key);
                 }
             }
         } catch (e) {
-            console.error('Error clearing localStorage:', e);
         }
         
         // Clear all session cookies related to authentication
@@ -108,8 +98,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // First, call the server-side logout endpoint
-        console.log('Calling server-side logout endpoint');
-        
         // Promise for server logout
         const serverLogoutPromise = fetch('/logout', {
             method: 'GET',
@@ -120,29 +108,23 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .then(response => {
-            console.log('Server-side logout response:', response.status);
             return response;
         })
         .catch(error => {
-            console.error('Server-side logout error:', error);
             // Continue with client-side logout even if server logout fails
         });
         
         // Firebase signout promise
         const firebaseLogoutPromise = new Promise((resolve) => {
             if (typeof firebase !== 'undefined' && firebase.auth) {
-                console.log('Starting Firebase signOut');
                 firebase.auth().signOut()
                     .then(() => {
-                        console.log('Firebase signOut successful');
                         resolve();
                     })
                     .catch(error => {
-                        console.error('Firebase signOut error:', error);
                         resolve(); // Resolve anyway to continue logout process
                     });
             } else {
-                console.log('Firebase auth not available');
                 resolve();
             }
         });
@@ -150,14 +132,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Wait for both logout processes to complete or fail
         Promise.all([serverLogoutPromise, firebaseLogoutPromise])
             .then(() => {
-                console.log('All logout processes completed');
-                
                 // Final cleanup
                 localStorage.removeItem('logout_in_progress');
                 
                 // Force reload from server (not from cache) to ensure fresh state
-                console.log('Redirecting to home page with forced reload');
-                
                 // Specify a full cache-busting reload
                 const reloadUrl = '/?nocache=' + new Date().getTime();
                 
@@ -176,8 +154,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error during logout process:', error);
-                
                 // Still redirect even if there was an error
                 localStorage.removeItem('logout_in_progress');
                 localStorage.removeItem('authToken');
@@ -198,11 +174,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const authToken = localStorage.getItem('authToken');
         
         if (authToken) {
-            console.log('Found auth token in localStorage, syncing with server...');
-            
-            // Immediately force UI to loading state instead of assuming logged in
-            console.log('Setting UI to indeterminate state while validating token');
-            
             // We need to validate the token with our server
             // This ensures the session is recognized on both client and server
             fetch('/validate-token', {
@@ -215,17 +186,14 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(response => {
                 if (!response.ok) {
-                    console.error('Server responded with error status:', response.status);
                     throw new Error('Token validation failed with status: ' + response.status);
                 }
                 return response.json();
             })
             .then(data => {
                 if (!data.valid) {
-                    console.error('Server reported token as invalid');
                     throw new Error('Invalid token');
                 }
-                console.log('Token validated successfully');
                 
                 // Force update navbar UI - ONLY after server confirms the token is valid
                 forceUpdateNavbar(true);
@@ -233,14 +201,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check if auth-modal.js has loaded and expose functions to it
                 if (typeof updateUIForLoggedInUser === 'function') {
                     // Force update UI for logged in user
-                    console.log('Calling updateUIForLoggedInUser from auth-fix.js');
                     updateUIForLoggedInUser({ email: data.email || "user@example.com" });
                 } else {
-                    console.log('updateUIForLoggedInUser not available yet, setting up observer');
                     // Set up a MutationObserver to detect when auth-modal.js loads
                     let scriptObserver = new MutationObserver(function(mutations) {
                         if (typeof updateUIForLoggedInUser === 'function') {
-                            console.log('updateUIForLoggedInUser now available, calling it');
                             updateUIForLoggedInUser({ email: data.email || "user@example.com" });
                             // Disconnect observer after function is found
                             scriptObserver.disconnect();
@@ -256,11 +221,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Also try directly after a delay as a fallback
                     setTimeout(function() {
                         if (typeof updateUIForLoggedInUser === 'function') {
-                            console.log('updateUIForLoggedInUser now available after timeout');
                             updateUIForLoggedInUser({ email: data.email || "user@example.com" });
                             scriptObserver.disconnect();
                         } else {
-                            console.log('updateUIForLoggedInUser still not available, fixing UI manually');
                             // Manual UI update as fallback
                             forceUpdateNavbar(true);
                         }
@@ -268,32 +231,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(error => {
-                console.error('Error validating token:', error);
-                
                 // Token is invalid, remove it
-                console.log('Removing invalid auth token from localStorage');
                 localStorage.removeItem('authToken');
                 
                 // Update UI to logged out state
-                console.log('Updating UI to logged out state due to invalid token');
                 forceUpdateNavbar(false);
                 
                 // Check if auth-modal.js has loaded
                 if (typeof updateUIForLoggedOutUser === 'function') {
-                    console.log('Calling updateUIForLoggedOutUser after validation error');
                     updateUIForLoggedOutUser();
                 }
             });
         } else {
-            console.log('No auth token found in localStorage');
             forceUpdateNavbar(false);
         }
     }
     
     // Helper function to forcibly update the navbar (used when other methods don't work)
     window.forceUpdateNavbar = function forceUpdateNavbar(isLoggedIn) {
-        console.log('Forcibly updating navbar UI, isLoggedIn:', isLoggedIn);
-        
         // First update document classes to reflect auth state
         if (isLoggedIn) {
             document.documentElement.classList.remove('auth-logged-out');
@@ -309,7 +264,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const navLinksContainer = document.querySelector('.nav-links');
         
         if (!navLinksContainer) {
-            console.warn('Nav links container not found, will retry soon');
             setTimeout(() => forceUpdateNavbar(isLoggedIn), 200);
             return;
         }
@@ -418,14 +372,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // If logged in but no dashboard/logout links, force update
         if (hasToken && (!hasMyImagesLink || !hasLogoutLink)) {
-            console.log('Auth state mismatch detected: has token but no Dashboard/Logout links, fixing...');
             forceUpdateNavbar(true);
         }
         
         // If not logged in but has dashboard/logout links, force update
         if (!hasToken && (hasMyImagesLink || hasLogoutLink)) {
-            console.log('Auth state mismatch detected: no token but has Dashboard/Logout links, fixing...');
             forceUpdateNavbar(false);
         }
     }, 2000);
-}); 
+});

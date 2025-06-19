@@ -86,10 +86,7 @@
         if (typeof firebase !== 'undefined') {
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
-                console.log("Firebase initialized");
             }
-        } else {
-            console.error("Firebase SDK not available");
         }
     </script>
     
@@ -695,21 +692,16 @@
     <script>
         // DOM ready event handler
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM loaded - checking auth state");
-            
             // Get all login/signup buttons
             const authButtons = document.querySelectorAll('.open-auth-modal');
-            console.log("Found auth buttons:", authButtons.length);
             
             // Add click event to each button
             authButtons.forEach(button => {
                 button.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log("Auth button clicked");
                     
                     // Get the auth mode (login or signup)
                     const mode = this.getAttribute('data-mode');
-                    console.log("Auth mode:", mode);
                     
                     // Use auth-modal.js openAuthModal function if available
                     if (window.openAuthModal) {
@@ -719,7 +711,6 @@
                         // Get or create the auth modal
                         let authModal = document.getElementById('authModal');
                         if (!authModal) {
-                            console.log("Creating auth modal");
                             createAuthModal();
                             authModal = document.getElementById('authModal');
                         }
@@ -744,7 +735,6 @@
                 const authSwitchText = document.getElementById('authSwitchText');
                 
                 if (!authModalTitle || !authModalSubtitle || !googleBtnText || !authSwitchText) {
-                    console.error("Modal elements not found");
                     return;
                 }
                 
@@ -1194,12 +1184,10 @@
                                     if (data.success) {
                                         window.location.href = data.redirect;
                                     } else {
-                                        console.error(data.error);
                                         alert('Authentication error: ' + data.error);
                                     }
                                 })
                                 .catch((error) => {
-                                    console.error('Authentication error:', error);
                                     alert('Authentication error: ' + error.message);
                                 });
                         } else {
@@ -1210,6 +1198,5 @@
             }
         });
     </script>
-    <script src="/static/js/firebase-debug.js"></script>
 </body>
 </html>

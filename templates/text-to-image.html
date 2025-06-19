@@ -32,10 +32,7 @@
         if (typeof firebase !== 'undefined') {
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
-                console.log("Firebase initialized");
             }
-        } else {
-            console.error("Firebase SDK not available");
         }
     </script>
 
@@ -677,10 +674,8 @@
                 const testModeContainer = document.getElementById('test-mode-container');
                 if (testModeContainer.style.display === 'none') {
                     testModeContainer.style.display = 'flex';
-                    console.log('Developer mode activated');
                 } else {
                     testModeContainer.style.display = 'none';
-                    console.log('Developer mode deactivated');
                 }
             }
         });
@@ -732,7 +727,6 @@
                 this.disabled = false;
                 this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
                 
-                console.error('Error:', error);
                 alert('Failed to enhance prompt: ' + error.message);
             });
         });
@@ -855,14 +849,12 @@
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('error').classList.remove('hidden');
                 document.getElementById('error').querySelector('p').textContent = 'Network error: ' + error.message;
-                console.error('Error:', error);
             });
         });
         
         // Function to handle image download
         function downloadImage(imagePath) {
             if (!imagePath) {
-                console.error('No image path found for download');
                 return;
             }
             
@@ -897,7 +889,6 @@
                     document.body.removeChild(a);
                 })
                 .catch(error => {
-                    console.error('Error downloading image:', error);
                     alert('Failed to download image. Please try again later.');
                 });
         }

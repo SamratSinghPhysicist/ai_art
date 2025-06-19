@@ -65,10 +65,7 @@
         if (typeof firebase !== 'undefined') {
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
-                console.log("Firebase initialized");
             }
-        } else {
-            console.error("Firebase SDK not available");
         }
     </script>
     
@@ -726,8 +723,6 @@ else:
     
     const result = await response.json();
     if (response.ok) {
-      console.log('Image URL:', result.image_url);
-      
       // Display the image if needed
       // const img = document.createElement('img');
       // img.src = result.image_url;
@@ -937,18 +932,18 @@ with open('/path/to/your/image.jpg', 'rb') as img_file:
     
     const result = await response.json();
     if (response.ok) {
-      console.log('Transformed image URL:', result.image_url);
-      console.log('Seed used:', result.seed);
-      
       // Display the transformed image
       // const img = document.createElement('img');
       // img.src = result.image_url;
       // document.body.appendChild(img);
-    } else {
-      console.error('Error:', result.error);
     }
   } catch (error) {
-    console.error('Request failed:', error);
+  }
+};
+      // img.src = result.image_url;
+      // document.body.appendChild(img);
+    }
+  } catch (error) {
   }
 };
 

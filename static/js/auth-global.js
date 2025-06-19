@@ -5,8 +5,6 @@
 
 // IMMEDIATELY run this code before DOM is fully loaded
 (function() {
-    console.log('Global auth handler executing immediately');
-    
     // Flag to track if we've completed initial auth check
     window.authCheckComplete = false;
     
@@ -21,11 +19,8 @@
     
     // Helper function to update navbar UI (works before DOM is fully loaded)
     function updateNavbarAuthState(isLoggedIn) {
-        console.log('Updating navbar auth state, isLoggedIn:', isLoggedIn);
-        
         // Don't update UI if state hasn't changed and initial check is complete
         if (window.authCheckComplete && window.currentAuthState === isLoggedIn) {
-            console.log('Auth state unchanged, skipping UI update');
             return;
         }
         
@@ -145,7 +140,6 @@
         function finalizeUIState() {
             // Remove initializing class to show navbar with correct state
             document.documentElement.classList.remove('auth-initializing');
-            console.log('Auth initialization complete, navbar visible now');
         }
         
         // If we couldn't update DOM immediately, set up retry logic
@@ -178,7 +172,6 @@
     
     // Function to validate token with the server
     function validateAuthToken(token) {
-        console.log('Validating token with server');
         return fetch('/validate-token', {
             method: 'POST',
             headers: {
@@ -189,17 +182,14 @@
         })
         .then(response => {
             if (!response.ok) {
-                console.error(`Token validation server response not OK: ${response.status}`);
                 throw new Error('Token validation failed');
             }
             return response.json();
         })
         .then(data => {
             if (!data.valid) {
-                console.error('Server explicitly reported token as invalid');
                 throw new Error('Invalid token');
             }
-            console.log('Token successfully validated with server');
             return data;
         });
     }
@@ -209,26 +199,20 @@
     
     // IMPORTANT: Only validate if we have a token, otherwise assume logged out immediately
     if (authToken) {
-        console.log('Auth token found, validating with server...');
-        
         // Validate with server - this will update the UI after validation
         validateAuthToken(authToken)
             .then(data => {
-                console.log('Auth token validated successfully, updating UI');
                 window.userEmail = data.email || "user@example.com";
                 updateNavbarAuthState(true);
                 window.authCheckComplete = true;
             })
             .catch(err => {
-                console.error('Auth token validation failed:', err);
-                console.log('Removing invalid token from localStorage');
                 localStorage.removeItem('authToken');
                 updateNavbarAuthState(false);
                 window.authCheckComplete = true;
             });
     } else {
         // No token, immediately set UI to logged out state
-        console.log('No auth token found, setting UI to logged out state');
         updateNavbarAuthState(false);
         window.authCheckComplete = true;
     }
@@ -286,10 +270,7 @@
             
             // Add fresh click handler
             newBtn.addEventListener('click', function() {
-                console.log('Google auth button clicked');
-                
                 if (typeof firebase === 'undefined' || !firebase.auth) {
-                    console.error('Firebase auth not available!');
                     alert('Authentication system is not fully loaded. Please try again in a moment.');
                     return;
                 }
@@ -340,12 +321,10 @@
                                 window.location.href = data.redirect || '/dashboard';
                             }, 300);
                         } else {
-                            console.error(data.error);
                             alert('Authentication error: ' + data.error);
                         }
                     })
                     .catch(error => {
-                        console.error('Authentication error:', error);
                         alert('Authentication error: ' + error.message);
                     });
             });
@@ -394,19 +373,16 @@
             // We have a token, validate it
             validateAuthToken(authToken)
                 .then(data => {
-                    console.log('Auth token is valid, updating UI to logged in state');
                     updateNavbarAuthState(true);
                     window.authCheckComplete = true;
                 })
                 .catch(err => {
-                    console.error('Auth token validation failed in checkAuthStateAndUpdateUI:', err);
                     localStorage.removeItem('authToken');
                     updateNavbarAuthState(false);
                     window.authCheckComplete = true;
                 });
         } else {
             // No token, we're definitely logged out
-            console.log('No auth token found, ensuring UI shows logged out state');
             updateNavbarAuthState(false);
             window.authCheckComplete = true;
         }
@@ -415,15 +391,10 @@
     // Handle auth state changes from Firebase directly
     if (typeof firebase !== 'undefined' && firebase.auth) {
         firebase.auth().onAuthStateChanged(function(user) {
-            console.log('Firebase auth state changed, user:', user ? 'signed in' : 'signed out');
-            
             if (user) {
-                console.log('Firebase auth state changed: User is signed in');
-                
                 // If user is signed in but we don't have a token, get one
                 if (!localStorage.getItem('authToken')) {
                     user.getIdToken().then(function(token) {
-                        console.log('Got token from Firebase, storing and updating UI');
                         localStorage.setItem('authToken', token);
                         
                         // Validate with server before updating UI
@@ -432,36 +403,28 @@
                                 updateNavbarAuthState(true);
                             })
                             .catch(error => {
-                                console.error('Server rejected token from Firebase:', error);
                                 localStorage.removeItem('authToken');
                                 updateNavbarAuthState(false);
                             });
                     }).catch(function(error) {
-                        console.error('Error getting token from Firebase:', error);
                     });
                 } else {
                     // Already have a token, validate it
                     checkAuthStateAndUpdateUI();
                 }
             } else {
-                console.log('Firebase auth state changed: User is signed out');
-                
                 // Clear token and update UI
                 if (localStorage.getItem('authToken')) {
-                    console.log('Clearing auth token due to Firebase signout');
                     localStorage.removeItem('authToken');
                 }
                 updateNavbarAuthState(false);
             }
         });
-    } else {
-        console.warn('Firebase auth not available, relying on server-side validation only');
     }
     
     // Listen for storage events to sync auth state across tabs
     window.addEventListener('storage', function(event) {
         if (event.key === 'authToken') {
-            console.log('Auth token changed in another tab');
             checkAuthStateAndUpdateUI();
         }
     });
@@ -472,11 +435,9 @@
         const authToken = localStorage.getItem('authToken');
         if (!authToken) {
             // No token, we are definitely logged out, no need to check
-            console.log('No auth token, skipping server auth check');
             return;
         }
         
-        console.log('Performing server auth status check');
         fetch('/check-auth-status')
             .then(response => response.json())
             .then(data => {
@@ -485,20 +446,17 @@
                 
                 // Fix mismatch: Client thinks logged in (has token) but server says not authenticated
                 if (hasToken && !serverIsAuth) {
-                    console.warn('Auth mismatch: client has token but server says not authenticated');
                     localStorage.removeItem('authToken');
                     updateNavbarAuthState(false);
                 }
                 
                 // Fix mismatch: Client thinks logged out (no token) but server says authenticated
                 if (!hasToken && serverIsAuth) {
-                    console.warn('Auth mismatch: client has no token but server says authenticated');
                     // This shouldn't happen, but let's force a server-side logout to be safe
                     fetch('/logout').catch(() => {});
                 }
             })
             .catch(error => {
-                console.error('Error checking server auth status:', error);
             });
     }
     
@@ -507,4 +465,4 @@
     
     // Also check periodically (every 5 minutes)
     setInterval(checkServerAuthStatus, 5 * 60 * 1000);
-})(); 
+})();

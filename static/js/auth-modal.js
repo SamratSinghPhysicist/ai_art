@@ -4,70 +4,50 @@ let updateUIForLoggedInUser;
 let updateUIForLoggedOutUser;
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("Auth modal script loaded");
-    
     // Initialize Firebase
     try {
-        console.log("Firebase initialization attempt");
-        console.log("Firebase object available:", typeof firebase !== 'undefined');
-        console.log("firebaseConfig available:", typeof firebaseConfig !== 'undefined');
         // Check if Firebase is already initialized
         if (typeof firebase === 'undefined') {
-            console.error("Firebase SDK not found! Make sure Firebase scripts are loaded first.");
         } else if (!firebase.apps || !firebase.apps.length) {
             // If firebaseConfig is defined globally (from your templates), use it
             if (typeof firebaseConfig !== 'undefined') {
-                console.log("Initializing Firebase with config:", firebaseConfig);
                 firebase.initializeApp(firebaseConfig);
                 
                 // Try to restore auth state from localStorage if user is not signed in
                 const storedToken = localStorage.getItem('authToken');
                 if (storedToken) {
-                    console.log("Found token in localStorage, attempting to sign in");
                     // We don't try to signInWithCustomToken anymore as it might fail
                     // Just set the auth state based on localStorage presence
                     firebase.auth().onAuthStateChanged(function(user) {
                         if (!user) {
-                            console.log("No Firebase user despite having token - forcing UI update for logged in user");
                             // Force UI update as if user is logged in
                             updateUIForLoggedInUser({ email: "user@example.com" });
                         }
                     });
                 }
             } else {
-                console.error("Firebase config not found!");
             }
         } else {
-            console.log("Firebase already initialized");
         }
     } catch (error) {
-        console.error("Firebase initialization error:", error);
     }
     
     // Listen for auth state changes
     if (typeof firebase !== 'undefined') {
-        console.log("Setting up auth state listener");
         firebase.auth().onAuthStateChanged((user) => {
             if (user) {
-                console.log('[Auth Modal] User is signed in:', user.email);
-                console.log('[Auth Modal] User object:', user);
-                
                 // Store token in localStorage for persistence across pages
                 user.getIdToken().then((idToken) => {
                     localStorage.setItem('authToken', idToken);
-                    console.log('[Auth Modal] Token stored in localStorage');
                     
                     // Immediately update UI without waiting for page refresh
                     updateUIForLoggedInUser(user);
                 });
             } else {
-                console.log('[Auth Modal] No user is signed in');
-                
                 // Check if we have a token in localStorage despite Firebase saying no user
                 // This helps with cross-page auth state synchronization
                 const storedToken = localStorage.getItem('authToken');
                 if (storedToken) {
-                    console.log('[Auth Modal] Token found in localStorage but Firebase has no user');
                     // Validate token with server
                     fetch('/validate-token', {
                         method: 'POST',
@@ -79,16 +59,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     .then(response => response.json())
                     .then(data => {
                         if (data.valid) {
-                            console.log('[Auth Modal] Token is valid, updating UI as logged in');
                             updateUIForLoggedInUser({ email: data.email || "user@example.com" });
                         } else {
-                            console.log('[Auth Modal] Token is invalid, removing from localStorage');
                             localStorage.removeItem('authToken');
                             updateUIForLoggedOutUser();
                         }
                     })
                     .catch(error => {
-                        console.error('[Auth Modal] Error validating token:', error);
                         localStorage.removeItem('authToken');
                         updateUIForLoggedOutUser();
                     });
@@ -103,10 +80,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Create modal if it doesn't exist
     if (!document.getElementById('authModal')) {
-        console.log("Creating auth modal");
         createAuthModal();
     } else {
-        console.log("Auth modal already exists");
     }
     
     // DOM Elements - find these after ensuring the modal exists
@@ -127,7 +102,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Open modal with specific mode - making it globally available
     window.openAuthModal = function(mode) {
         if (!authModal) {
-            console.error("Auth modal not found!");
             return;
         }
         
@@ -140,7 +114,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Close modal - making it globally available
     window.closeAuthModal = function() {
         if (!authModal) {
-            console.error("Auth modal not found!");
             return;
         }
         
@@ -151,7 +124,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Update modal content based on mode
     function updateAuthModalContent() {
         if (!authModalTitle || !authModalSubtitle || !googleBtnText || !authSwitchText) {
-            console.error("Auth modal elements not found!");
             return;
         }
         
@@ -182,8 +154,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // UI update functions shared with other scripts
     updateUIForLoggedInUser = function(user) {
-        console.log('[Auth Modal] Updating UI for logged in user:', user.email);
-        
         // Force update navbar if available
         if (typeof window.forceUpdateNavbar === 'function') {
             window.forceUpdateNavbar(true);
@@ -196,8 +166,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     updateUIForLoggedOutUser = function() {
-        console.log('[Auth Modal] Updating UI for logged out user');
-        
         // Force update navbar if available
         if (typeof window.forceUpdateNavbar === 'function') {
             window.forceUpdateNavbar(false);
@@ -220,13 +188,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add fresh listener
                 newBtn.addEventListener('click', function(e) {
                     e.preventDefault();
-                    console.log("Auth modal button clicked");
                     const mode = this.getAttribute('data-mode') || 'login';
                     openAuthModal(mode);
                 });
             });
         } else {
-            console.warn("No auth modal buttons found on page");
         }
         
         if (closeAuthModal) {
@@ -248,7 +214,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (googleAuthBtn) {
             googleAuthBtn.addEventListener('click', handleGoogleAuth);
         } else {
-            console.warn("Google auth button not found");
         }
     }
     
@@ -286,7 +251,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle Google authentication
     function handleGoogleAuth() {
         if (typeof firebase === 'undefined' || !firebase.auth) {
-            console.error("Firebase auth not available!");
             alert("Authentication system is not available. Please refresh the page and try again.");
             return;
         }
@@ -332,12 +296,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         window.location.href = data.redirect;
                     }, 300);
                 } else {
-                    console.error(data.error);
                     alert('Authentication error: ' + data.error);
                 }
             })
             .catch((error) => {
-                console.error('Authentication error:', error);
                 alert('Authentication error: ' + error.message);
             });
     }
@@ -759,4 +721,4 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add modal to body
         document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
-}); 
+});

@@ -521,12 +521,10 @@
                     if (data.success) {
                         window.location.href = data.redirect;
                     } else {
-                        console.error(data.error);
                         alert('Authentication error: ' + data.error);
                     }
                 })
                 .catch((error) => {
-                    console.error('Authentication error:', error);
                     alert('Authentication error: ' + error.message);
                 });
         }

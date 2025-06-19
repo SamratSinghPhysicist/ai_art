@@ -32,10 +32,7 @@
         if (typeof firebase !== 'undefined') {
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
-                console.log("Firebase initialized");
             }
-        } else {
-            console.error("Firebase SDK not available");
         }
     </script>
 
@@ -795,7 +792,6 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
                     loadingElement.classList.add('hidden');
                     errorElement.classList.remove('hidden');
                     document.getElementById('error-message').textContent = 'Error: ' + error.message;

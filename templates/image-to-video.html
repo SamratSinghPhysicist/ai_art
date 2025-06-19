@@ -54,10 +54,7 @@
         if (typeof firebase !== 'undefined') {
             if (!firebase.apps.length) {
                 firebase.initializeApp(firebaseConfig);
-                console.log("Firebase initialized");
             }
-        } else {
-            console.error("Firebase SDK not available");
         }
     </script>
     
@@ -1629,7 +1626,6 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
                     showErrorState(error.message || 'Network error: Failed to connect to the server');
                 });
             }
@@ -1706,8 +1702,6 @@
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    
                     // Special handling for known error types
                     if (error.message && error.message.includes('Insufficient API credits')) {
                         clearInterval(pollingInterval);
