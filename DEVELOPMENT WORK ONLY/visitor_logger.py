@@ -2,6 +2,7 @@ import logging
 import requests
 from flask import request
 import os
+from ip_utils import get_client_ip
 from logging.handlers import RotatingFileHandler
 import json
 from datetime import datetime
@@ -49,27 +50,6 @@ class VisitorLogger:
         
         # Register the before_request handler
         self.app.before_request(self.log_visitor)
-    
-    def get_client_ip(self):
-        """Extract client IP address from request
-        
-        Returns:
-            str: The client's IP address
-        """
-        # Check for IP in various headers (for proxies/load balancers)
-        headers_to_check = [
-            'X-Forwarded-For',
-            'X-Real-IP',
-            'CF-Connecting-IP'  # Cloudflare
-        ]
-        
-        for header in headers_to_check:
-            if header in request.headers:
-                # X-Forwarded-For may contain multiple IPs - take the first one
-                return request.headers[header].split(',')[0].strip()
-        
-        # Fall back to remote_addr if no headers found
-        return request.remote_addr
     
     def get_geolocation(self, ip):
         """Get geolocation data for an IP address
@@ -142,7 +122,7 @@ class VisitorLogger:
         
         try:
             # Get client IP
-            ip = self.get_client_ip()
+            ip = get_client_ip()
             
             # Get geolocation data
             geo_data = self.get_geolocation(ip)

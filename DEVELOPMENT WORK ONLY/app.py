@@ -20,6 +20,7 @@ from img2img_stability import img2img, save_image
 from img2video_stability import img2video, get_video_result
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from ip_utils import get_client_ip
 import hashlib
 import time
 import secrets
@@ -32,7 +33,7 @@ app = Flask(__name__)
 
 # Initialize Limiter with stricter limits
 limiter = Limiter(
-    get_remote_address, 
+    get_client_ip, 
     app=app,
     default_limits=["1440 per day", "60 per hour"], # Stricter default limits
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
@@ -68,6 +69,11 @@ os.makedirs(app.config['PROCESSED_VIDEOS_FOLDER'], exist_ok=True)
 
 # Also fix the logs directory path
 LOGS_DIR = os.path.join(app_dir, 'logs')
+
+# Initialize visitor logger to track IP addresses and locations
+# This needs to be done in the global scope to work in production (e.g., with Gunicorn)
+visitor_logger = VisitorLogger(app)
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -1314,8 +1320,6 @@ if __name__ == '__main__':
     app.logger.setLevel(logging.INFO)
     app.logger.info('AI Art startup')
     
-    # Initialize visitor logger to track IP addresses and locations
-    visitor_logger = VisitorLogger(app, LOGS_DIR)
     app.logger.info('Visitor logging initialized')
     
     # Print debugging information about image paths
