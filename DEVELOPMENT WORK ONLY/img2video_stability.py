@@ -73,20 +73,20 @@ def resize_image_to_supported_dimensions(image_path):
 
 def get_api_key():
     """
-    Get the oldest API key from the database.
+    Find and lock the oldest available API key.
     
     Returns:
     - str: A valid API key or None if no key is found
     """
-    # Find the oldest available key
-    api_key_obj = StabilityApiKey.find_oldest_key()
+    # Find and lock the oldest available key
+    api_key_obj = StabilityApiKey.find_and_lock_oldest_key()
     
     if api_key_obj:
-        print(f"Using API key: {api_key_obj.api_key[:5]}...{api_key_obj.api_key[-4:]}")
+        print(f"Using and locked API key: {api_key_obj.api_key[:5]}...{api_key_obj.api_key[-4:]}")
         return api_key_obj.api_key
     
     # If we got here, no key was found
-    print("No API keys available in the database")
+    print("No available and unlocked API keys in the database")
     return None
 
 
@@ -236,8 +236,11 @@ def get_video_result(api_key, generation_id):
         - 'status': str - 'in-progress' or 'complete'
         - 'video': bytes - Video data (if complete)
     """
-    # If no API key is provided, try to get one from the database
+    # The API key should already be locked and provided.
     if api_key is None:
+        # This case should ideally not be hit if the key is passed correctly.
+        # However, as a fallback, we try to get a new one.
+        print("Warning: No API key provided to get_video_result. Attempting to get a new one.")
         api_key = get_api_key()
         if api_key is None:
             raise ValueError("No API keys available in the database")
@@ -294,7 +297,7 @@ def get_video_result(api_key, generation_id):
         try:
             # Delete the key - it's been fully used now
             StabilityApiKey.delete_key(api_key)
-            print(f"API key used and deleted from database")
+            print(f"API key used and permanently deleted from database")
         except Exception as e:
             print(f"Error deleting API key: {e}")
         
@@ -306,7 +309,9 @@ def get_video_result(api_key, generation_id):
         }
     except Exception as e:
         print(f"Error checking video status: {str(e)}")
-        # Don't delete the API key on error, as we might want to retry
+        # Unlock the key on error so it can be used by another process
+        if api_key:
+            StabilityApiKey.unlock_key(api_key)
         raise Exception(f"Failed to check video status: {str(e)}")
 
 
@@ -369,33 +374,38 @@ def generate_video_from_image(image_path, output_directory, seed=0, cfg_scale=1.
     - str: Generation ID for reference
     - str: Error message if generation failed, None otherwise
     """
+    api_key = None  # Initialize api_key to None
     try:
-        # Get API key
+        # Get and lock an API key
         api_key = get_api_key()
         if not api_key:
-            error_msg = "No API keys available. Cannot generate video."
+            error_msg = "No available and unlocked API keys. Cannot generate video."
             print(error_msg)
             return None, None, error_msg
         
         # Start the video generation
         try:
-            generation_id, dimensions, api_key = img2video(
+            generation_id, dimensions, returned_api_key = img2video(
                 api_key=api_key,
                 image_path=image_path,
                 seed=seed,
                 cfg_scale=cfg_scale,
                 motion_bucket_id=motion_bucket_id
             )
+            # Ensure we continue using the same key
+            api_key = returned_api_key
+
         except Exception as e:
+            # If starting generation fails, unlock the key
+            if api_key:
+                StabilityApiKey.unlock_key(api_key)
+            
             error_str = str(e)
             if "402" in error_str and "credits" in error_str.lower():
-                # This is already handled in img2video with key deletion and retry
-                # But if we still got the error here, it means we've run out of valid keys
-                error_msg = "Insufficient credits on all available API keys. Please add a new API key with sufficient credits."
+                error_msg = "Insufficient credits on all available API keys."
                 print(error_msg)
                 return None, None, error_msg
             else:
-                # Other error occurred
                 error_msg = f"Error starting video generation: {e}"
                 print(error_msg)
                 return None, None, error_msg
@@ -431,29 +441,40 @@ def generate_video_from_image(image_path, output_directory, seed=0, cfg_scale=1.
             except Exception as e:
                 error_str = str(e)
                 if "402" in error_str and "credits" in error_str.lower():
-                    # This is a payment required error, which has already been handled in get_video_result
-                    # If we still got the error here, we need to check if we can get a new API key
+                    # The key with insufficient credits is already deleted. Try to get a new one.
+                    print("Polling failed due to insufficient credits. Trying to get a new key.")
+                    
+                    # Unlock the failed key before getting a new one
+                    if api_key:
+                        StabilityApiKey.unlock_key(api_key)
+
                     new_api_key = get_api_key()
                     if new_api_key:
-                        print(f"Trying with a new API key for polling: {new_api_key[:5]}...{new_api_key[-4:]}")
+                        print(f"Continuing polling with new API key: {new_api_key[:5]}...{new_api_key[-4:]}")
                         api_key = new_api_key
-                        continue  # Try again with the new key
+                        continue  # Retry polling with the new key
                     else:
-                        error_msg = "Insufficient credits on all available API keys. Please add a new API key with sufficient credits."
+                        error_msg = "Polling failed. No more API keys available."
                         print(error_msg)
                         return None, generation_id, error_msg
                 
-                print(f"Error checking generation status: {e}")
-                # Continue polling despite errors
-        
+                print(f"Error checking generation status: {e}. Unlocking key and stopping.")
+                if api_key:
+                    StabilityApiKey.unlock_key(api_key)
+                return None, generation_id, f"Error during polling: {e}"
+
         # If we got here, we timed out
         error_msg = f"Generation timed out after {timeout} seconds"
         print(error_msg)
+        if api_key:
+            StabilityApiKey.unlock_key(api_key) # Unlock the key on timeout
         return None, generation_id, error_msg
         
     except Exception as e:
         error_msg = f"Error generating video: {e}"
         print(error_msg)
+        if api_key:
+            StabilityApiKey.unlock_key(api_key) # Ensure key is unlocked on any other failure
         return None, None, error_msg
 
 
@@ -481,4 +502,4 @@ if __name__ == "__main__":
         print(f"Video generated successfully: {video_path}")
         print(f"Generation ID: {generation_id}")
     else:
-        print(f"Video generation failed: {error}") 
+        print(f"Video generation failed: {error}")

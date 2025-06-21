@@ -287,12 +287,21 @@ class User:
 class StabilityApiKey:
     """Model for managing Stability API keys"""
     
-    def __init__(self, api_key, created_at=None, is_active=True, _id=None):
+    def __init__(self, api_key, created_at=None, is_active=True, _id=None, locked_at=None):
         self.api_key = api_key
         self.created_at = created_at or datetime.datetime.now()
         self.is_active = is_active
         self._id = _id
-    
+        self.locked_at = locked_at
+
+    @property
+    def is_locked(self):
+        """Check if the key is currently locked."""
+        if not self.locked_at:
+            return False
+        # Consider a key locked for 5 minutes to prevent permanent locks
+        return (datetime.datetime.now() - self.locked_at).total_seconds() < 300
+
     def save(self):
         """Save API key to database"""
         # Check if this key already exists
@@ -301,7 +310,8 @@ class StabilityApiKey:
         api_key_data = {
             'api_key': self.api_key,
             'created_at': self.created_at,
-            'is_active': self.is_active
+            'is_active': self.is_active,
+            'locked_at': self.locked_at
         }
         
         # Update existing key or insert new one
@@ -333,26 +343,65 @@ class StabilityApiKey:
         return None
     
     @staticmethod
-    def find_oldest_key():
-        """Find the oldest API key available"""
+    def find_and_lock_oldest_key():
+        """Atomically find the oldest, unlocked API key and lock it."""
         try:
-            # Find active keys sorted by creation date (oldest first)
-            oldest_key = db['stability_api_keys'].find({
-                'is_active': True
-            }).sort('created_at', 1).limit(1)
+            # Define a time threshold for what's considered a stale lock (e.g., 5 minutes)
+            stale_lock_threshold = datetime.datetime.now() - datetime.timedelta(minutes=5)
             
-            # Return the first one if available
-            api_key_data = next(oldest_key, None)
+            # Query for an active, unlocked key (or one with a stale lock)
+            query = {
+                'is_active': True,
+                '$or': [
+                    {'locked_at': None},
+                    {'locked_at': {'$lt': stale_lock_threshold}}
+                ]
+            }
+            
+            # Atomically update the key to lock it
+            update = {
+                '$set': {'locked_at': datetime.datetime.now()}
+            }
+            
+            # Find one and update, returning the document *after* the update
+            # Note: return_document=pymongo.ReturnDocument.AFTER is for pymongo 3.x+
+            api_key_data = db['stability_api_keys'].find_one_and_update(
+                query,
+                update,
+                sort=[('created_at', 1)],
+                return_document=True
+            )
+            
             if api_key_data:
+                print(f"Found and locked API key: {api_key_data['api_key'][:5]}...{api_key_data['api_key'][-4:]}")
                 return StabilityApiKey(
                     api_key=api_key_data['api_key'],
-                    created_at=api_key_data.get('created_at', datetime.datetime.now()),
+                    created_at=api_key_data.get('created_at'),
                     is_active=api_key_data['is_active'],
-                    _id=api_key_data['_id']
+                    _id=api_key_data['_id'],
+                    locked_at=api_key_data['locked_at']
                 )
         except Exception as e:
-            print(f"Error finding oldest API key: {e}")
+            print(f"Error finding and locking API key: {e}")
         return None
+
+    @staticmethod
+    def unlock_key(api_key_str):
+        """Unlock an API key so it can be used again."""
+        try:
+            result = db['stability_api_keys'].update_one(
+                {'api_key': api_key_str},
+                {'$set': {'locked_at': None}}
+            )
+            if result.modified_count > 0:
+                print(f"Unlocked API key: {api_key_str[:5]}...{api_key_str[-4:]}")
+                return True
+            else:
+                print(f"Could not find key to unlock: {api_key_str[:5]}...{api_key_str[-4:]}")
+                return False
+        except Exception as e:
+            print(f"Error unlocking API key: {e}")
+            return False
     
     @staticmethod
     def delete_key(api_key_str):
