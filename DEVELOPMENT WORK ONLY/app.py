@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session, flash
 import os
 from image_generator import main_image_function
+from prompt_translate import translate_to_english
 from models import User, db
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -281,6 +282,11 @@ def generate_image():
     
     # Get the image description from the form
     image_description = request.form.get('video_description')
+
+    print(f"Received image description: {image_description}")
+    
+    # Translate the prompt to English
+    image_description = translate_to_english(image_description)
     
     # Check if test mode is enabled
     test_mode = request.form.get('test_mode') == 'true'
@@ -358,6 +364,11 @@ def api_generate_image():
         return jsonify({'error': 'Image description is required'}), 400
     
     image_description = data['video_description']
+
+    print(f"Received image description from API: {image_description}")
+    
+    # Translate the prompt to English
+    image_description = translate_to_english(image_description)
     test_mode = data.get('test_mode', False)
     
     # Get advanced options
@@ -456,6 +467,12 @@ def img2img_transform():
     
     # Get the prompt from the form
     prompt = request.form.get('video_description')
+
+    print(f"Received prompt Image to Image: {prompt}")
+    
+    # Translate the prompt to English
+    prompt = translate_to_english(prompt)
+    
     # Get advanced options
     negative_prompt = request.form.get('negative_prompt', '')
     style_preset = request.form.get('style_preset', None)
@@ -571,6 +588,12 @@ def api_img2img_transform():
     
     # Get JSON data from form
     prompt = request.form.get('prompt')
+
+    print(f"Received prompt for img2img API: {prompt}")
+    
+    # Translate the prompt to English
+    prompt = translate_to_english(prompt)
+    
     if not prompt:
         return jsonify({'error': 'Prompt is required'}), 400
     
