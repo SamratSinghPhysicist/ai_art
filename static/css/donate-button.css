@@ -1,0 +1,50 @@
+.donate-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    background-color: #ff4081; /* A bright, noticeable color */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 24px;
+    line-height: 48px;
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s;
+    text-decoration: none; /* Ensure it looks like a button, not a link */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.donate-button:hover {
+    background-color: #f50057; /* Darker shade on hover */
+    transform: scale(1.1);
+}
+
+.donate-button .tooltip {
+    visibility: hidden;
+    width: 120px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1001;
+    bottom: 125%; /* Position above the button */
+    left: 50%;
+    margin-left: -60px; /* Center the tooltip */
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 14px;
+}
+
+.donate-button:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+}

@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support AI Art - Donate to Our Project</title>
+    <meta name="description" content="Support the development of AI Art. Your donations help us maintain our servers and build new features. Donate via Crypto or Amazon Gift Cards.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://aiart-zroo.onrender.com/donate">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        .donate-container {
+            max-width: 900px;
+            margin: 2rem auto;
+        }
+
+        .donate-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .donate-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 0.5rem;
+        }
+
+        .donate-subtitle {
+            font-size: 1.125rem;
+            color: var(--text-light);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-button {
+            padding: 1rem 2rem;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            font-weight: 600;
+            color: var(--text); /* Changed to a darker text color for better contrast */
+            transition: all 0.3s ease;
+            margin-bottom: -1px;
+        }
+
+        .tab-button:hover {
+            color: var(--primary);
+        }
+
+        .tab-button.active {
+            color: white; /* Changed to white for better contrast on the primary gradient */
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .crypto-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .crypto-card {
+            background-color: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .crypto-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .crypto-card > img { /* Target only direct img children (QR codes) */
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 1.5rem;
+            border-radius: var(--radius-md);
+            background-color: white;
+            padding: 10px;
+        }
+
+        .crypto-name {
+            font-size: 1.13rem;
+            font-weight: 700;
+            margin-bottom: 0; /* Removed margin-bottom from crypto-name */
+        }
+
+        .wallet-address-container {
+            position: relative;
+            margin-top: 1rem;
+        }
+
+        .wallet-address {
+            font-family: monospace;
+            background-color: var(--bg);
+            padding: 0.75rem 3rem 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            word-break: break-all;
+            font-size: 0.875rem;
+            border: 1px solid var(--border);
+            text-align: left;
+        }
+
+        .copy-btn {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: var(--primary-light);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .copy-btn:hover {
+            background-color: var(--primary);
+        }
+        
+        .copy-btn.copied {
+            background-color: var(--success);
+        }
+
+        .gift-card-content {
+            text-align: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .gift-card-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .crypto-name-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem; /* Added margin-bottom to crypto-name-container */
+        }
+
+        .crypto-name-container .crypto-icon { /* Adjusted size and added border for debugging visibility */
+            width: 30px !important; /* Increased size and added !important for override */
+            height: 30px !important;
+            margin-right: 0.5rem;
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-background text-text">
+
+    <header class="header">
+        <div class="container">
+            <nav class="nav">
+                <a href="/" class="nav-logo">AI Art</a>
+                <button class="mobile-menu-btn">☰</button>
+                <div class="nav-links">
+                    <a href="/" class="nav-link">Home</a>
+                    
+                    <!-- AI Tools dropdown -->
+                    <div class="dropdown">
+                        <button type="button" class="dropdown-toggle nav-link">AI Tools <span class="dropdown-arrow">▼</span></button>
+                        <div class="dropdown-menu">
+                            <a href="/text-to-image" class="dropdown-item">Text to Image</a>
+                            <a href="/image-to-image" class="dropdown-item">Image to Image</a>
+                            <a href="/image-to-video" class="dropdown-item">Image to Video</a>
+                        </div>
+                    </div>
+                    
+                    <a href="/api-docs" class="nav-link">API</a>
+                    {% if current_user.is_authenticated %}
+                    <a href="/dashboard" class="nav-link">Dashboard</a>
+                    <a href="/logout" class="nav-link">Logout</a>
+                    {% else %}
+                    <a href="#" class="nav-link open-auth-modal" data-mode="login">Login</a>
+                    <a href="#" class="nav-link open-auth-modal" data-mode="signup">Sign Up</a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container donate-container">
+        <div class="donate-header">
+            <h1 class="donate-title gradient-text">Support Our Project</h1>
+            <p class="donate-subtitle">
+                Your contributions are vital for keeping our servers running and for the continuous development of new and exciting features. Every donation, big or small, makes a huge difference. Thank you!
+            </p>
+        </div>
+
+        <div class="card p-6 sm:p-8 shadow-lg">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="crypto">
+                    <span class="icon">💰</span> Crypto
+                </button>
+                <button class="tab-button" data-tab="giftcard">
+                    <span class="icon">🎁</span> Gift Card
+                </button>
+            </div>
+
+            <!-- Crypto Tab Content -->
+            <div id="crypto" class="tab-content active">
+                <div class="crypto-grid">
+                    <!-- BTC Wallet -->
+                    <div class="crypto-card">
+                        <img src="{{ url_for('static', filename='images/qr-btc.png') }}" alt="Bitcoin QR Code">
+                        <div class="crypto-name-container">
+                            <img src="{{ url_for('static', filename='images/icon-btc.png') }}" alt="Bitcoin Icon" class="crypto-icon">
+                            <h3 class="crypto-name">Bitcoin (BTC)</h3>
+                        </div>
+                        <div class="wallet-address-container">
+                            <p class="wallet-address" id="btc-address">bc1qk4rvekqagaxj3ssljl5r5xwkyald3566h8la3t</p>
+                            <button class="copy-btn" onclick="copyToClipboard('btc-address', this)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 1.5A1.5 1.5 0 0 1 .5 0h3A1.5 1.5 0 0 1 5 1.5v1A1.5 1.5 0 0 1 3.5 4h-3A1.5 1.5 0 0 1-1 2.5v-1z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- ETH Wallet -->
+                    <div class="crypto-card">
+                        <img src="{{ url_for('static', filename='images/qr-eth.png') }}" alt="Ethereum QR Code">
+                        <div class="crypto-name-container">
+                            <img src="{{ url_for('static', filename='images/icon-eth.png') }}" alt="Ethereum Icon" class="crypto-icon">
+                            <h3 class="crypto-name">Ethereum (ETH)</h3>
+                        </div>
+                        <div class="wallet-address-container">
+                            <p class="wallet-address" id="eth-address">0x14993E664015781B9330A4E0ca5b09844d7C3bBe</p>
+                            <button class="copy-btn" onclick="copyToClipboard('eth-address', this)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 1.5A1.5 1.5 0 0 1 .5 0h3A1.5 1.5 0 0 1 5 1.5v1A1.5 1.5 0 0 1 3.5 4h-3A1.5 1.5 0 0 1-1 2.5v-1z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- USDT Wallet -->
+                    <div class="crypto-card">
+                        <img src="{{ url_for('static', filename='images/qr-usdt.png') }}" alt="USDT TRC20 QR Code">
+                        <div class="crypto-name-container">
+                            <img src="{{ url_for('static', filename='images/icon-bnb.png') }}" alt="BNB Icon" class="crypto-icon">
+                            <h3 class="crypto-name">BNB Smart Chain (BEP-20)</h3>
+                        </div>
+                        <div class="wallet-address-container">
+                            <p class="wallet-address" id="bnb-address">0x14993E664015781B9330A4E0ca5b09844d7C3bBe</p>
+                            <button class="copy-btn" onclick="copyToClipboard('bnb-address', this)">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zM-1 1.5A1.5 1.5 0 0 1 .5 0h3A1.5 1.5 0 0 1 5 1.5v1A1.5 1.5 0 0 1 3.5 4h-3A1.5 1.5 0 0 1-1 2.5v-1z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gift Card Tab Content -->
+            <div id="giftcard" class="tab-content">
+                <div class="gift-card-content p-4">
+                    <div class="gift-card-icon">🎁</div>
+                    <h3 class="text-2xl font-bold mb-4">Amazon Gift Card (India)</h3>
+                    <p class="text-text-light mb-6">
+                        You can support us by purchasing an Amazon India gift card. This can be done using UPI, Paytm, Credit/Debit Card, or even PayPal.
+                    </p>
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLSfwc0Qn8dtEKd28M4UO00e-grNTsOQ8f_VLMhfkUITueV1uMA/viewform?usp=sharing&ouid=109120678344519168670" target="_blank" rel="noopener noreferrer" class="btn btn-primary">
+                        Submit Gift Card
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-logo">
+                <span class="footer-logo-text">AI Art</span>
+            </div>
+            
+            <div class="footer-links">
+                <a href="/" class="footer-link">Home</a>
+                <a href="/text-to-image" class="footer-link">Text to Image</a>
+                <a href="/image-to-image" class="footer-link">Image to Image</a>
+                <a href="/image-to-video" class="footer-link">Image to Video</a>
+                <a href="/api-docs" class="footer-link">API</a>
+            </div>
+            
+            <p class="footer-copyright">
+                &copy; 2025 AI Art. All rights reserved.
+            </p>
+        </div>
+    </footer>
+    {% include 'donate_button.html' %}
+
+    <script>
+        // Tab functionality
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                const targetTab = button.getAttribute('data-tab');
+                tabContents.forEach(content => {
+                    if (content.id === targetTab) {
+                        content.classList.add('active');
+                    } else {
+                        content.classList.remove('active');
+                    }
+                });
+            });
+        });
+
+        // Copy to clipboard functionality
+        function copyToClipboard(elementId, button) {
+            const textToCopy = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                const originalIcon = button.innerHTML;
+                button.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425a.247.247 0 0 1 .02-.022z"/>
+                    </svg>
+                `;
+                button.classList.add('copied');
+                
+                setTimeout(() => {
+                    button.innerHTML = originalIcon;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        }
+    </script>
+
+</body>
+</html>

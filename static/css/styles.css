@@ -342,6 +342,7 @@ input[type="file"].form-input {
 @keyframes sparkle {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.8; transform: scale(1.1); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes fadeIn {
@@ -1825,4 +1826,80 @@ body::after {
     height: 0;
     z-index: -1;
     transition: opacity 0.3s ease;
+}
+
+/* Floating Donate Button */
+.donate-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    background-color: var(--primary); /* Using primary color from theme */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem; /* Adjust size of the heart emoji */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    z-index: 1000; /* High z-index to ensure it floats above other content */
+    text-decoration: none; /* Remove underline */
+    cursor: pointer;
+}
+
+.donate-button:hover {
+    background-color: var(--primary-dark); /* Darken on hover */
+    transform: translateY(-3px); /* Slight lift effect */
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+    .donate-button {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+        bottom: 15px;
+        right: 15px;
+    }
+}
+
+/* Tooltip for Donate Button */
+.donate-button.tooltip .tooltip-text {
+  visibility: hidden;
+  background-color: rgba(51, 63, 81, 0.9);
+  color: white;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  font-size: 0.875rem;
+  pointer-events: none;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.donate-button.tooltip .tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(51, 63, 81, 0.9) transparent transparent transparent;
+}
+
+.donate-button.tooltip:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(-8px);
 }

@@ -871,6 +871,16 @@ def api_docs():
                           firebase_app_id=firebase_config.get('appId'))
 
 
+@app.route('/donate')
+def donate():
+    """Render the donation page"""
+    return render_template('donate.html',
+                          user=current_user,
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
+
 
 @app.route('/img2video-ui', methods=['POST'])
 def img2video_generate():

@@ -459,6 +459,70 @@
             }
         }
     </style>
+<style>
+.donate-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 48px;
+    height: 48px;
+    background-color: #ff0077; /* Example color, can adjust */
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    z-index: 1000; /* High z-index */
+    transition: background-color 0.3s ease;
+}
+
+.donate-button:hover {
+    background-color: #e6006f; /* Darker shade on hover */
+}
+/* Tooltip styles (assuming they are in styles.css or need to be added) */
+.tooltip {
+    position: relative;
+    display: inline-block; /* Or block, depending on layout */
+}
+
+.tooltip .tooltip-text {
+    visibility: hidden;
+    width: 120px;
+    background-color: #555;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1001; /* Higher than button */
+    bottom: 125%; /* Position above the button */
+    left: 50%;
+    margin-left: -60px; /* Center the tooltip */
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+}
+
+.tooltip .tooltip-text::after {
+    content: "";
+    position: absolute;
+            top: 100%; /* At the bottom of the tooltip */
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+
+        .tooltip:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+</style>
 </head>
 <body class="bg-background text-text">
     <!-- Modern API Docs Header -->
@@ -1692,5 +1756,7 @@ def generate_image_with_retry(prompt, max_retries=3, backoff_factor=2):
             });
         });
     </script>
+    <!-- Floating Donate Button -->
+    {% include 'donate_button.html' %}
 </body>
 </html>
