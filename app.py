@@ -552,6 +552,12 @@ def serve_processed_image(filename):
     print(f"Serving processed image: {filename}")
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
+@app.route('/processed_videos/<path:filename>')
+def serve_processed_video(filename):
+    """Serve processed videos"""
+    print(f"Serving processed video: {filename}")
+    return send_from_directory(app.config['PROCESSED_VIDEOS_FOLDER'], filename)
+
 @app.route('/img2img', methods=['POST'])
 def img2img_transform():
     """Transform an image based on text prompt and uploaded image"""
