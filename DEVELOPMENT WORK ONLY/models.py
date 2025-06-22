@@ -1,4 +1,31 @@
+import os
 from pymongo import MongoClient
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# It's recommended to store your MongoDB URI in a .env file
+# for security and ease of configuration.
+# Example .env file:
+# MONGO_URI="mongodb://localhost:27017/"
+# DB_NAME="ai_art_db"
+
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+DB_NAME = os.getenv("DB_NAME", "ai_art_db")
+
+try:
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    # The ismaster command is cheap and does not require auth.
+    client.admin.command('ismaster')
+    print("MongoDB connection successful.")
+    db = client[DB_NAME]
+    blocked_ips_collection = db["blocked_ips"]
+    request_logs_collection = db["request_logs"]
+except Exception as e:
+    print(f"Error connecting to MongoDB: {e}")
+    db = None
+    blocked_ips_collection = None
+    request_logs_collection = None
 import bcrypt
 import os
 import datetime

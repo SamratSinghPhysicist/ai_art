@@ -20,7 +20,8 @@ from img2img_stability import img2img, save_image
 from img2video_stability import img2video, get_video_result
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from ip_utils import get_client_ip
+from ip_utils import get_client_ip, is_ip_blocked, block_ip as block_ip_util, unblock_ip as unblock_ip_util, get_blocked_ips as get_blocked_ips_util, log_request, get_ip_history
+from functools import wraps
 import hashlib
 import time
 import secrets
@@ -30,6 +31,32 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 app = Flask(__name__)
+
+# Load admin secret key for IP blocking management
+ADMIN_SECRET_KEY = os.getenv('ADMIN_SECRET_KEY')
+if not ADMIN_SECRET_KEY:
+    print("WARNING: ADMIN_SECRET_KEY is not set. IP blocking management endpoints will be disabled.")
+
+# New middleware for logging and blocking
+@app.before_request
+def log_and_block_check():
+    # We only want to log and check specific, high-cost endpoints
+    endpoints_to_log_and_check = [
+        'api_generate_image', 
+        'img2img_transform', 
+        'api_img2video_generate', 
+        'generate_image', 
+        'generate_video_from_image'
+    ]
+    
+    if request.endpoint in endpoints_to_log_and_check:
+        ip = get_client_ip()
+        
+        # First, check if the IP is blocked to deny access immediately
+        if is_ip_blocked(ip):
+            return render_template('blocked.html'), 403
+        # If not blocked, log the request for monitoring purposes
+        log_request(ip, request.endpoint)
 
 # Initialize Limiter with stricter limits
 limiter = Limiter(
@@ -74,6 +101,74 @@ LOGS_DIR = os.path.join(app_dir, 'logs')
 # This needs to be done in the global scope to work in production (e.g., with Gunicorn)
 visitor_logger = VisitorLogger(app)
 
+# Admin security decorator
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Ensure the admin key is present and correct
+        if not ADMIN_SECRET_KEY:
+            return jsonify({"error": "Admin secret key is not configured on the server."}), 500
+        if request.headers.get('X-Admin-Secret-Key') != ADMIN_SECRET_KEY:
+            return jsonify({"error": "Unauthorized"}), 401
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Admin Dashboard ---
+@app.route('/admin')
+def admin_dashboard():
+    # This route serves the admin panel.
+    # A simple query parameter is used for initial access.
+    # The API calls from the panel are secured by the header key.
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+    return render_template('admin.html')
+
+# --- Admin API Endpoints ---
+@app.route('/admin/api/blocked-ips', methods=['GET'])
+@admin_required
+def get_all_blocked_ips():
+    """API endpoint to get the list of all blocked IPs.""" 
+    ips = get_blocked_ips_util()
+    return jsonify(ips)
+
+@app.route('/admin/api/block-ip', methods=['POST'])
+@admin_required
+def block_ip():
+    """API endpoint to block a new IP address."""
+    data = request.get_json()
+    ip = data.get('ip')
+    reason = data.get('reason', '')
+    if not ip:
+        return jsonify({"error": "IP address is required"}), 400
+    
+    success, message = block_ip_util(ip, reason)
+    if success:
+        return jsonify({"message": message})
+    else:
+        return jsonify({"error": message}), 400
+
+@app.route('/admin/api/unblock-ip', methods=['POST'])
+@admin_required
+def unblock_ip():
+    """API endpoint to unblock an IP address."""
+    data = request.get_json()
+    ip = data.get('ip')
+    if not ip:
+        return jsonify({"error": "IP address is required"}), 400
+        
+    success, message = unblock_ip_util(ip)
+    if success:
+        return jsonify({"message": message})
+    else:
+        return jsonify({"error": message}), 400
+
+@app.route('/admin/api/ip-history/<string:ip>', methods=['GET'])
+@admin_required
+def ip_history(ip):
+    """API endpoint to get the request history for a specific IP."""
+    history = get_ip_history(ip)
+    return jsonify(history)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -458,8 +553,6 @@ def serve_processed_image(filename):
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
 @app.route('/img2img', methods=['POST'])
-@limiter.limit("3/minute")  # Stricter rate limit
-@limiter.limit("60/hour")   # Additional hourly limit
 def img2img_transform():
     """Transform an image based on text prompt and uploaded image"""
     # Honeypot field check (should be empty)
@@ -870,7 +963,6 @@ def api_docs():
                           firebase_project_id=firebase_config.get('projectId'),
                           firebase_app_id=firebase_config.get('appId'))
 
-
 @app.route('/donate')
 def donate():
     """Render the donation page"""
@@ -880,7 +972,6 @@ def donate():
                           firebase_auth_domain=firebase_config.get('authDomain'),
                           firebase_project_id=firebase_config.get('projectId'),
                           firebase_app_id=firebase_config.get('appId'))
-
 
 @app.route('/img2video-ui', methods=['POST'])
 def img2video_generate():
@@ -1288,21 +1379,21 @@ def api_img2video_result(generation_id):
         except Exception as e:
             error_str = str(e)
             if "402" in error_str and "credits" in error_str.lower():
-                # Try with a new API key
-                new_api_key = get_api_key()
-                if new_api_key:
-                    # Store new key in session
-                    session[f'img2video_api_key_{generation_id}'] = new_api_key
-                    return jsonify({
-                        'status': 'retry',
-                        'message': 'API key refreshed due to insufficient credits. Please try again.'
-                    }), 200
-                else:
-                    return jsonify({
-                        'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
-                        'error_type': 'payment_required',
-                        'status': 'error'
-                    }), 402
+                    # Try with a new API key
+                    new_api_key = get_api_key()
+                    if new_api_key:
+                        # Store new key in session
+                        session[f'img2video_api_key_{generation_id}'] = new_api_key
+                        return jsonify({
+                            'status': 'retry',
+                            'message': 'API key refreshed due to insufficient credits. Please try again.'
+                        }), 200
+                    else:
+                        return jsonify({
+                            'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
+                            'error_type': 'payment_required',
+                            'status': 'error'
+                        }), 402
             else:
                 raise e
         
@@ -1310,13 +1401,16 @@ def api_img2video_result(generation_id):
         print(f"Error checking image-to-video status: {str(e)}")
         return jsonify({'error': str(e), 'status': 'error'}), 500
 
-@app.route('/processed_videos/<path:filename>')
-def serve_processed_video(filename):
-    """Serve a processed video file"""
-    videos_folder = app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos')
-    return send_from_directory(videos_folder, filename)
-
 if __name__ == '__main__':
+    if ADMIN_SECRET_KEY:
+        print("="*60)
+        print("Admin Dashboard URL:")
+        print(f"http://127.0.0.1:5000/admin?secret={ADMIN_SECRET_KEY}")
+        print("="*60)
+    else:
+        print("="*60)
+        print("WARNING: ADMIN_SECRET_KEY not set. Admin dashboard is disabled.")
+        print("="*60)
     # Configure logging
     if not os.path.exists(LOGS_DIR):
         os.makedirs(LOGS_DIR)
