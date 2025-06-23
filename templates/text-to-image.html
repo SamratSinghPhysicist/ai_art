@@ -140,6 +140,14 @@
                         </div>
                     </div>
                     
+                    <div class="form-group mt-6">
+                        <label for="image-model" class="form-label">Select Model:</label>
+                        <select id="image-model" name="model" class="form-select">
+                            <option value="stable-diffusion-3.5-ultra">Stable Diffusion 3.5 Ultra</option>
+                            <option value="imagen-4">Imagen 4 (powered by GhostAPI - https://api.infip.pro/docs)</option>
+                        </select>
+                    </div>
+
                     <div class="form-group mt-4">
                         <div class="advanced-options-toggle">
                             <button type="button" id="toggle-advanced-options" class="btn btn-secondary">
@@ -209,7 +217,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="form-group checkbox-group" id="test-mode-container" style="display: none;">
                         <input type="checkbox" id="test-mode" name="test_mode">
                         <label for="test-mode">Test Mode (Uses placeholder image instead of generating new one)</label>
@@ -790,7 +798,10 @@
             const formData = new FormData();
             formData.append('video_description', description);
             formData.append('test_mode', testMode ? 'true' : 'false');
-            
+
+            // Add selected model
+            const selectedModel = document.getElementById('image-model').value;
+            formData.append('model', selectedModel);
             // Add advanced options if visible
             if (document.getElementById('advanced-options-container').style.display !== 'none') {
                 // Add negative prompt

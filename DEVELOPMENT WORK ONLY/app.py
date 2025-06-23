@@ -380,79 +380,140 @@ def generate_image():
     if honeypot:
         app.logger.warning(f"Honeypot triggered from IP: {get_remote_address()}")
         return jsonify({'error': 'Invalid request detected.'}), 400
-    
+
     # Get the image description from the form
     image_description = request.form.get('video_description')
 
     print(f"Received image description: {image_description}")
-    
+
     # Translate the prompt to English
     image_description = translate_to_english(image_description)
-    
+
     # Check if test mode is enabled
     test_mode = request.form.get('test_mode') == 'true'
-    
+
     if not image_description:
         return jsonify({'error': 'Image description is required'}), 400
-    
+
     # Get advanced options
     negative_prompt = request.form.get('negative_prompt', '')
     style_preset = request.form.get('style_preset', None)
     if style_preset == '':
         style_preset = None
-    
+
     aspect_ratio = request.form.get('aspect_ratio', '16:9')
     output_format = request.form.get('output_format', 'png')
-    
+
     # Get seed (0 means random)
     try:
         seed = int(request.form.get('seed', 0))
     except ValueError:
         seed = 0
-    
-    try:
-        # Generate the image with advanced options
-        generated_image_path = main_image_function(
-            image_description=image_description,
-            testMode=test_mode,
-            api_key_gemini=GEMINI_API_KEY,
-            negative_prompt=negative_prompt,
-            aspect_ratio=aspect_ratio,
-            seed=seed,
-            style_preset=style_preset,
-            output_format=output_format
-        )
-        
-        # Extract just the filename from the path
-        image_filename = os.path.basename(generated_image_path)
-        
-        # Determine which folder the image is in
-        if 'test_assets' in generated_image_path:
-            folder = app.config['TEST_ASSETS']
-        elif 'processed_images' in generated_image_path:
-            folder = app.config['PROCESSED_FOLDER']
-        else:
-            folder = app.config['UPLOAD_FOLDER']
-        
-        # Construct the URL using url_for for consistent URL handling
-        if 'test_assets' in generated_image_path:
-            image_url = url_for('serve_test_asset', filename=image_filename)
-        elif 'processed_images' in generated_image_path:
-            image_url = url_for('serve_processed_image', filename=image_filename)
-        else:
-            image_url = url_for('serve_image', filename=image_filename)
-            
-        print(f"Returning image URL to frontend: {image_url}")
-        
-        # Return the image path and success message
-        return jsonify({
-            'success': True,
-            'message': 'Image generated successfully',
-            'image_path': image_url
-        })
-    
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
+
+    # Get the selected model
+    selected_model = request.form.get('model', 'stable-diffusion-3.5-ultra') # Default to Stable Diffusion
+
+    if selected_model == 'imagen-4':
+        # --- Imagen 4 (GhostAPI) Generation Logic ---
+        ghost_api_url = "https://api.infip.pro/v1/images/generations"
+        ghost_api_key = os.getenv('IMAGEN_API_KEY')
+
+        headers = {
+            "Authorization": f"Bearer {ghost_api_key}",
+            "Content-Type": "application/json"
+        }
+        image_size = "1024x1024" # Using a common size, API docs example was 1792x1024
+
+        payload = {
+            "model": "img4", # As specified in the API docs screenshot
+            "prompt": image_description,
+            "response_format": "url", # Requesting a URL
+            "size": image_size
+        }
+
+        try:
+            print(f"Calling GhostAPI for Imagen 4: {ghost_api_url}")
+            print(f"Payload: {payload}")
+            response = requests.post(ghost_api_url, json=payload, headers=headers)
+            response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
+
+            ghost_api_result = response.json()
+            print(f"GhostAPI response: {ghost_api_result}")
+
+            if ghost_api_result and 'data' in ghost_api_result and ghost_api_result['data']:
+                # Assuming the API returns a list of images in 'data'
+                # And each image object has a 'url' field
+                image_url = ghost_api_result['data'][0].get('url')
+
+                if image_url:
+                    # For Imagen 4, we get a direct URL from the API
+                    # We don't need to save it locally or use Flask's send_from_directory
+                    print(f"Imagen 4 image URL received: {image_url}")
+                    return jsonify({
+                        'success': True,
+                        'message': 'Image generated successfully by Imagen 4',
+                        'image_path': image_url # Return the direct URL
+                    })
+                else:
+                    print("GhostAPI response missing image URL in data.")
+                    return jsonify({'error': 'GhostAPI response missing image URL'}), 500
+            else:
+                 print(f"GhostAPI response indicates failure or no data: {ghost_api_result}")
+                 return jsonify({'error': ghost_api_result.get('detail', 'GhostAPI returned no image data')}), 500
+
+        except requests.exceptions.RequestException as e:
+            print(f"Error calling GhostAPI: {e}")
+            return jsonify({'error': f'Error communicating with Imagen 4 API: {e}'}), 500
+        except Exception as e:
+            print(f"Unexpected error processing GhostAPI response: {e}")
+            return jsonify({'error': f'Unexpected error processing Imagen 4 response: {e}'}), 500
+
+    else:
+        # --- Stable Diffusion 3.5 Ultra Generation Logic (Existing) ---
+        try:
+            # Generate the image with advanced options using the existing function
+            generated_image_path = main_image_function(
+                image_description=image_description,
+                testMode=test_mode,
+                api_key_gemini=GEMINI_API_KEY,
+                negative_prompt=negative_prompt,
+                aspect_ratio=aspect_ratio,
+                seed=seed,
+                style_preset=style_preset,
+                output_format=output_format
+            )
+
+            # Extract just the filename from the path
+            image_filename = os.path.basename(generated_image_path)
+
+            # Determine which folder the image is in
+            if 'test_assets' in generated_image_path:
+                folder = app.config['TEST_ASSETS']
+            elif 'processed_images' in generated_image_path:
+                folder = app.config['PROCESSED_FOLDER']
+            else:
+                folder = app.config['UPLOAD_FOLDER']
+
+            # Construct the URL using url_for for consistent URL handling
+            if 'test_assets' in generated_image_path:
+                image_url = url_for('serve_test_asset', filename=image_filename)
+            elif 'processed_images' in generated_image_path:
+                image_url = url_for('serve_processed_image', filename=image_filename)
+            else:
+                image_url = url_for('serve_image', filename=image_filename)
+
+            print(f"Returning image URL to frontend: {image_url}")
+
+            # Return the image path and success message
+            return jsonify({
+                'success': True,
+                'message': 'Image generated successfully',
+                'image_path': image_url
+            })
+
+        except Exception as e:
+            print(f"Error in Stable Diffusion generation: {e}")
+            return jsonify({'error': str(e)}), 500
 
 @app.route('/api/generate', methods=['POST'])
 @limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
