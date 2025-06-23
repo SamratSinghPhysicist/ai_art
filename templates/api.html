@@ -458,6 +458,34 @@
                 padding: 0.75rem 0;
             }
         }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            color: white;
+            background-color: var(--primary);
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-top: 1.5rem;
+        }
+
+        .cta-button:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .cta-button svg {
+            margin-left: 0.75rem;
+            width: 1.25rem;
+            height: 1.25rem;
+        }
     </style>
 <style>
 .donate-button {
@@ -578,6 +606,9 @@
                         </li>
                         <li class="api-nav-item">
                             <a href="#text-to-image" class="api-nav-link">Text to Image API</a>
+                        </li>
+                        <li class="api-nav-item">
+                            <a href="#imagen4-text-to-image" class="api-nav-link">Imagen 4 Text to Image API</a>
                         </li>
                         <li class="api-nav-item">
                             <a href="#image-to-image" class="api-nav-link">Image to Image API</a>
@@ -826,6 +857,34 @@ else:
                             <li><strong>Style Consistency</strong>: Use the same seed value to create variations of an image while maintaining a similar style and composition.</li>
                             <li><strong>Resolution Control</strong>: Different aspect ratios result in different resolutions. Choose the appropriate aspect ratio for your use case.</li>
                         </ul>
+                    </div>
+                </section>
+
+                <!-- Imagen 4 Text to Image API -->
+                <section id="imagen4-text-to-image" class="api-section">
+                    <h2 class="text-2xl font-bold mb-4 section-heading">Imagen 4 Text to Image API</h2>
+                    <div class="notice-box relative bg-gradient-to-br from-purple-200 via-blue-100 to-pink-200 dark:from-purple-800 dark:via-blue-900 dark:to-pink-800 border-2 border-primary/60 shadow-purple-500/30 dark:shadow-purple-900/50 rounded-3xl p-10 mb-8 overflow-hidden">
+                        <div class="flex flex-col items-center text-center mb-8">
+                            <h3 class="text-4xl font-bold text-purple-800 dark:text-purple-200 leading-tight tracking-tight">Model Switching: Stable Diffusion 3.5 Ultra & Imagen 4</h3>
+                        </div>
+                        <p class="mb-8 text-xl text-text leading-relaxed">
+                            <span class="font-semibold text-primary">Exciting Update!</span> You can now seamlessly switch between <span class="font-semibold">Stable Diffusion 3.5 Ultra</span> and <span class="font-semibold">Imagen 4</span> models directly on the <a href="/text-to-image" class="underline text-primary hover:text-secondary transition">Text-to-Image</a> page. Simply select <span class="bg-primary/10 text-primary px-3 py-1 rounded font-mono text-lg">Imagen 4</span> from the <span class="italic">Select Model</span> dropdown before generating your next masterpiece.
+                        </p>
+                        <a href="/text-to-image" class="cta-button mx-auto block mt-8 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 py-3 px-8 rounded-full shadow-lg shadow-purple-500/40">
+                            Experience Imagen 4 Now
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="ml-3 w-6 h-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3" />
+                            </svg>
+                        </a>
+                        <div class="mt-10 pt-6 border-t-2 border-primary/50 bg-white/80 dark:bg-gray-900/60 rounded-b-3xl p-6 -mx-10 -mb-10">
+                            <p class="font-bold text-primary text-lg mb-2">Powered by GhostAPI:</p>
+                            <p class="text-sm text-text-light">
+                                Imagen 4 is integrated via <a href="https://api.infip.pro/docs" target="_blank" rel="noopener" class="underline text-blue-700 dark:text-blue-300 hover:text-blue-900">GhostAPI</a>. For direct API usage, visit
+                                <a href="https://api.infip.pro/docs" target="_blank" rel="noopener" class="underline text-blue-700 dark:text-blue-300 hover:text-blue-900">https://api.infip.pro/docs</a>.
+                                <br>
+                                <span class="text-xs text-gray-500 dark:text-gray-400">AiArt is not responsible for the content or services available on external sites. All rights for GhostAPI belong to its respective owner.</span>
+                            </p>
+                        </div>
                     </div>
                 </section>
 

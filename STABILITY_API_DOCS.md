@@ -197,6 +197,76 @@ python test_img2video.py --image "input.jpg" --cfg_scale 1.5 --motion 127
 The Stability AI API returns generated images directly in the response body. Additional metadata is provided in the response headers, including:
 
 - `finish-reason`: The reason the generation finished (e.g., "SUCCESS", "CONTENT_FILTERED")
-- `seed`: The seed used for generation, useful for reproducibility 
+- `seed`: The seed used for generation, useful for reproducibility
 
-For video generation, the initial API call returns a generation ID, and subsequent calls to the result endpoint will return the video data once complete. 
+For video generation, the initial API call returns a generation ID, and subsequent calls to the result endpoint will return the video data once complete.
+
+## Imagen 4 API (via GhostAPI)
+
+In addition to Stability AI, the application can also utilize the Imagen 4 model for text-to-image generation, powered by GhostAPI. This API is OpenAI Compatible.
+
+### API Endpoint
+
+The API endpoint for Imagen 4 generation is:
+
+`https://api.infip.pro/v1/images/generations`
+
+This endpoint accepts POST requests with a JSON body.
+
+### Authentication
+
+Authentication is done using an API key provided by GhostAPI. The API key should be included in the `Authorization` header as a Bearer token.
+
+Example Header:
+`Authorization: Bearer infip-.........`
+
+
+### Request Body
+
+The request body should be a JSON object with the following required parameters:
+
+- `model` (str): The model to use. Based on the screenshot, use `"img4"`.
+- `prompt` (str): The text description for the image.
+- `size` (str): The desired size of the output image (e.g., `"1024x1024"`). Common sizes include "512x512", "1024x1024", "1792x1024", "1024x1792".
+- `response_format` (str, optional): The format of the response, e.g., `"url"` or `"b64_json"`).
+
+Example Request Body (based on screenshot):
+
+```json
+{
+  "model": "img4",
+  "prompt": "A vibrant oil painting of a futuristic cityscape at sunset",
+  "response_format": "url",
+  "size": "1792x1024"
+}
+```
+
+### Response Format
+
+A successful response (HTTP 200) will be a JSON object containing:
+
+- `created` (int): A timestamp.
+- `data` (array): An array of image objects. Each object contains:
+    - `url` (str): A URL to the generated image (if `response_format` was `"url"`).
+    - `b64_json` (str): The base64 encoded image data (if `response_format` was `"b64_json"`).
+
+Example Successful Response (based on screenshot):
+
+```json
+{
+  "created": 0,
+  "data": [
+    {
+      "url": "string",
+      "b64_json": "string"
+    }
+  ]
+}
+```
+
+### Integration Notes
+
+To integrate Imagen 4, you will need to:
+1. Add logic to the application (likely in `text2img_stability.py` or a new file) to handle the new API endpoint and request format.
+2. Implement a way for the user to select between the Stability AI and Imagen 4 models in the user interface (likely in `templates/text-to-image.html`).
+3. Securely store and retrieve the Imagen 4 API key.
