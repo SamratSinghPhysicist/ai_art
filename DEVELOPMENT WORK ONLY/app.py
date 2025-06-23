@@ -67,6 +67,16 @@ limiter = Limiter(
     strategy="moving-window" # Moving window for better abuse prevention
 )
 
+# Imagen 4 specific rate limits
+IMAGEN4_MINUTE_LIMIT = 3
+IMAGEN4_DAY_LIMIT = 20
+IMAGEN4_MINUTE_WINDOW = timedelta(minutes=1)
+IMAGEN4_DAY_WINDOW = timedelta(days=1)
+
+# In-memory storage for Imagen 4 rate limiting
+# Structure: {'ip': {'minute_timestamps': [datetime, ...], 'day_count': int, 'last_day_reset': datetime}}
+imagen4_request_history = {}
+
 # Configure the upload folder for storing generated images
 app_dir = os.path.dirname(os.path.abspath(__file__))
 app.config['UPLOAD_FOLDER'] = os.path.join(app_dir, 'images')
@@ -415,6 +425,58 @@ def generate_image():
 
     if selected_model == 'imagen-4':
         # --- Imagen 4 (GhostAPI) Generation Logic ---
+        ip = get_client_ip()
+        now = datetime.now()
+
+        # Initialize IP entry if it doesn't exist
+        if ip not in imagen4_request_history:
+            imagen4_request_history[ip] = {
+                'minute_timestamps': [],
+                'day_count': 0,
+                'last_day_reset': now
+            }
+
+        ip_data = imagen4_request_history[ip]
+
+        # Clean up old minute timestamps
+        ip_data['minute_timestamps'] = [
+            ts for ts in ip_data['minute_timestamps'] if now - ts < IMAGEN4_MINUTE_WINDOW
+        ]
+
+        # Reset daily count if a new day has started
+        if now.date() != ip_data['last_day_reset'].date():
+            ip_data['day_count'] = 0
+            ip_data['last_day_reset'] = now
+
+        # Check minute limit
+        if len(ip_data['minute_timestamps']) >= IMAGEN4_MINUTE_LIMIT:
+            time_left = (ip_data['minute_timestamps'][0] + IMAGEN4_MINUTE_WINDOW) - now
+            retry_after = int(time_left.total_seconds()) + 1 # Add 1 second buffer
+            return jsonify({
+                'error': f"""Rate limit exceeded for Imagen 4. You can generate up to {IMAGEN4_MINUTE_LIMIT} images per minute and at most {IMAGEN4_DAY_LIMIT} images per day using Imagen 4.
+                 Please try again in {retry_after} seconds. 
+                 For more usage, please visit https://api.infip.pro/docs (for Imagen 4 API), or https://chat.infip.pro/ (for UI).
+                 Or, switch to Stable Diffusion 3.5 Ultra to enjoy unlimited image generation.""",
+                'rate_limit_type': 'minute',
+                'retry_after': retry_after
+            }), 429
+
+        # Check daily limit
+        if ip_data['day_count'] >= IMAGEN4_DAY_LIMIT:
+            # Calculate time until next day reset
+            next_day = (now + IMAGEN4_DAY_WINDOW).replace(hour=0, minute=0, second=0, microsecond=0)
+            time_left = next_day - now
+            retry_after = int(time_left.total_seconds()) + 1 # Add 1 second buffer
+            return jsonify({
+                'error': f'Daily rate limit exceeded for Imagen 4. You can generate up to {IMAGEN4_DAY_LIMIT} images per day using Imagen 4 in AiArt. For more usage, please visit https://api.infip.pro/docs (for Imagen 4 API), or https://chat.infip.pro/ (for UI), or, switch to Stable Diffusion 3.5 Ultra.',
+                'rate_limit_type': 'daily',
+                'retry_after': retry_after
+            }), 429
+
+        # If limits not exceeded, record the request
+        ip_data['minute_timestamps'].append(now)
+        ip_data['day_count'] += 1
+
         ghost_api_url = "https://api.infip.pro/v1/images/generations"
         ghost_api_key = os.getenv('IMAGEN_API_KEY')
 
