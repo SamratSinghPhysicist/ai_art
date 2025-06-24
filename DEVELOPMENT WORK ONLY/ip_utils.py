@@ -20,10 +20,10 @@ def get_client_ip():
     return request.remote_addr
 
 def is_ip_blocked(ip):
-    """Check if an IP is in the blocked_ips collection."""
+    """Check if an IP is in the blocked_ips collection and return the block document if found."""
     if blocked_ips_collection is None:
-        return False
-    return blocked_ips_collection.find_one({"ip": ip}) is not None
+        return None
+    return blocked_ips_collection.find_one({"ip": ip})
 
 def block_ip(ip, reason=""):
     """Adds an IP to the blocked_ips collection."""

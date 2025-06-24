@@ -40,22 +40,29 @@ if not ADMIN_SECRET_KEY:
 # New middleware for logging and blocking
 @app.before_request
 def log_and_block_check():
-    # We only want to log and check specific, high-cost endpoints
+    ip = get_client_ip()
+    
+    # First, check if the IP is blocked to deny access immediately for ANY request
+    blocked_doc = is_ip_blocked(ip)
+    if blocked_doc:
+        ban_reason = blocked_doc.get('reason', 'No reason provided.')
+        # If the user is already trying to access the blocked page, don't redirect again to prevent a loop
+        if request.endpoint == 'blocked_page':
+            return # Allow the request to proceed to the blocked_page route
+        # Otherwise, redirect to the blocked page
+        return redirect(url_for('blocked_page', reason=ban_reason))
+    
+    # If not blocked, log the request for monitoring purposes, but only for specific high-cost endpoints
     endpoints_to_log_and_check = [
         'api_generate_image', 
         'img2img_transform', 
         'api_img2video_generate', 
         'generate_image', 
-        'img2video_generate'
+        'img2video_generate',
+        'api_img2img_transform',
+        'api_img2video_result'
     ]
-    
     if request.endpoint in endpoints_to_log_and_check:
-        ip = get_client_ip()
-        
-        # First, check if the IP is blocked to deny access immediately
-        if is_ip_blocked(ip):
-            return render_template('blocked.html'), 403
-        # If not blocked, log the request for monitoring purposes
         log_request(ip, request.endpoint)
 
 # Initialize Limiter with stricter limits
@@ -208,7 +215,7 @@ def is_potential_abuser(ip):
     if len(long_term_requests) > 0:
         # Calculate average rate if there are enough requests over a significant period
         # Only consider if there are at least 30 minutes of data for a meaningful average
-        if (now - long_term_requests[0]['timestamp']).total_seconds() >= 30 * 60: # At least 30 minutes of data
+        if (now - long_term_requests[0]['timestamp']).total_seconds() >= 15 * 60: # At least 15 minutes of data
             total_requests = len(long_term_requests)
             duration_seconds = (now - long_term_requests[0]['timestamp']).total_seconds()
             
@@ -218,7 +225,7 @@ def is_potential_abuser(ip):
                 # Check if average rate is between 2 and 4 requests per minute
                 # And total requests over this long period is substantial (e.g., > 60 requests for 30 min, or > 120 for 60 min)
                 # This prevents flagging IPs with just a few requests over a long time
-                if 2 <= avg_requests_per_minute <= 4 and total_requests >= 60: # 60 requests in 30 min is 2/min, 120 in 60 min is 2/min
+                if 4 <= avg_requests_per_minute or total_requests >= 40: # 40 requests in 15 min is 2/min, 120 in 60 min is 2/min
                     app.logger.info(f"Potential abuser detected (sustained): {ip} with avg {avg_requests_per_minute:.2f} req/min over {duration_seconds/60:.1f} min.")
                     return True
 
@@ -299,6 +306,12 @@ def sitemap_page():
 def serve_sitemap():
     """Serve the XML sitemap file for search engines"""
     return send_file('static/sitemap.xml')
+
+@app.route('/blocked')
+def blocked_page():
+    """Render the blocked page with a reason"""
+    reason = request.args.get('reason', 'No reason provided.')
+    return render_template('blocked.html', reason=reason)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
