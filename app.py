@@ -46,7 +46,7 @@ def log_and_block_check():
         'img2img_transform', 
         'api_img2video_generate', 
         'generate_image', 
-        'generate_video_from_image'
+        'img2video_generate'
     ]
     
     if request.endpoint in endpoints_to_log_and_check:
