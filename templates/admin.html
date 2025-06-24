@@ -52,6 +52,14 @@
             <div id="ip-history-results" class="table-container"></div>
         </div>
 
+        <!-- Potential Abusers Card -->
+        <div class="card">
+            <h2 class="text-xl font-semibold mb-4">Potential Abusers</h2>
+            <div id="potential-abusers-list" class="table-container">
+                <!-- Content will be loaded here by JavaScript -->
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -59,26 +67,15 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             fetchBlockedIPs();
+            fetchPotentialAbusers(); // Add this line
 
             // Handle Block IP form
             document.getElementById('block-ip-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const ip = document.getElementById('ip-to-block').value;
                 const reason = document.getElementById('block-reason').value;
-                const response = await fetch(`/admin/api/block-ip`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Admin-Secret-Key': ADMIN_SECRET_KEY
-                    },
-                    body: JSON.stringify({ ip, reason })
-                });
-                const result = await response.json();
-                alert(result.message || result.error);
-                if (response.ok) {
-                    fetchBlockedIPs();
-                    document.getElementById('block-ip-form').reset();
-                }
+                await blockIP(ip, reason); // Call the new function
+                document.getElementById('block-ip-form').reset();
             });
 
             // Handle IP History form
@@ -158,6 +155,55 @@
                             <tr>
                                 <td>${item.endpoint}</td>
                                 <td>${new Date(item.timestamp).toLocaleString()}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
+        // New functions start here
+        async function blockIP(ip, reason = '') {
+            if (!confirm(`Are you sure you want to block ${ip}?`)) return;
+            const response = await fetch(`/admin/api/block-ip`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Admin-Secret-Key': ADMIN_SECRET_KEY
+                },
+                body: JSON.stringify({ ip, reason })
+            });
+            const result = await response.json();
+            alert(result.message || result.error);
+            if (response.ok) {
+                fetchBlockedIPs();
+                fetchPotentialAbusers(); // Refresh potential abusers list
+            }
+        }
+
+        async function fetchPotentialAbusers() {
+            const resultsElement = document.getElementById('potential-abusers-list');
+            resultsElement.innerHTML = '<p>Loading potential abusers...</p>';
+            const response = await fetch('/admin/api/potential-abusers', { headers: { 'X-Admin-Secret-Key': ADMIN_SECRET_KEY } });
+            if (!response.ok) {
+                if(response.status === 401) alert("Unauthorized. Please check your Admin Secret Key and refresh.");
+                resultsElement.innerHTML = `<p class="text-red-500">Error fetching potential abusers.</p>`;
+                return;
+            }
+            const abusers = await response.json();
+            if (abusers.length === 0) {
+                resultsElement.innerHTML = '<p>No potential abusers found based on current criteria.</p>';
+                return;
+            }
+            resultsElement.innerHTML = `
+                <h3 class="font-semibold mb-2">Potential Abusers (${abusers.length} IPs)</h3>
+                <table>
+                    <thead><tr><th>IP Address</th><th>Action</th></tr></thead>
+                    <tbody>
+                        ${abusers.map(ip => `
+                            <tr>
+                                <td>${ip}</td>
+                                <td><button class="btn btn-danger" onclick="blockIP('${ip}', 'Potential abuse detected')">Block</button></td>
                             </tr>
                         `).join('')}
                     </tbody>

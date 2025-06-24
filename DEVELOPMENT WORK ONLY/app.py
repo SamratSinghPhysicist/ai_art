@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, render_template, send_from_directory,
 import os
 from image_generator import main_image_function
 from prompt_translate import translate_to_english
-from models import User, db
+from models import User, db, request_logs_collection
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 import logging
@@ -179,6 +179,67 @@ def ip_history(ip):
     """API endpoint to get the request history for a specific IP."""
     history = get_ip_history(ip)
     return jsonify(history)
+
+def is_potential_abuser(ip):
+    if request_logs_collection is None:
+        app.logger.error("request_logs_collection is not initialized for abuse detection.")
+        return False
+
+    now = datetime.now()
+    
+    # Criteria 1: More than 25 requests in the last 10 minutes
+    time_window_10_min = now - timedelta(minutes=10)
+    recent_requests_count = request_logs_collection.count_documents({
+        "ip": ip,
+        "timestamp": {"$gte": time_window_10_min}
+    })
+    if recent_requests_count > 25:
+        app.logger.info(f"Potential abuser detected (burst): {ip} with {recent_requests_count} requests in 10 min.")
+        return True
+
+    # Criteria 2: Sustained rate of 2-4 requests per minute over a longer period (e.g., last 60 minutes)
+    # This is more complex. Let's define "long time" as 60 minutes for now.
+    time_window_60_min = now - timedelta(minutes=60)
+    long_term_requests = list(request_logs_collection.find({
+        "ip": ip,
+        "timestamp": {"$gte": time_window_60_min}
+    }).sort("timestamp", 1)) # Sort by timestamp ascending
+
+    if len(long_term_requests) > 0:
+        # Calculate average rate if there are enough requests over a significant period
+        # Only consider if there are at least 30 minutes of data for a meaningful average
+        if (now - long_term_requests[0]['timestamp']).total_seconds() >= 30 * 60: # At least 30 minutes of data
+            total_requests = len(long_term_requests)
+            duration_seconds = (now - long_term_requests[0]['timestamp']).total_seconds()
+            
+            if duration_seconds > 0:
+                avg_requests_per_minute = (total_requests / duration_seconds) * 60
+                
+                # Check if average rate is between 2 and 4 requests per minute
+                # And total requests over this long period is substantial (e.g., > 60 requests for 30 min, or > 120 for 60 min)
+                # This prevents flagging IPs with just a few requests over a long time
+                if 2 <= avg_requests_per_minute <= 4 and total_requests >= 60: # 60 requests in 30 min is 2/min, 120 in 60 min is 2/min
+                    app.logger.info(f"Potential abuser detected (sustained): {ip} with avg {avg_requests_per_minute:.2f} req/min over {duration_seconds/60:.1f} min.")
+                    return True
+
+    return False
+
+@app.route('/admin/api/potential-abusers', methods=['GET'])
+@admin_required
+def get_potential_abusers():
+    """API endpoint to get a list of potential abuser IPs."""
+    if request_logs_collection is None:
+        return jsonify({"error": "Request logs database not connected"}), 500
+
+    potential_abusers = []
+    # Get all unique IPs from the request logs
+    unique_ips = request_logs_collection.distinct("ip")
+
+    for ip in unique_ips:
+        if is_potential_abuser(ip):
+            potential_abusers.append(ip)
+            
+    return jsonify(potential_abusers)
 
 @login_manager.user_loader
 def load_user(user_id):

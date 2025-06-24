@@ -1,13 +1,23 @@
 from flask import request
-from datetime import datetime
+from datetime import datetime, timedelta
 from models import blocked_ips_collection, request_logs_collection
 
 def get_client_ip():
-    """Get client IP address, handling proxies."""
-    if request.headers.getlist("X-Forwarded-For"):
-       return request.headers.getlist("X-Forwarded-For")[0]
-    else:
-       return request.remote_addr
+    """Extract client IP address from request, handling proxies."""
+    # Check for IP in various headers (for proxies/load balancers like on Render)
+    headers_to_check = [
+        'X-Forwarded-For',
+        'X-Real-IP',
+        'CF-Connecting-IP'  # Cloudflare
+    ]
+    
+    for header in headers_to_check:
+        if header in request.headers:
+            # X-Forwarded-For may contain multiple IPs - take the first one
+            return request.headers[header].split(',')[0].strip()
+    
+    # Fall back to remote_addr if no proxy headers are found
+    return request.remote_addr
 
 def is_ip_blocked(ip):
     """Check if an IP is in the blocked_ips collection."""
@@ -72,108 +82,41 @@ def get_ip_history(ip):
         doc['_id'] = str(doc['_id'])
         history.append(doc)
     return history
-import json
-import os
 
-def get_client_ip():
+def is_potential_abuser(ip):
     """
-    Get the client's IP address, handling proxies like X-Forwarded-For.
+    Checks if an IP is a potential abuser based on request patterns.
+    Criteria:
+    - More than 25 requests in the last 10 minutes.
+    - Sustained rate of 2-4 requests per minute within that 10-minute window.
     """
-    # The X-Forwarded-For header is the de facto standard for identifying 
-    # the originating IP address of a client connecting to a web server 
-    # through an HTTP proxy or a load balancer.
-    if request.headers.getlist("X-Forwarded-For"):
-        # The header can be a comma-separated list of IPs. The first one is the original client.
-        ip = request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
-    else:
-        # If the header is not present, fall back to remote_addr.
-        ip = request.remote_addr
-    return ip
+    if request_logs_collection is None:
+        return False
 
-# Path to the blocklist file
-BLOCKED_IPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blocked_ips.json')
-
-def load_blocked_ips():
-    """Loads the set of blocked IPs from the JSON file."""
-    if not os.path.exists(BLOCKED_IPS_FILE):
-        return set()
-    try:
-        with open(BLOCKED_IPS_FILE, 'r') as f:
-            # Handle empty file case
-            content = f.read()
-            if not content:
-                return set()
-            return set(json.loads(content))
-    except (IOError, json.JSONDecodeError):
-        # In case of file read error or invalid JSON, return an empty set
-        return set()
-
-def save_blocked_ips(ips):
-    """Saves the set of blocked IPs to the JSON file."""
-    try:
-        with open(BLOCKED_IPS_FILE, 'w') as f:
-            json.dump(list(ips), f, indent=4)
-    except IOError:
-        # Handle file write error if necessary
-        pass
-import json
-import os
-
-def get_client_ip():
-    """
-    Get the client's IP address, handling proxies like X-Forwarded-For.
-    """
-    # The X-Forwarded-For header is the de facto standard for identifying 
-    # the originating IP address of a client connecting to a web server 
-    # through an HTTP proxy or a load balancer.
-    if request.headers.getlist("X-Forwarded-For"):
-        # The header can be a comma-separated list of IPs. The first one is the original client.
-        ip = request.headers.getlist("X-Forwarded-For")[0].split(',')[0].strip()
-    else:
-        # If the header is not present, fall back to remote_addr.
-        ip = request.remote_addr
-    return ip
-
-# Path to the blocklist file
-BLOCKED_IPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'blocked_ips.json')
-
-def load_blocked_ips():
-    """Loads the set of blocked IPs from the JSON file."""
-    if not os.path.exists(BLOCKED_IPS_FILE):
-        return set()
-    try:
-        with open(BLOCKED_IPS_FILE, 'r') as f:
-            # Handle empty file case
-            content = f.read()
-            if not content:
-                return set()
-            return set(json.loads(content))
-    except (IOError, json.JSONDecodeError):
-        # In case of file read error or invalid JSON, return an empty set
-        return set()
-
-def save_blocked_ips(ips):
-    """Saves the set of blocked IPs to the JSON file."""
-    try:
-        with open(BLOCKED_IPS_FILE, 'w') as f:
-            json.dump(list(ips), f, indent=4)
-    except IOError:
-        # Handle file write error if necessary
-        pass
-
-def get_client_ip():
-    """Extract client IP address from request, handling proxies."""
-    # Check for IP in various headers (for proxies/load balancers like on Render)
-    headers_to_check = [
-        'X-Forwarded-For',
-        'X-Real-IP',
-        'CF-Connecting-IP'  # Cloudflare
-    ]
+    time_threshold = datetime.utcnow() - timedelta(minutes=10)
     
-    for header in headers_to_check:
-        if header in request.headers:
-            # X-Forwarded-For may contain multiple IPs - take the first one
-            return request.headers[header].split(',')[0].strip()
+    # Get requests within the last 10 minutes
+    recent_requests = list(request_logs_collection.find({
+        "ip": ip,
+        "timestamp": {"$gte": time_threshold}
+    }).sort("timestamp", 1)) # Sort ascending to check time differences
+
+    num_recent_requests = len(recent_requests)
+
+    # Condition 1: More than 25 requests in 10 minutes
+    if num_recent_requests > 25:
+        return True
     
-    # Fall back to remote_addr if no proxy headers are found
-    return request.remote_addr
+    # Condition 2: Sustained moderate rate (2-4 req/min over 10 min implies 20-40 requests)
+    # And the requests must be spread out, not a quick burst.
+    if 20 <= num_recent_requests <= 40:
+        if len(recent_requests) > 1: # Need at least two requests to calculate duration
+            first_req_time = recent_requests[0]['timestamp']
+            last_req_time = recent_requests[-1]['timestamp']
+            duration_of_requests = (last_req_time - first_req_time).total_seconds()
+            
+            # If requests are spread over at least 8 minutes (480 seconds) of the 10-minute window
+            if duration_of_requests >= 8 * 60: # 8 minutes
+                return True
+            
+    return False
