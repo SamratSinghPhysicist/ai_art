@@ -753,7 +753,7 @@
             // Check for unauthenticated usage limit
             if (window.currentAuthState === false) { // User is not logged in
                 let unauthCount = parseInt(localStorage.getItem('unauth_img2img_count') || '0');
-                if (unauthCount >= 3) {
+                if (unauthCount >= 1) {
                     // Limit reached, prevent submission and show alert
                     loadingElement.classList.add('hidden'); // Ensure loading is hidden
                     loginRequiredAlert.classList.remove('hidden');

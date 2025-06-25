@@ -820,7 +820,7 @@
             // Check authentication state and free generation limit
             if (window.currentAuthState === false) {
                 let unauthCount = parseInt(localStorage.getItem('unauth_txt2img_count') || '0');
-                if (unauthCount >= 3) {
+                if (unauthCount >= 1) {
                     document.getElementById('loading').classList.add('hidden'); // Hide loading if it was shown
                     const loginRequiredAlert = document.getElementById('login-required-alert');
                     loginRequiredAlert.classList.remove('hidden');
