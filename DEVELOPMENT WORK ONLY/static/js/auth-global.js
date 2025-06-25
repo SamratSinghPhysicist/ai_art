@@ -56,6 +56,11 @@
             if (isLoggedIn) {
                 // User is logged in, show Dashboard and Logout
                 
+                // Clear unauthenticated usage counters
+                localStorage.removeItem('unauth_txt2img_count');
+                localStorage.removeItem('unauth_img2img_count');
+                localStorage.removeItem('unauth_img2video_count');
+
                 // Handle Login → Dashboard
                 if (loginLink && !myImagesLink) {
                     const newMyImagesLink = document.createElement('a');

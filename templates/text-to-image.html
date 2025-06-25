@@ -126,6 +126,19 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Login Required Alert -->
+                <div id="login-required-alert" class="hidden alert-message bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 text-sm rounded-lg shadow-sm">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div>
+                            <strong class="text-blue-800">Login Required:</strong>
+                            <span class="text-blue-700">You have reached your limit of 3 free image generations. Please <a href="#" class="font-semibold underline open-auth-modal" data-mode="login">login</a> or <a href="#" class="font-semibold underline open-auth-modal" data-mode="signup">sign up</a> to continue generating images.</span>
+                        </div>
+                    </div>
+                </div>
                 
                 <form id="image-form" class="my-6" enctype="multipart/form-data">
                     <div class="form-group">
@@ -273,6 +286,19 @@
                             <h2 class="text-xl font-bold">Content Violation Detected</h2>
                         </div>
                         <p class="mt-2">Your request was flagged by our content moderation system. NSFW, harmful, or explicit content is prohibited.</p>
+                    </div>
+                </div>
+
+                <!-- Login Required Alert -->
+                <div id="login-required-alert" class="hidden mt-8">
+                    <div class="p-4 bg-blue-100 text-blue-700 rounded-lg shadow-lg border-l-4 border-blue-800">
+                        <div class="flex items-center">
+                            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <h2 class="text-xl font-extrabold">Login Required</h2>
+                        </div>
+                        <p class="mt-2 font-bold">You have reached the limit of 3 free generations. Please <a href="#" class="text-blue-800 font-semibold open-auth-modal" data-mode="login">Login</a> or <a href="#" class="text-blue-800 font-semibold open-auth-modal" data-mode="signup">Sign Up</a> to continue generating images.</p>
                     </div>
                 </div>
             </div>
@@ -789,7 +815,21 @@
             document.getElementById('result').classList.add('hidden');
             document.getElementById('error').classList.add('hidden');
             document.getElementById('moderation-alert').classList.add('hidden');
+            document.getElementById('login-required-alert').classList.add('hidden'); // Hide login alert on new submission
             
+            // Check authentication state and free generation limit
+            if (window.currentAuthState === false) {
+                let unauthCount = parseInt(localStorage.getItem('unauth_txt2img_count') || '0');
+                if (unauthCount >= 3) {
+                    document.getElementById('loading').classList.add('hidden'); // Hide loading if it was shown
+                    const loginRequiredAlert = document.getElementById('login-required-alert');
+                    loginRequiredAlert.classList.remove('hidden');
+                    loginRequiredAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return; // Prevent form submission
+                }
+                localStorage.setItem('unauth_txt2img_count', (unauthCount + 1).toString());
+            }
+
             // Get form data
             const description = document.getElementById('video-description').value;
             const testMode = document.getElementById('test-mode')?.checked || false;

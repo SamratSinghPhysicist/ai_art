@@ -125,6 +125,19 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Login Required Alert -->
+                <div id="login-required-alert" class="hidden alert-message bg-blue-100 border-l-4 border-blue-600 p-4 mb-6 text-sm rounded-lg shadow-sm">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <div>
+                            <strong class="text-blue-800 font-extrabold">Login Required:</strong>
+                            <span class="text-blue-700 font-bold">You have reached your limit of 3 free image transformations. Please <a href="#" class="font-semibold underline open-auth-modal" data-mode="login">login</a> or <a href="#" class="font-semibold underline open-auth-modal" data-mode="signup">sign up</a> to continue generating images.</span>
+                        </div>
+                    </div>
+                </div>
                 
                 <form id="img2img-form" class="my-6" enctype="multipart/form-data">
                     <div class="form-group">
@@ -727,12 +740,34 @@
         form.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Show loading, hide result and error
-            loadingElement.classList.remove('hidden');
+            // Get login required alert element
+            const loginRequiredAlert = document.getElementById('login-required-alert');
+
+            // Hide all alerts and loading indicators at the start
+            loadingElement.classList.add('hidden');
             resultElement.classList.add('hidden');
             errorElement.classList.add('hidden');
             document.getElementById('moderation-alert').classList.add('hidden');
+            loginRequiredAlert.classList.add('hidden'); // Hide login alert
+
+            // Check for unauthenticated usage limit
+            if (window.currentAuthState === false) { // User is not logged in
+                let unauthCount = parseInt(localStorage.getItem('unauth_img2img_count') || '0');
+                if (unauthCount >= 3) {
+                    // Limit reached, prevent submission and show alert
+                    loadingElement.classList.add('hidden'); // Ensure loading is hidden
+                    loginRequiredAlert.classList.remove('hidden');
+                    loginRequiredAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    return; // Stop form submission
+                } else {
+                    // Increment count and allow submission
+                    localStorage.setItem('unauth_img2img_count', unauthCount + 1);
+                }
+            }
             
+            // Show loading
+            loadingElement.classList.remove('hidden');
+
             // Get file and form data
             const file = imageUpload.files[0];
             if (!file) {
