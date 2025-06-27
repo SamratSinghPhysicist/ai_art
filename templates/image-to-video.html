@@ -1468,7 +1468,7 @@
                 // Check for unauthenticated usage limit
                 if (window.currentAuthState === false) { // User is not logged in
                     let unauthCount = parseInt(localStorage.getItem('unauth_img2video_count') || '0');
-                    if (unauthCount >= 1) {
+                    if (unauthCount >= 10) {
                         // Limit reached, prevent submission and show alert
                         loginRequiredAlert.classList.remove('hidden');
                         return; // Stop form submission
