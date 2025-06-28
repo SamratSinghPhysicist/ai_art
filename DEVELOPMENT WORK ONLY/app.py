@@ -1180,6 +1180,13 @@ def donate():
 def img2video_generate():
     """API endpoint to generate a video from an image"""
     try:
+        # Check if a video generation is already in progress for this session
+        if session.get('active_video_generation_id'):
+            return jsonify({
+                'error': 'A video is already being generated. Please wait for the current request to complete before starting a new one.',
+                'error_type': 'generation_in_progress'
+            }), 409 # Conflict status code
+            
         # Check if file was uploaded
         if 'image' not in request.files:
             return jsonify({'error': 'Image file is required'}), 400
@@ -1265,6 +1272,8 @@ def img2video_generate():
                     session[f'img2video_dimensions_{generation_id}'] = dimensions
                     # Store API key in session for later use (polling)
                     session[f'img2video_api_key_{generation_id}'] = api_key
+                    # Set the active generation ID in session
+                    session['active_video_generation_id'] = generation_id
                     
                     # Clean up the temporary file
                     os.remove(temp_image_path)
@@ -1356,6 +1365,10 @@ def img2video_result(generation_id):
             if f'img2video_api_key_{generation_id}' in session:
                 session.pop(f'img2video_api_key_{generation_id}')
             
+            # Clear the active generation ID from session on successful completion
+            if session.get('active_video_generation_id') == generation_id:
+                session.pop('active_video_generation_id')
+
             # Return the success response with the video URL
             return jsonify({
                 'status': 'complete',
@@ -1396,6 +1409,13 @@ def img2video_result(generation_id):
 def api_img2video_generate():
     """API endpoint to generate a video from an image"""
     try:
+        # Check if a video generation is already in progress for this session
+        if session.get('active_video_generation_id'):
+            return jsonify({
+                'error': 'A video is already being generated. Please wait for the current request to complete before starting a new one.',
+                'error_type': 'generation_in_progress'
+            }), 409 # Conflict status code
+            
         # Check if file was uploaded
         if 'image' not in request.files:
             return jsonify({'error': 'Image file is required'}), 400
@@ -1481,6 +1501,8 @@ def api_img2video_generate():
                     session[f'img2video_dimensions_{generation_id}'] = dimensions
                     # Store API key in session for later use (polling)
                     session[f'img2video_api_key_{generation_id}'] = api_key
+                    # Set the active generation ID in session
+                    session['active_video_generation_id'] = generation_id
                     
                     # Clean up the temporary file
                     os.remove(temp_image_path)
@@ -1571,6 +1593,10 @@ def api_img2video_result(generation_id):
             if f'img2video_api_key_{generation_id}' in session:
                 session.pop(f'img2video_api_key_{generation_id}')
             
+            # Clear the active generation ID from session on successful completion
+            if session.get('active_video_generation_id') == generation_id:
+                session.pop('active_video_generation_id')
+
             # Return the success response with the video URL
             return jsonify({
                 'status': 'complete',
@@ -1592,16 +1618,25 @@ def api_img2video_result(generation_id):
                             'message': 'API key refreshed due to insufficient credits. Please try again.'
                         }), 200
                     else:
+                        # Clear the active generation ID from session on final error (402)
+                        if session.get('active_video_generation_id') == generation_id:
+                            session.pop('active_video_generation_id')
                         return jsonify({
                             'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
                             'error_type': 'payment_required',
                             'status': 'error'
                         }), 402
             else:
+                # Clear the active generation ID from session on other errors
+                if session.get('active_video_generation_id') == generation_id:
+                    session.pop('active_video_generation_id')
                 raise e
         
     except Exception as e:
         print(f"Error checking image-to-video status: {str(e)}")
+        # Clear the active generation ID from session on unexpected errors
+        if session.get('active_video_generation_id') == generation_id:
+            session.pop('active_video_generation_id')
         return jsonify({'error': str(e), 'status': 'error'}), 500
 
 if __name__ == '__main__':
