@@ -1486,18 +1486,7 @@
                 document.getElementById('moderationAlert').classList.add('hidden'); // Assuming moderationAlert exists
                 loginRequiredAlert.classList.add('hidden'); // Hide login alert
 
-                // Check for unauthenticated usage limit
-                if (window.currentAuthState === false) { // User is not logged in
-                    let unauthCount = parseInt(localStorage.getItem('unauth_img2video_count') || '0');
-                    if (unauthCount >= 10) {
-                        // Limit reached, prevent submission and show alert
-                        loginRequiredAlert.classList.remove('hidden');
-                        return; // Stop form submission
-                    } else {
-                        // Increment count and allow submission
-                        localStorage.setItem('unauth_img2video_count', unauthCount + 1);
-                    }
-                }
+
 
                 if (!selectedFile) {
                     showError('Please select an image to convert to video');
@@ -1715,11 +1704,23 @@
                 formData.append('cfg_scale', cfgScale);
                 formData.append('seed', seed);
                 
-                // Send the request - do NOT set Content-Type header, browser will set it automatically with boundary
-                fetch('/img2video-ui', {
-                    method: 'POST',
-                    body: formData
-                })
+                // Get API token first, then send request
+                fetch('/get-api-token')
+                .then(response => response.json())
+                .then(tokenData => {
+                    if (!tokenData.token) {
+                        throw new Error('Could not retrieve API token.');
+                    }
+                    window.apiToken = tokenData.token;
+
+                    // Send the request - do NOT set Content-Type header, browser will set it automatically with boundary
+                    fetch('/img2video-ui', {
+                        method: 'POST',
+                        headers: {
+                            'x-access-token': window.apiToken
+                        },
+                        body: formData
+                    })
                 .then(response => {
                     if (!response.ok) {
                         return response.json().then(errData => {
@@ -1751,6 +1752,7 @@
                 .catch(error => {
                     showErrorState(error.message || 'Network error: Failed to connect to the server');
                 });
+            });
             }
             
             function startPolling() {
@@ -1779,7 +1781,11 @@
                 }
                 
                 // Make the API call to check status
-                fetch(`/ui/img2video/result/${generationId}`)
+                fetch(`/ui/img2video/result/${generationId}`, {
+                    headers: {
+                        'x-access-token': window.apiToken
+                    }
+                })
                 .then(response => {
                     // Check if still in progress (202)
                     if (response.status === 202) {

@@ -775,34 +775,45 @@
             const formData = new FormData();
             formData.append('prompt', userPrompt);
             
-            // Call the enhance-prompt API
-            fetch('/api/enhance-prompt-ui', {
-                method: 'POST',
-                body: formData
-            })
+            // Get API token first, then send request
+            fetch('/get-api-token')
             .then(response => response.json())
-            .then(data => {
-                // Reset button state
-                this.disabled = false;
-                this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
-                
-                if (data.success) {
-                    // Update the prompt with the enhanced version
-                    promptInput.value = data.enhanced_prompt;
-                    
-                    // Show the revert button
-                    document.getElementById('revert-prompt-btn').style.display = 'block';
-                } else {
-                    alert('Failed to enhance prompt: ' + (data.error || 'Unknown error'));
+            .then(tokenData => {
+                if (!tokenData.token) {
+                    throw new Error('Could not retrieve API token');
                 }
+                // Call the enhance-prompt API
+                fetch('/api/enhance-prompt-ui', {
+                    method: 'POST',
+                    headers: {
+                        'x-access-token': tokenData.token
+                    },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Reset button state
+                    this.disabled = false;
+                    this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
+                    
+                    if (data.success) {
+                        // Update the prompt with the enhanced version
+                        promptInput.value = data.enhanced_prompt;
+                        
+                        // Show the revert button
+                        document.getElementById('revert-prompt-btn').style.display = 'block';
+                    } else {
+                        alert('Failed to enhance prompt: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    // Reset button state
+                    this.disabled = false;
+                    this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
+                    
+                    alert('Failed to enhance prompt: ' + error.message);
+                });
             })
-            .catch(error => {
-                // Reset button state
-                this.disabled = false;
-                this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
-                
-                alert('Failed to enhance prompt: ' + error.message);
-            });
         });
         
         // Toggle advanced options
@@ -840,18 +851,7 @@
             document.getElementById('moderation-alert').classList.add('hidden');
             document.getElementById('login-required-alert').classList.add('hidden'); // Hide login alert on new submission
             
-            // Check authentication state and free generation limit
-            if (window.currentAuthState === false) {
-                let unauthCount = parseInt(localStorage.getItem('unauth_txt2img_count') || '0');
-                if (unauthCount >= 10) {
-                    document.getElementById('loading').classList.add('hidden'); // Hide loading if it was shown
-                    const loginRequiredAlert = document.getElementById('login-required-alert');
-                    loginRequiredAlert.classList.remove('hidden');
-                    loginRequiredAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    return; // Prevent form submission
-                }
-                localStorage.setItem('unauth_txt2img_count', (unauthCount + 1).toString());
-            }
+
 
             // Get form data
             const description = document.getElementById('video-description').value;
@@ -899,11 +899,22 @@
             // Add security fields to form data
             formData.append('website', document.getElementById('website').value); // Honeypot field
             
-            // Send request
-            fetch('/generate-txt2img-ui', {
-                method: 'POST',
-                body: formData
-            })
+            // Get API token first, then send request
+            fetch('/get-api-token')
+            .then(response => response.json())
+            .then(tokenData => {
+                if (!tokenData.token) {
+                    throw new Error('Could not retrieve API token.');
+                }
+
+                // Send request with token
+                fetch('/generate-txt2img-ui', {
+                    method: 'POST',
+                    headers: {
+                        'x-access-token': tokenData.token
+                    },
+                    body: formData
+                })
             .then(response => response.json())
             .then(data => {
                 // Hide loading
@@ -940,6 +951,7 @@
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('error').classList.remove('hidden');
                 document.getElementById('error').querySelector('p').textContent = 'Network error: ' + error.message;
+            });
             });
         });
         

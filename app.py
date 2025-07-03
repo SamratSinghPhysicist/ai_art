@@ -1,5 +1,6 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session, flash
+from flask import Flask, request, jsonify, render_template, send_from_directory, redirect, url_for, session, flash, g
 import os
+import uuid
 from image_generator import main_image_function
 from prompt_translate import translate_to_english
 from models import User, db, request_logs_collection
@@ -25,6 +26,7 @@ from functools import wraps
 import hashlib
 import time
 import secrets
+import jwt
 from datetime import datetime, timedelta
 
 # Load environment variables
@@ -119,6 +121,51 @@ LOGS_DIR = os.path.join(app_dir, 'logs')
 visitor_logger = VisitorLogger(app)
 
 # Admin security decorator
+# JWT-based protection for API endpoints
+def token_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        token = None
+        if 'x-access-token' in request.headers:
+            token = request.headers['x-access-token']
+
+        if not token:
+            return jsonify({'error': 'Token is missing.'}), 401
+
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+            
+            # Pass the decoded data to the request context
+            g.token_data = data
+
+            # Handle anonymous user limits
+            if data.get('anonymous'):
+                user_id = data['user_id']
+                # Use a simple in-memory dictionary for rate limiting anonymous users
+                if 'anonymous_requests' not in app.config:
+                    app.config['anonymous_requests'] = {}
+                
+                now = datetime.utcnow()
+                if user_id not in app.config['anonymous_requests']:
+                    app.config['anonymous_requests'][user_id] = []
+                
+                # Clean up old requests
+                app.config['anonymous_requests'][user_id] = [t for t in app.config['anonymous_requests'][user_id] if now - t < timedelta(days=1)]
+                
+                # Enforce a limit (e.g., 10 requests per day)
+                if len(app.config['anonymous_requests'][user_id]) >= 10:
+                    return jsonify({'error': 'Free generation limit reached. Please log in to continue.'}), 429 # Too Many Requests
+                
+                app.config['anonymous_requests'][user_id].append(now)
+
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired.'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Token is invalid.'}), 401
+
+        return f(*args, **kwargs)
+    return decorated_function
+
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -439,6 +486,36 @@ def check_auth_status():
     else:
         return jsonify({'authenticated': False})
 
+@app.route('/get-api-token', methods=['GET'])
+def get_api_token():
+    """Generate a JWT for the authenticated or anonymous user."""
+    try:
+        expiration = datetime.utcnow() + timedelta(hours=1)
+        
+        if current_user.is_authenticated:
+            user_id = current_user.get_id()
+            is_anonymous = False
+        else:
+            # For anonymous users, use a session-based ID
+            if 'anonymous_id' not in session:
+                session['anonymous_id'] = str(uuid.uuid4())
+            user_id = session['anonymous_id']
+            is_anonymous = True
+
+        payload = {
+            'user_id': user_id,
+            'anonymous': is_anonymous,
+            'exp': expiration,
+            'iat': datetime.utcnow()
+        }
+        
+        token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
+        
+        return jsonify({'token': token})
+    except Exception as e:
+        app.logger.error(f"Error generating API token: {str(e)}")
+        return jsonify({'error': 'Could not generate API token.'}), 500
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -457,8 +534,10 @@ def dashboard():
         return redirect(url_for('index', action='login', error='session_expired'))
 
 @app.route('/generate-txt2img-ui', methods=['POST'])
+@token_required
 def generate_image():
     """Generate an image based on the description provided"""
+
     # Honeypot field check (should be empty)
     honeypot = request.form.get('website_url', '')
     if honeypot:
@@ -756,7 +835,9 @@ def serve_processed_video(filename):
     return send_from_directory(app.config['PROCESSED_VIDEOS_FOLDER'], filename)
 
 @app.route('/img2img', methods=['POST'])
+@token_required
 def img2img_transform():
+
     """Transform an image based on text prompt and uploaded image"""
     # Honeypot field check (should be empty)
     honeypot = request.form.get('website', '')
@@ -978,7 +1059,9 @@ def api_img2img_transform():
     return jsonify({'error': 'Invalid file'}), 400
 
 @app.route('/api/enhance-prompt-ui', methods=['POST'])
+@token_required
 def enhance_prompt():
+
     """API endpoint to enhance the given image prompt with AI"""
     try:
         print("Enhance prompt endpoint called")
@@ -1177,7 +1260,9 @@ def donate():
                           firebase_app_id=firebase_config.get('appId'))
 
 @app.route('/img2video-ui', methods=['POST'])
+@token_required
 def img2video_generate():
+
     """API endpoint to generate a video from an image"""
     try:
         # Check if a video generation is already in progress for this session
@@ -1309,7 +1394,9 @@ def img2video_generate():
 
 
 @app.route('/ui/img2video/result/<generation_id>', methods=['GET'])
+@token_required
 def img2video_result(generation_id):
+
     """API endpoint to check the status of a video generation or retrieve the result"""
     try:
         # Import necessary functions

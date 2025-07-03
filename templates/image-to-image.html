@@ -772,20 +772,7 @@
             document.getElementById('moderation-alert').classList.add('hidden');
             loginRequiredAlert.classList.add('hidden'); // Hide login alert
 
-            // Check for unauthenticated usage limit
-            if (window.currentAuthState === false) { // User is not logged in
-                let unauthCount = parseInt(localStorage.getItem('unauth_img2img_count') || '0');
-                if (unauthCount >= 10) {
-                    // Limit reached, prevent submission and show alert
-                    loadingElement.classList.add('hidden'); // Ensure loading is hidden
-                    loginRequiredAlert.classList.remove('hidden');
-                    loginRequiredAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    return; // Stop form submission
-                } else {
-                    // Increment count and allow submission
-                    localStorage.setItem('unauth_img2img_count', unauthCount + 1);
-                }
-            }
+
             
             // Show loading
             loadingElement.classList.remove('hidden');
@@ -824,11 +811,22 @@
             reader.onload = function(e) {
                 formData.append('image_data', e.target.result);
                 
-                // Make POST request to server
-                fetch('/img2img', {
-                    method: 'POST',
-                    body: formData
-                })
+                // Get API token first, then send request
+                fetch('/get-api-token')
+                .then(response => response.json())
+                .then(tokenData => {
+                    if (!tokenData.token) {
+                        throw new Error('Could not retrieve API token.');
+                    }
+
+                    // Make POST request to server with token
+                    fetch('/img2img', {
+                        method: 'POST',
+                        headers: {
+                            'x-access-token': tokenData.token
+                        },
+                        body: formData
+                    })
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('Server returned error: ' + response.status);
@@ -869,6 +867,7 @@
                     loadingElement.classList.add('hidden');
                     errorElement.classList.remove('hidden');
                     document.getElementById('error-message').textContent = 'Error: ' + error.message;
+                });
                 });
             };
             reader.readAsDataURL(file);
