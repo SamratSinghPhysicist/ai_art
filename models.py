@@ -404,3 +404,57 @@ class StabilityApiKey:
         except Exception as e:
             print(f"Error counting API keys: {e}")
             return 0
+
+
+class QwenApiKey:
+    """Model for managing Qwen API keys"""
+
+    def __init__(self, auth_token, chat_id, fid, children_ids, x_request_id, _id=None):
+        self.auth_token = auth_token
+        self.chat_id = chat_id
+        self.fid = fid
+        self.children_ids = children_ids
+        self.x_request_id = x_request_id
+        self._id = _id
+
+    def save(self):
+        """Save API key to database"""
+        api_key_data = {
+            'auth_token': self.auth_token,
+            'chat_id': self.chat_id,
+            'fid': self.fid,
+            'children_ids': self.children_ids,
+            'x_request_id': self.x_request_id,
+        }
+
+        if self._id:
+            db['qwen_api_keys'].update_one({'_id': self._id}, {'$set': api_key_data})
+            return self._id
+        else:
+            result = db['qwen_api_keys'].insert_one(api_key_data)
+            self._id = result.inserted_id
+            return result.inserted_id
+
+    @staticmethod
+    def get_all():
+        """Get all API keys"""
+        try:
+            return list(db['qwen_api_keys'].find())
+        except Exception as e:
+            print(f"Error getting all Qwen API keys: {e}")
+            return []
+
+    @staticmethod
+    def delete(key_id):
+        """Delete an API key from the database"""
+        try:
+            result = db['qwen_api_keys'].delete_one({'_id': ObjectId(key_id)})
+            if result.deleted_count > 0:
+                print(f"Deleted Qwen API key with ID: {key_id}")
+                return True
+            else:
+                print(f"Qwen API key not found with ID: {key_id}")
+                return False
+        except Exception as e:
+            print(f"Error deleting Qwen API key: {e}")
+            return False

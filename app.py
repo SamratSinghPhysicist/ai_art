@@ -3,7 +3,7 @@ import os
 import uuid
 from image_generator import main_image_function
 from prompt_translate import translate_to_english
-from models import User, db, request_logs_collection
+from models import User, db, request_logs_collection, QwenApiKey
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 import logging
@@ -294,6 +294,43 @@ def get_potential_abusers():
             potential_abusers.append(ip)
             
     return jsonify(potential_abusers)
+
+@app.route('/admin/qwen-keys', methods=['GET', 'POST'])
+def admin_qwen_keys():
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+
+    if request.method == 'POST':
+        auth_token = request.form.get('auth_token')
+        chat_id = request.form.get('chat_id')
+        fid = request.form.get('fid')
+        children_ids = request.form.get('children_ids').split(',')
+        x_request_id = request.form.get('x_request_id')
+
+        key = QwenApiKey(
+            auth_token=auth_token,
+            chat_id=chat_id,
+            fid=fid,
+            children_ids=children_ids,
+            x_request_id=x_request_id
+        )
+        key.save()
+        flash('Qwen API key added successfully!', 'success')
+        return redirect(url_for('admin_qwen_keys', secret=secret_key))
+
+    keys = QwenApiKey.get_all()
+    return render_template('admin/qwen_keys.html', keys=keys)
+
+@app.route('/admin/qwen-keys/delete/<key_id>', methods=['POST'])
+def admin_delete_qwen_key(key_id):
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+
+    QwenApiKey.delete(key_id)
+    flash('Qwen API key deleted successfully!', 'success')
+    return redirect(url_for('admin_qwen_keys', secret=secret_key))
 
 @login_manager.user_loader
 def load_user(user_id):

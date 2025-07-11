@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Qwen API Keys</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            background-color: var(--bg);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .card {
+            margin-bottom: 2rem;
+        }
+        .overflow-x-auto {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1.5rem;
+            table-layout: fixed;
+        }
+        th, td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            text-align: left;
+            word-wrap: break-word;
+        }
+        th {
+            background-color: var(--secondary);
+            font-weight: 600;
+        }
+        .btn-delete {
+            background-color: var(--error);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .btn-delete:hover {
+            background-color: #d9534f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                <h1 class="text-2xl font-bold mb-4">Manage Qwen API Keys</h1>
+                <form action="{{ url_for('admin_qwen_keys', secret=request.args.get('secret')) }}" method="post" class="space-y-4">
+                    <div class="form-group">
+                        <label for="auth_token" class="form-label">Auth Token</label>
+                        <input type="text" id="auth_token" name="auth_token" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="chat_id" class="form-label">Chat ID</label>
+                        <input type="text" id="chat_id" name="chat_id" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="fid" class="form-label">FID</label>
+                        <input type="text" id="fid" name="fid" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="children_ids" class="form-label">Children IDs (comma-separated)</label>
+                        <input type="text" id="children_ids" name="children_ids" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="x_request_id" class="form-label">X-Request ID</label>
+                        <input type="text" id="x_request_id" name="x_request_id" class="form-input" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Key</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-xl font-bold mb-4">Existing Keys</h2>
+                <div class="overflow-x-auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Auth Token</th>
+                                <th>Chat ID</th>
+                                <th>FID</th>
+                                <th>Children IDs</th>
+                                <th>X-Request ID</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for key in keys %}
+                            <tr>
+                                <td>{{ key.auth_token }}</td>
+                                <td>{{ key.chat_id }}</td>
+                                <td>{{ key.fid }}</td>
+                                <td>{{ key.children_ids|join(', ') }}</td>
+                                <td>{{ key.x_request_id }}</td>
+                                <td>
+                                    <form action="{{ url_for('admin_delete_qwen_key', key_id=key._id, secret=request.args.get('secret')) }}" method="post">
+                                        <button type="submit" class="btn-delete">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
