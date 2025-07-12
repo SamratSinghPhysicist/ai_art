@@ -92,6 +92,8 @@
     <!-- Google Ad blocking recovery -->
     <script async src="https://fundingchoicesmessages.google.com/i/pub-7179365574545627?ers=1"></script><script>(function() {function signalGooglefcPresent() {if (!window.frames['googlefcPresent']) {if (document.body) {const iframe = document.createElement('iframe'); iframe.style = 'width: 0; height: 0; border: none; z-index: -1000; left: -1000px; top: -1000px;'; iframe.style.display = 'none'; iframe.name = 'googlefcPresent'; document.body.appendChild(iframe);} else {setTimeout(signalGooglefcPresent, 0);}}}signalGooglefcPresent();})();</script>
 
+    <!-- Cloudflare Turnstile -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
 </head>
 <body>
     <header class="header">
@@ -262,9 +264,20 @@
                     <div style="position: absolute; left: -9999px; opacity: 0; pointer-events: none;">
                         <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
                     </div>
+
+                    <!-- Cloudflare Turnstile widget -->
+                     <div id="turnstile-widget"></div>
+                     <input type="hidden" id="cf-turnstile-response" name="cf_turnstile_response" />
+
                     
                     <div class="text-center mt-8">
-                        <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
+
+                        <div id="captcha-loading-message" class="text-gray-600 text-sm mb-2">
+  ⏳ Verifying CAPTCHA... Please wait.
+</div>
+
+
+                        <button type="submit" id="generate-btn" class="btn btn-primary px-8 py-3 text-lg" disabled>
                             <span class="flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M12 2v7"></path><path d="M10 7l2 3 2-3"></path><path d="M4.93 10.93l6.1 2.65"></path><path d="M2 15.5L4.93 13"></path><path d="M19.07 10.93l-6.1 2.65"></path><path d="M22 15.5L19.07 13"></path><path d="M12 21.5v-4"></path></svg>
                                 Generate Image
@@ -736,9 +749,12 @@
         }
     </style>
 
+    
+
     <script src="/static/js/mobile-nav.js"></script>
     <script src="/static/js/auth-modal.js"></script>
     <script>
+
         // Variables to store original and enhanced prompts
         let originalPrompt = '';
         
@@ -810,10 +826,13 @@
                     // Reset button state
                     this.disabled = false;
                     this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
-                    
                     alert('Failed to enhance prompt: ' + error.message);
                 });
             })
+            .catch(error => {
+                console.error('Error fetching API token for enhance prompt:', error);
+                alert('Error fetching API token: ' + error.message);
+            });
         });
         
         // Toggle advanced options
@@ -839,11 +858,37 @@
             // Hide the revert button
             this.style.display = 'none';
         });
+
+
+  window.turnstileReady = false;
+
+  window.onload = function () {
+    // Render Turnstile
+    turnstile.render('#turnstile-widget', {
+      sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
+      callback: function (token) {
+        // console.log("Turnstile token received:", token);
+        document.getElementById('cf-turnstile-response').value = token;
+        window.turnstileReady = true;
+        document.getElementById('generate-btn').disabled = false;
+        document.getElementById('captcha-loading-message')?.remove(); // remove message if present
+      },
+      'error-callback': function () {
+        console.error("Turnstile failed.");
+        window.turnstileReady = false;
+      }
+    })};
         
             // Form submission handler
         document.getElementById('image-form').addEventListener('submit', function(e) {
             e.preventDefault();
             
+            // ✅ Prevent submission if token not ready
+  if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').value) {
+    alert("Turnstile verification is still in progress. Please wait...");
+    return;
+  }
+
             // Show loading, hide results and errors
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('result').classList.add('hidden');
@@ -861,6 +906,10 @@
             const formData = new FormData();
             formData.append('video_description', description);
             formData.append('test_mode', testMode ? 'true' : 'false');
+            
+            const token = document.getElementById('cf-turnstile-response').value;
+            formData.append('cf_turnstile_response', token);
+
 
             // Add selected model
             const selectedModel = document.getElementById('image-model').value;
@@ -898,7 +947,7 @@
             
             // Add security fields to form data
             formData.append('website', document.getElementById('website').value); // Honeypot field
-            
+
             // Get API token first, then send request
             fetch('/get-api-token')
             .then(response => response.json())
@@ -906,7 +955,6 @@
                 if (!tokenData.token) {
                     throw new Error('Could not retrieve API token.');
                 }
-
                 // Send request with token
                 fetch('/generate-txt2img-ui', {
                     method: 'POST',
@@ -951,10 +999,17 @@
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('error').classList.remove('hidden');
                 document.getElementById('error').querySelector('p').textContent = 'Network error: ' + error.message;
+                console.error('Error during image generation request:', error);
             });
+            })
+            .catch(error => {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').querySelector('p').textContent = 'Error fetching API token: ' + error.message;
             });
         });
         
+
         // Function to handle image download
         function downloadImage(imagePath) {
             if (!imagePath) {
@@ -996,6 +1051,7 @@
                 });
         }
     </script>
+
 
     {% include 'donate_button.html' %}
 </body>

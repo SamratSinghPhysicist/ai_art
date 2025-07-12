@@ -878,6 +878,8 @@
       gtag('config', 'G-PXCTK9MK85');
     </script>
 
+    <!-- Cloudflare Turnstile -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
 </head>
 <body class="bg-background text-text">
     <!-- Header -->
@@ -885,7 +887,7 @@
         <div class="container">
             <nav class="nav">
                 <a href="/" class="nav-logo">AI Art</a>
-                <button class="mobile-menu-btn">��</button>
+                <button class="mobile-menu-btn">☰</button>
                 <div class="nav-links">
                     <a href="/" class="nav-link">Home</a>
                     
@@ -1097,10 +1099,19 @@
                                     <input type="number" id="seedInput" class="parameter-input" min="0" max="2147483647" placeholder="Enter seed (0 for random)">
                                 </div>
                             </div>
-                            
+
+                            <!-- Cloudflare Turnstile widget -->
+                     <div id="turnstile-widget"></div>
+                     <input type="hidden" id="cf-turnstile-response" name="cf_turnstile_response" />
+
                             <!-- Submit button -->
                             <div class="mx-6 mb-6">
-                                <button type="submit" id="generateBtn" class="btn-primary w-full generate-btn">
+
+                                <div id="captcha-loading-message" class="text-gray-600 text-sm mb-2">
+  ⏳ Verifying CAPTCHA... Please wait.
+</div>
+
+                                <button type="submit" id="generate-btn" class="btn-primary w-full generate-btn" disabled>
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <path d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                                         <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1368,6 +1379,21 @@
     </footer>
 
     <script>
+        // Define the onloadTurnstileCallback function globally
+        window.onloadTurnstileCallback = function () {
+            turnstile.render({
+                element: '#turnstile-widget', // Use the ID of the div
+                sitekey: '0x4AAAAAAABkwoSYoc4LgE69c', // Your sitekey
+                callback: function(token) {
+                    document.getElementById('generate-btn').disabled = false;
+                },
+                'error-callback': function() {
+                    console.error('Turnstile widget encountered an error.');
+                    // Optionally re-enable button or show error message
+                }
+            });
+        };
+
         document.addEventListener('DOMContentLoaded', function() {
             // DOM Elements
             const form = document.getElementById('img2videoForm');
@@ -1376,7 +1402,7 @@
             const imagePreview = document.getElementById('imagePreview');
             const dropPrompt = document.getElementById('dropPrompt');
             const removeImageBtn = document.getElementById('removeImageBtn');
-            const generateBtn = document.getElementById('generateBtn');
+            const generateBtn = document.getElementById('generate-btn');
             const motionSlider = document.getElementById('motionAmount');
             const cfgSlider = document.getElementById('cfgScale');
             const seedInput = document.getElementById('seedInput');
@@ -1413,6 +1439,10 @@
             let pollingInterval = null;
             let attemptCount = 0;
             const maxAttempts = 120; // 10 minutes at 5 seconds per poll
+
+            
+            
+            // Set up tooltip triggers
             
             // Set up tooltip triggers
             setupTooltips();
@@ -1470,10 +1500,38 @@
             // Initialize slider backgrounds
             updateSliderBackground(motionSlider);
             updateSliderBackground(cfgSlider);
+
+
+
+            window.turnstileReady = false;
+
+  window.onload = function () {
+    // Render Turnstile
+    turnstile.render('#turnstile-widget', {
+      sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
+      callback: function (token) {
+        // console.log("Turnstile token received:", token);
+        document.getElementById('cf-turnstile-response').value = token;
+        window.turnstileReady = true;
+        document.getElementById('generate-btn').disabled = false;
+        document.getElementById('captcha-loading-message')?.remove(); // remove message if present
+      },
+      'error-callback': function () {
+        console.error("Turnstile failed.");
+        window.turnstileReady = false;
+      }
+    })};
             
             // Form submission
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
+
+
+                // ✅ Prevent submission if token not ready
+  if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').value) {
+    alert("Turnstile verification is still in progress. Please wait...");
+    return;
+  }
                 
                 // Get login required alert element
                 const loginRequiredAlert = document.getElementById('login-required-alert');
@@ -1674,10 +1732,7 @@
                     } else {
                         const newDimensionsInfo = document.createElement('div');
                         newDimensionsInfo.className = 'info-item';
-                        newDimensionsInfo.innerHTML = `
-                            <span class="info-label">Dimensions:</span>
-                            <span class="info-value" id="dimensionsInfo">${dimensions}</span>
-                        `;
+                        newDimensionsInfo.innerHTML = `\n                            <span class="info-label">Dimensions:</span>\n                            <span class="info-value" id="dimensionsInfo">${dimensions}</span>\n                        `;
                         document.querySelector('.generation-info').appendChild(newDimensionsInfo);
                     }
                 }
@@ -1703,6 +1758,16 @@
                 formData.append('motion_bucket_id', motionBucketId);
                 formData.append('cfg_scale', cfgScale);
                 formData.append('seed', seed);
+
+                const token = document.getElementById('cf-turnstile-response').value;
+            formData.append('cf_turnstile_response', token);
+
+
+                // Add Turnstile response to form data
+                const turnstileResponse = document.querySelector('[name="cf-turnstile-response"]');
+                if (turnstileResponse) {
+                    formData.append('cf-turnstile-response', turnstileResponse.value);
+                }
                 
                 // Get API token first, then send request
                 fetch('/get-api-token')
@@ -1751,7 +1816,12 @@
                 })
                 .catch(error => {
                     showErrorState(error.message || 'Network error: Failed to connect to the server');
+                    console.error('Error during video generation request:', error);
                 });
+            })
+            .catch(error => {
+                console.error('Error fetching API token for video generation:', error);
+                showErrorState('Error fetching API token: ' + error.message);
             });
             }
             
@@ -1817,6 +1887,7 @@
                     } else if (data.status === 'error') {
                         // Error occurred
                         clearInterval(pollingInterval);
+                        console.error('Error status received from API:', data.error);
                         
                         // Special handling for payment required errors
                         if (data.error_type && data.error_type === 'payment_required') {
@@ -1827,6 +1898,7 @@
                     } else {
                         // Unknown status
                         clearInterval(pollingInterval);
+                        console.error('Unknown status received from API:', data);
                         showErrorState(data.error || 'An error occurred during video generation');
                     }
                 })
@@ -1838,11 +1910,13 @@
                     } else {
                         // Don't stop polling on network errors, they might be temporary
                         statusMessage.textContent = `Network error, retrying... (attempt ${attemptCount}/${maxAttempts})`;
+                        console.error('Error during video status check:', error);
                     }
                 });
             }
         });
     </script>
+
     <!-- Floating Donate Button -->
     {% include 'donate_button.html' %}
 </body>

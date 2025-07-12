@@ -28,6 +28,9 @@ import time
 import secrets
 import jwt
 from datetime import datetime, timedelta
+import os
+import requests
+from turnstile_utils import verify_turnstile
 
 # Load environment variables
 load_dotenv()
@@ -575,6 +578,14 @@ def dashboard():
 def generate_image():
     """Generate an image based on the description provided"""
 
+    # Turnstile verification
+    turnstile_token = request.form.get('cf_turnstile_response')
+    print("Received Turnstile token from client:", turnstile_token)
+
+    client_ip = request.headers.get("CF-Connecting-IP")
+    if not verify_turnstile(turnstile_token, client_ip):
+        return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
+
     # Honeypot field check (should be empty)
     honeypot = request.form.get('website_url', '')
     if honeypot:
@@ -876,6 +887,15 @@ def serve_processed_video(filename):
 def img2img_transform():
 
     """Transform an image based on text prompt and uploaded image"""
+    # Turnstile verification
+    turnstile_token = request.form.get('cf_turnstile_response')
+    print("Received Turnstile token from client:", turnstile_token)
+
+    client_ip = request.headers.get("CF-Connecting-IP")
+    if not verify_turnstile(turnstile_token, client_ip):
+        return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
+    
+    
     # Honeypot field check (should be empty)
     honeypot = request.form.get('website', '')
     if honeypot:
@@ -1301,6 +1321,14 @@ def donate():
 def img2video_generate():
 
     """API endpoint to generate a video from an image"""
+    # Turnstile verification
+    turnstile_token = request.form.get('cf_turnstile_response')
+    print("Received Turnstile token from client:", turnstile_token)
+
+    client_ip = request.headers.get("CF-Connecting-IP")
+    if not verify_turnstile(turnstile_token, client_ip):
+        return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
+        
     try:
         # Check if a video generation is already in progress for this session
         if session.get('active_video_generation_id'):

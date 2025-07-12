@@ -92,7 +92,8 @@
     <!-- Google Ad blocking recovery -->
     <script async src="https://fundingchoicesmessages.google.com/i/pub-7179365574545627?ers=1"></script><script>(function() {function signalGooglefcPresent() {if (!window.frames['googlefcPresent']) {if (document.body) {const iframe = document.createElement('iframe'); iframe.style = 'width: 0; height: 0; border: none; z-index: -1000; left: -1000px; top: -1000px;'; iframe.style.display = 'none'; iframe.name = 'googlefcPresent'; document.body.appendChild(iframe);} else {setTimeout(signalGooglefcPresent, 0);}}}signalGooglefcPresent();})();</script>
 
-
+    <!-- Cloudflare Turnstile -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
 </head>
 <body>
     <header class="header">
@@ -258,9 +259,17 @@
                     <div style="position: absolute; left: -9999px; opacity: 0; pointer-events: none;">
                         <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
                     </div>
+
+                    <!-- Cloudflare Turnstile widget -->
+                     <div id="turnstile-widget"></div>
+                     <input type="hidden" id="cf-turnstile-response" name="cf_turnstile_response" />
                     
                     <div class="text-center mt-8">
-                        <button type="submit" class="btn btn-primary px-8 py-3 text-lg">
+                        <div id="captcha-loading-message" class="text-gray-600 text-sm mb-2">
+  ⏳ Verifying CAPTCHA... Please wait.
+</div>
+
+                        <button type="submit" id="generate-btn" class="btn btn-primary px-8 py-3 text-lg" disabled>
                             <span class="flex items-center">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                 Transform Image
@@ -674,10 +683,13 @@
         }
     </style>
 
+    
+
     <script src="/static/js/app.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
     <script src="/static/js/auth-modal.js"></script>
     <script>
+
         // IMAGE-TO-IMAGE FORM HANDLING
         const form = document.getElementById('img2img-form');
         const imageUpload = document.getElementById('image-upload');
@@ -757,10 +769,37 @@
         document.querySelector('.browse-btn').addEventListener('click', function() {
             imageUpload.click();
         });
+
+
+
+        window.turnstileReady = false;
+
+  window.onload = function () {
+    // Render Turnstile
+    turnstile.render('#turnstile-widget', {
+      sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
+      callback: function (token) {
+        // console.log("Turnstile token received:", token);
+        document.getElementById('cf-turnstile-response').value = token;
+        window.turnstileReady = true;
+        document.getElementById('generate-btn').disabled = false;
+        document.getElementById('captcha-loading-message')?.remove(); // remove message if present
+      },
+      'error-callback': function () {
+        console.error("Turnstile failed.");
+        window.turnstileReady = false;
+      }
+    })};
         
             // Form submission
         form.addEventListener('submit', function(e) {
             e.preventDefault();
+
+            // ✅ Prevent submission if token not ready
+  if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').value) {
+    alert("Turnstile verification is still in progress. Please wait...");
+    return;
+  }
             
             // Get login required alert element
             const loginRequiredAlert = document.getElementById('login-required-alert');
@@ -806,6 +845,10 @@
             formData.append('seed', document.getElementById('seed').value);
             formData.append('website', document.getElementById('website') ? document.getElementById('website').value : ''); // Honeypot field
             
+
+            const token = document.getElementById('cf-turnstile-response').value;
+            formData.append('cf_turnstile_response', token);
+
             // Also add base64 image data
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -818,7 +861,6 @@
                     if (!tokenData.token) {
                         throw new Error('Could not retrieve API token.');
                     }
-
                     // Make POST request to server with token
                     fetch('/img2img', {
                         method: 'POST',
