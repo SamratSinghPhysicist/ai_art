@@ -689,219 +689,159 @@
     <script src="/static/js/mobile-nav.js"></script>
     <script src="/static/js/auth-modal.js"></script>
     <script>
+    const form = document.getElementById('img2img-form');
+    const imageUpload = document.getElementById('image-upload');
+    const previewContainer = document.getElementById('preview-container');
+    const imagePreview = document.getElementById('image-preview');
+    const dropArea = document.getElementById('drop-area');
+    const loadingElement = document.getElementById('loading');
+    const resultElement = document.getElementById('result');
+    const errorElement = document.getElementById('error');
+    const generatedImage = document.getElementById('generated-image');
+    const downloadBtn = document.getElementById('download-btn');
+    const strengthSlider = document.getElementById('strength-slider');
+    const strengthValue = document.getElementById('strength-value');
+    const loginRequiredAlert = document.getElementById('login-required-alert');
+    let turnstileWidgetId;
 
-        // IMAGE-TO-IMAGE FORM HANDLING
-        const form = document.getElementById('img2img-form');
-        const imageUpload = document.getElementById('image-upload');
-        const previewContainer = document.getElementById('preview-container');
-        const imagePreview = document.getElementById('image-preview');
-        const dropArea = document.getElementById('drop-area');
-        const loadingElement = document.getElementById('loading');
-        const resultElement = document.getElementById('result');
-        const errorElement = document.getElementById('error');
-        const generatedImage = document.getElementById('generated-image');
-        const downloadBtn = document.getElementById('download-btn');
-        const strengthSlider = document.getElementById('strength-slider');
-        const strengthValue = document.getElementById('strength-value');
-        
-        // Update strength value display when slider changes
-        strengthSlider.addEventListener('input', function() {
-            strengthValue.textContent = this.value;
-        });
-        
-        // Preview uploaded image
-        imageUpload.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    imagePreview.src = e.target.result;
-                    previewContainer.classList.remove('hidden');
-                }
-                reader.readAsDataURL(file);
-            }
-        });
-        
-        // Handle drag and drop
-        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, preventDefaults, false);
-        });
-        
-        function preventDefaults(e) {
+    // Strength slider display
+    strengthSlider.addEventListener('input', () => {
+        strengthValue.textContent = strengthSlider.value;
+    });
+
+    // Image preview handler
+    imageUpload.addEventListener('change', () => {
+        const file = imageUpload.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.src = e.target.result;
+                previewContainer.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Drag & Drop setup
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+        dropArea.addEventListener(event, e => {
             e.preventDefault();
             e.stopPropagation();
-        }
-        
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropArea.addEventListener(eventName, highlight, false);
         });
-        
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, unhighlight, false);
-        });
-        
-        function highlight() {
-            dropArea.classList.add('highlight');
-        }
-        
-        function unhighlight() {
-            dropArea.classList.remove('highlight');
-        }
-        
-        dropArea.addEventListener('drop', handleDrop, false);
-        
-        function handleDrop(e) {
-            const dt = e.dataTransfer;
-            const file = dt.files[0];
-            imageUpload.files = dt.files;
-            
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    imagePreview.src = e.target.result;
-                    previewContainer.classList.remove('hidden');
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-        
-        // Browse button functionality
-        document.querySelector('.browse-btn').addEventListener('click', function() {
-            imageUpload.click();
-        });
+    });
 
+    ['dragenter', 'dragover'].forEach(event =>
+        dropArea.addEventListener(event, () => dropArea.classList.add('highlight'))
+    );
+    ['dragleave', 'drop'].forEach(event =>
+        dropArea.addEventListener(event, () => dropArea.classList.remove('highlight'))
+    );
 
-
-        window.turnstileReady = false;
-
-  window.onload = function () {
-    // Render Turnstile
-    turnstile.render('#turnstile-widget', {
-      sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
-      callback: function (token) {
-        // console.log("Turnstile token received:", token);
-        document.getElementById('cf-turnstile-response').value = token;
-        window.turnstileReady = true;
-        document.getElementById('generate-btn').disabled = false;
-        document.getElementById('captcha-loading-message')?.remove(); // remove message if present
-      },
-      'error-callback': function () {
-        console.error("Turnstile failed.");
-        window.turnstileReady = false;
-      }
-    })};
-        
-            // Form submission
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-
-            // ✅ Prevent submission if token not ready
-  if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').value) {
-    alert("Turnstile verification is still in progress. Please wait...");
-    return;
-  }
-            
-            // Get login required alert element
-            const loginRequiredAlert = document.getElementById('login-required-alert');
-
-            // Hide all alerts and loading indicators at the start
-            loadingElement.classList.add('hidden');
-            resultElement.classList.add('hidden');
-            errorElement.classList.add('hidden');
-            document.getElementById('moderation-alert').classList.add('hidden');
-            loginRequiredAlert.classList.add('hidden'); // Hide login alert
-
-
-            
-            // Show loading
-            loadingElement.classList.remove('hidden');
-
-            // Get file and form data
-            const file = imageUpload.files[0];
-            if (!file) {
-                alert('Please upload an image first');
-                loadingElement.classList.add('hidden');
-                return;
-            }
-            
-            const promptInput = document.getElementById('img2img-prompt');
-            if (!promptInput.value.trim()) {
-                alert('Please enter a description for the transformation');
-                loadingElement.classList.add('hidden');
-                return;
-            }
-            
-            // Create FormData object
-            const formData = new FormData();
-            formData.append('image_file', file);
-            formData.append('video_description', promptInput.value);
-            
-            // Add other form fields
-            formData.append('negative_prompt', document.getElementById('negative-prompt').value);
-            formData.append('strength', document.getElementById('strength-slider').value);
-            formData.append('style_preset', document.getElementById('style-preset').value);
-            formData.append('aspect_ratio', document.getElementById('aspect-ratio').value);
-            formData.append('output_format', document.getElementById('output-format').value);
-            formData.append('seed', document.getElementById('seed').value);
-            formData.append('website', document.getElementById('website') ? document.getElementById('website').value : ''); // Honeypot field
-            
-
-            const token = document.getElementById('cf-turnstile-response').value;
-            formData.append('cf_turnstile_response', token);
-
-            // Also add base64 image data
+    dropArea.addEventListener('drop', e => {
+        const file = e.dataTransfer.files[0];
+        imageUpload.files = e.dataTransfer.files;
+        if (file) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                formData.append('image_data', e.target.result);
-                
-                // Get API token first, then send request
-                fetch('/get-api-token')
-                .then(response => response.json())
+            reader.onload = e => {
+                imagePreview.src = e.target.result;
+                previewContainer.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Browse button
+    document.querySelector('.browse-btn').addEventListener('click', () => {
+        imageUpload.click();
+    });
+
+    // CAPTCHA Rendering
+    window.onload = function () {
+        turnstileWidgetId = turnstile.render('#turnstile-widget', {
+            sitekey: '0x4AAAAAABkwoSYoc4LgE69c',      // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
+            callback: token => {
+                document.getElementById('cf-turnstile-response').value = token;
+                window.turnstileReady = true;
+                document.getElementById('generate-btn').disabled = false;
+                document.getElementById('captcha-loading-message')?.remove();
+            },
+            'error-callback': () => {
+                console.error("Turnstile error.");
+                window.turnstileReady = false;
+            }
+        });
+    };
+
+    form.addEventListener('submit', e => {
+        e.preventDefault();
+
+        const token = document.getElementById('cf-turnstile-response').value;
+        if (!window.turnstileReady || !token) {
+            alert("Cloudflare Turnstile verification is still in progress. Please wait...");
+            return;
+        }
+
+        // Reset UI
+        [loadingElement, resultElement, errorElement, loginRequiredAlert, document.getElementById('moderation-alert')].forEach(el => el?.classList.add('hidden'));
+        loadingElement.classList.remove('hidden');
+
+        const file = imageUpload.files[0];
+        const prompt = document.getElementById('img2img-prompt').value.trim();
+        if (!file || !prompt) {
+            alert(file ? "Please enter a description." : "Please upload an image.");
+            loadingElement.classList.add('hidden');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('image_file', file);
+        formData.append('video_description', prompt);
+        formData.append('negative_prompt', document.getElementById('negative-prompt').value);
+        formData.append('strength', strengthSlider.value);
+        formData.append('style_preset', document.getElementById('style-preset').value);
+        formData.append('aspect_ratio', document.getElementById('aspect-ratio').value);
+        formData.append('output_format', document.getElementById('output-format').value);
+        formData.append('seed', document.getElementById('seed').value);
+        formData.append('website', document.getElementById('website')?.value || '');
+        formData.append('cf_turnstile_response', token);
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            formData.append('image_data', e.target.result);
+
+            fetch('/get-api-token')
+                .then(res => res.json())
                 .then(tokenData => {
-                    if (!tokenData.token) {
-                        throw new Error('Could not retrieve API token.');
-                    }
-                    // Make POST request to server with token
-                    fetch('/img2img', {
+                    if (!tokenData.token) throw new Error("API token missing");
+
+                    return fetch('/img2img', {
                         method: 'POST',
-                        headers: {
-                            'x-access-token': tokenData.token
-                        },
+                        headers: { 'x-access-token': tokenData.token },
                         body: formData
-                    })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Server returned error: ' + response.status);
-                    }
-                    return response.json();
+                    });
                 })
+                .then(response => response.json())
                 .then(data => {
+                    loadingElement.classList.add('hidden');
                     if (data.success) {
-                        // Show result
                         generatedImage.src = data.image_path;
-                        generatedImage.onload = function() {
-                            loadingElement.classList.add('hidden');
-                            resultElement.classList.remove('hidden');
-                            
-                            // Enable download button
-                            downloadBtn.disabled = false;
-                            downloadBtn.addEventListener('click', function() {
-                                const link = document.createElement('a');
-                                link.href = data.image_path;
-                                link.download = 'transformed-image.png';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                            });
+                        resultElement.classList.remove('hidden');
+
+                        // Rebind download handler
+                        downloadBtn.disabled = false;
+                        downloadBtn.onclick = () => {
+                            const a = document.createElement('a');
+                            a.href = data.image_path;
+                            a.download = 'transformed-image.png';
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
                         };
                     } else {
-                        // Check if this is a content moderation error
-                        if (data.image_path && data.image_path.includes('placeholder.jpg')) {
-                            // Show moderation alert
-                            loadingElement.classList.add('hidden');
-                            document.getElementById('moderation-alert').classList.remove('hidden');
+                        if (data.image_path?.includes('placeholder.jpg')) {
+                            document.getElementById('moderation-alert')?.classList.remove('hidden');
                         } else {
-                            throw new Error(data.error || 'Unknown error');
+                            throw new Error(data.error || 'Unknown error occurred');
                         }
                     }
                 })
@@ -909,12 +849,27 @@
                     loadingElement.classList.add('hidden');
                     errorElement.classList.remove('hidden');
                     document.getElementById('error-message').textContent = 'Error: ' + error.message;
+                })
+                .finally(() => {
+                    // Reset Turnstile for next submission
+                    setTimeout(() => {
+                        turnstile.reset(turnstileWidgetId);
+                        window.turnstileReady = false;
+                        document.getElementById('cf-turnstile-response').value = "";
+                        document.getElementById('generate-btn').disabled = true;
+
+                        const msg = document.createElement('div');
+                        msg.id = 'captcha-loading-message';
+                        msg.className = 'text-gray-600 text-sm mb-2';
+                        msg.innerText = "⏳ Verifying CAPTCHA... Please wait.";
+                        document.getElementById('turnstile-widget').after(msg);
+                    }, 500);
                 });
-                });
-            };
-            reader.readAsDataURL(file);
-        });
-    </script>
+        };
+        reader.readAsDataURL(file);
+    });
+</script>
+
     {% include 'donate_button.html' %}
 </body>
 </html>

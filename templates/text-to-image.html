@@ -754,76 +754,76 @@
     <script src="/static/js/mobile-nav.js"></script>
     <script src="/static/js/auth-modal.js"></script>
     <script>
+    let originalPrompt = '';
+    let turnstileWidgetId;
 
-        // Variables to store original and enhanced prompts
-        let originalPrompt = '';
-        
-        // Developer mode toggle with keyboard shortcut (Ctrl+Shift+D)
-        document.addEventListener('keydown', function(event) {
-            if (event.ctrlKey && event.shiftKey && event.key === 'D') {
-                const testModeContainer = document.getElementById('test-mode-container');
-                if (testModeContainer.style.display === 'none') {
-                    testModeContainer.style.display = 'flex';
-                } else {
-                    testModeContainer.style.display = 'none';
-                }
+    // Show/hide test mode with Ctrl+Shift+D
+    document.addEventListener('keydown', function(event) {
+        if (event.ctrlKey && event.shiftKey && event.key === 'D') {
+            const testModeContainer = document.getElementById('test-mode-container');
+            testModeContainer.style.display =
+                testModeContainer.style.display === 'none' ? 'flex' : 'none';
+        }
+    });
+
+    // Handle Turnstile rendering on load
+    window.onload = function () {
+        turnstileWidgetId = turnstile.render('#turnstile-widget', {
+            sitekey: '0x4AAAAAABkwoSYoc4LgE69c', // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
+            callback: function (token) {
+                console.log("✅ Turnstile token received:", token);
+                document.getElementById('cf-turnstile-response').value = token;
+                window.turnstileReady = true;
+                document.getElementById('generate-btn').disabled = false;
+                document.getElementById('captcha-loading-message')?.remove();
+            },
+            'error-callback': function () {
+                console.error("❌ Turnstile failed.");
+                window.turnstileReady = false;
             }
         });
-        
-        // Enhance prompt button click handler
-        document.getElementById('enhance-prompt-btn').addEventListener('click', function() {
-            const promptInput = document.getElementById('video-description');
-            const userPrompt = promptInput.value.trim();
-            
-            if (!userPrompt) {
-                alert('Please enter a description first');
-                return;
-            }
-            
-            // Store the original prompt
-            originalPrompt = userPrompt;
-            
-            // Show loading state on the button
-            this.disabled = true;
-            this.innerHTML = '<div class="loading-dots"><div></div><div></div><div></div></div>';
-            
-            // Create form data for the API request
-            const formData = new FormData();
-            formData.append('prompt', userPrompt);
-            
-            // Get API token first, then send request
-            fetch('/get-api-token')
+    };
+
+    // Enhance Prompt
+    document.getElementById('enhance-prompt-btn').addEventListener('click', function () {
+        const promptInput = document.getElementById('video-description');
+        const userPrompt = promptInput.value.trim();
+
+        if (!userPrompt) {
+            alert('Please enter a description first');
+            return;
+        }
+
+        originalPrompt = userPrompt;
+        this.disabled = true;
+        this.innerHTML = '<div class="loading-dots"><div></div><div></div><div></div></div>';
+
+        const formData = new FormData();
+        formData.append('prompt', userPrompt);
+
+        fetch('/get-api-token')
             .then(response => response.json())
             .then(tokenData => {
-                if (!tokenData.token) {
-                    throw new Error('Could not retrieve API token');
-                }
-                // Call the enhance-prompt API
+                if (!tokenData.token) throw new Error('Could not retrieve API token');
+
                 fetch('/api/enhance-prompt-ui', {
                     method: 'POST',
-                    headers: {
-                        'x-access-token': tokenData.token
-                    },
+                    headers: { 'x-access-token': tokenData.token },
                     body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
-                    // Reset button state
                     this.disabled = false;
                     this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
-                    
+
                     if (data.success) {
-                        // Update the prompt with the enhanced version
                         promptInput.value = data.enhanced_prompt;
-                        
-                        // Show the revert button
                         document.getElementById('revert-prompt-btn').style.display = 'block';
                     } else {
                         alert('Failed to enhance prompt: ' + (data.error || 'Unknown error'));
                     }
                 })
                 .catch(error => {
-                    // Reset button state
                     this.disabled = false;
                     this.innerHTML = '<i class="magic-wand">✨</i><span class="button-text">Enhance Prompt</span>';
                     alert('Failed to enhance prompt: ' + error.message);
@@ -833,224 +833,136 @@
                 console.error('Error fetching API token for enhance prompt:', error);
                 alert('Error fetching API token: ' + error.message);
             });
-        });
-        
-        // Toggle advanced options
-        document.getElementById('toggle-advanced-options').addEventListener('click', function() {
-            const container = document.getElementById('advanced-options-container');
-            const icon = document.getElementById('advanced-options-icon');
-            
-            if (container.style.display === 'none') {
-                container.style.display = 'block';
-                icon.textContent = '▲';
-                this.classList.add('active');
-            } else {
-                container.style.display = 'none';
-                icon.textContent = '▼';
-                this.classList.remove('active');
-            }
-        });
-        
-        document.getElementById('revert-prompt-btn').addEventListener('click', function() {
-            // Restore the original prompt
-            document.getElementById('video-description').value = originalPrompt;
-            
-            // Hide the revert button
-            this.style.display = 'none';
-        });
+    });
 
+    document.getElementById('revert-prompt-btn').addEventListener('click', function () {
+        document.getElementById('video-description').value = originalPrompt;
+        this.style.display = 'none';
+    });
 
-  window.turnstileReady = false;
+    document.getElementById('toggle-advanced-options').addEventListener('click', function () {
+        const container = document.getElementById('advanced-options-container');
+        const icon = document.getElementById('advanced-options-icon');
+        const isHidden = container.style.display === 'none';
+        container.style.display = isHidden ? 'block' : 'none';
+        icon.textContent = isHidden ? '▲' : '▼';
+        this.classList.toggle('active', isHidden);
+    });
 
-  window.onload = function () {
-    // Render Turnstile
-    turnstile.render('#turnstile-widget', {
-      sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
-      callback: function (token) {
-        // console.log("Turnstile token received:", token);
-        document.getElementById('cf-turnstile-response').value = token;
-        window.turnstileReady = true;
-        document.getElementById('generate-btn').disabled = false;
-        document.getElementById('captcha-loading-message')?.remove(); // remove message if present
-      },
-      'error-callback': function () {
-        console.error("Turnstile failed.");
-        window.turnstileReady = false;
-      }
-    })};
-        
-            // Form submission handler
-        document.getElementById('image-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // ✅ Prevent submission if token not ready
-  if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').value) {
-    alert("Turnstile verification is still in progress. Please wait...");
-    return;
-  }
+    // Submit Handler
+    document.getElementById('image-form').addEventListener('submit', function (e) {
+        e.preventDefault();
 
-            // Show loading, hide results and errors
-            document.getElementById('loading').classList.remove('hidden');
-            document.getElementById('result').classList.add('hidden');
-            document.getElementById('error').classList.add('hidden');
-            document.getElementById('moderation-alert').classList.add('hidden');
-            document.getElementById('login-required-alert').classList.add('hidden'); // Hide login alert on new submission
-            
+        const token = document.getElementById('cf-turnstile-response').value;
+        if (!window.turnstileReady || !token) {
+            alert("Cloudflare Turnstile verification is still in progress.\nPlease wait a few seconds before trying again.");
+            return;
+        }
 
+        document.getElementById('generate-btn').disabled = true;
 
-            // Get form data
-            const description = document.getElementById('video-description').value;
-            const testMode = document.getElementById('test-mode')?.checked || false;
-            
-            // Create form data object
-            const formData = new FormData();
-            formData.append('video_description', description);
-            formData.append('test_mode', testMode ? 'true' : 'false');
-            
-            const token = document.getElementById('cf-turnstile-response').value;
-            formData.append('cf_turnstile_response', token);
+        document.getElementById('loading').classList.remove('hidden');
+        document.getElementById('result').classList.add('hidden');
+        document.getElementById('error').classList.add('hidden');
+        document.getElementById('moderation-alert').classList.add('hidden');
+        document.getElementById('login-required-alert').classList.add('hidden');
 
+        const formData = new FormData();
+        formData.append('video_description', document.getElementById('video-description').value);
+        formData.append('test_mode', document.getElementById('test-mode')?.checked ? 'true' : 'false');
+        formData.append('cf_turnstile_response', token);
+        formData.append('model', document.getElementById('image-model').value);
+        formData.append('website', document.getElementById('website').value);
 
-            // Add selected model
-            const selectedModel = document.getElementById('image-model').value;
-            formData.append('model', selectedModel);
-            // Add advanced options if visible
-            if (document.getElementById('advanced-options-container').style.display !== 'none') {
-                // Add negative prompt
-                const negativePrompt = document.getElementById('txt2img-negative-prompt').value;
-                if (negativePrompt) {
-                    formData.append('negative_prompt', negativePrompt);
-                }
-                
-                // Add style preset
-                const stylePreset = document.getElementById('txt2img-style-preset').value;
-                if (stylePreset) {
-                    formData.append('style_preset', stylePreset);
-                }
-                
-                // Add aspect ratio
-                const aspectRatio = document.getElementById('txt2img-aspect-ratio').value;
-                formData.append('aspect_ratio', aspectRatio);
-                
-                // Add output format
-                const outputFormat = document.getElementById('txt2img-output-format').value;
-                formData.append('output_format', outputFormat);
-                
-                // Add seed (if random seed is requested, let server handle it)
-                const seedValue = parseInt(document.getElementById('txt2img-seed').value);
-                if (!isNaN(seedValue) && seedValue >= 0) {
-                    formData.append('seed', seedValue.toString());
-                } else {
-                    formData.append('seed', '0');
-                }
-            }
-            
-            // Add security fields to form data
-            formData.append('website', document.getElementById('website').value); // Honeypot field
+        if (document.getElementById('advanced-options-container').style.display !== 'none') {
+            const negativePrompt = document.getElementById('txt2img-negative-prompt').value;
+            if (negativePrompt) formData.append('negative_prompt', negativePrompt);
+            formData.append('style_preset', document.getElementById('txt2img-style-preset').value);
+            formData.append('aspect_ratio', document.getElementById('txt2img-aspect-ratio').value);
+            formData.append('output_format', document.getElementById('txt2img-output-format').value);
+            const seedValue = parseInt(document.getElementById('txt2img-seed').value);
+            formData.append('seed', (!isNaN(seedValue) && seedValue >= 0) ? seedValue.toString() : '0');
+        }
 
-            // Get API token first, then send request
-            fetch('/get-api-token')
+        fetch('/get-api-token')
             .then(response => response.json())
             .then(tokenData => {
-                if (!tokenData.token) {
-                    throw new Error('Could not retrieve API token.');
-                }
-                // Send request with token
-                fetch('/generate-txt2img-ui', {
+                if (!tokenData.token) throw new Error('Could not retrieve API token');
+
+                return fetch('/generate-txt2img-ui', {
                     method: 'POST',
-                    headers: {
-                        'x-access-token': tokenData.token
-                    },
+                    headers: { 'x-access-token': tokenData.token },
                     body: formData
-                })
+                });
+            })
             .then(response => response.json())
             .then(data => {
-                // Hide loading
                 document.getElementById('loading').classList.add('hidden');
-                
+
                 if (data.success) {
-                    // Show result
                     document.getElementById('result').classList.remove('hidden');
                     document.getElementById('generated-image').src = data.image_path + '?t=' + new Date().getTime();
-                    
-                    // Enable download button
                     document.getElementById('download-btn').disabled = false;
-                    // Save the current URL for download
                     window.currentImagePath = data.image_path;
-                    
-                    // Add download handler
-                    document.getElementById('download-btn').onclick = function() {
-                        downloadImage(data.image_path);
-                    };
+                    document.getElementById('download-btn').onclick = () => downloadImage(data.image_path);
                 } else {
-                    // Check if this is a content moderation error
                     if (data.image_path && data.image_path.includes('placeholder.jpg')) {
-                        // Show moderation alert
                         document.getElementById('moderation-alert').classList.remove('hidden');
                     } else {
-                        // Show general error
                         document.getElementById('error').classList.remove('hidden');
                         document.getElementById('error-message').textContent = data.error || 'An error occurred while generating your image. Please try again.';
                     }
                 }
-            })
-            .catch(error => {
-                // Hide loading, show error
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('error').classList.remove('hidden');
-                document.getElementById('error').querySelector('p').textContent = 'Network error: ' + error.message;
-                console.error('Error during image generation request:', error);
-            });
-            })
-            .catch(error => {
-                document.getElementById('loading').classList.add('hidden');
-                document.getElementById('error').classList.remove('hidden');
-                document.getElementById('error').querySelector('p').textContent = 'Error fetching API token: ' + error.message;
-            });
-        });
-        
 
-        // Function to handle image download
-        function downloadImage(imagePath) {
-            if (!imagePath) {
-                return;
-            }
-            
-            // Create a filename from the path
-            const pathParts = imagePath.split('/');
-            const filename = pathParts[pathParts.length - 1];
-            
-            // Fetch the image as a blob
-            fetch(imagePath)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok');
-                    }
-                    return response.blob();
-                })
-                .then(blob => {
-                    // Create a URL for the blob
-                    const url = window.URL.createObjectURL(blob);
-                    
-                    // Create a temporary link element
-                    const a = document.createElement('a');
-                    a.style.display = 'none';
-                    a.href = url;
-                    a.download = filename; // Set the filename
-                    
-                    // Add to document, click it, and remove it
-                    document.body.appendChild(a);
-                    a.click();
-                    
-                    // Clean up
-                    window.URL.revokeObjectURL(url);
-                    document.body.removeChild(a);
-                })
-                .catch(error => {
-                    alert('Failed to download image. Please try again later.');
-                });
-        }
-    </script>
+                // ✅ Re-render Turnstile for next use
+                setTimeout(() => {
+                    turnstile.reset(turnstileWidgetId);
+                    window.turnstileReady = false;
+                    document.getElementById('cf-turnstile-response').value = "";
+                    document.getElementById('generate-btn').disabled = true;
+
+                    const msg = document.createElement('div');
+                    msg.id = 'captcha-loading-message';
+                    msg.className = 'text-gray-600 text-sm mb-2';
+                    msg.innerText = "⏳ Verifying CAPTCHA... Please wait.";
+                    document.getElementById('turnstile-widget').after(msg);
+                }, 500);
+            })
+            .catch(error => {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('error').classList.remove('hidden');
+                document.getElementById('error').querySelector('p').textContent = 'Error: ' + error.message;
+                console.error('❌ Image generation error:', error);
+            });
+    });
+
+    // Download function
+    function downloadImage(imagePath) {
+        if (!imagePath) return;
+        const filename = imagePath.split('/').pop();
+
+        fetch(imagePath)
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to fetch image');
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.style.display = 'none';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            })
+            .catch(error => {
+                alert('Failed to download image. Please try again later.');
+            });
+    }
+</script>
+
 
 
     {% include 'donate_button.html' %}

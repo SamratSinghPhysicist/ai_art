@@ -1379,543 +1379,216 @@
     </footer>
 
     <script>
-        // Define the onloadTurnstileCallback function globally
-        window.onloadTurnstileCallback = function () {
-            turnstile.render({
-                element: '#turnstile-widget', // Use the ID of the div
-                sitekey: '0x4AAAAAAABkwoSYoc4LgE69c', // Your sitekey
-                callback: function(token) {
-                    document.getElementById('generate-btn').disabled = false;
-                },
-                'error-callback': function() {
-                    console.error('Turnstile widget encountered an error.');
-                    // Optionally re-enable button or show error message
-                }
-            });
-        };
+// DOM Elements
+const form = document.getElementById('img2videoForm');
+const dropArea = document.getElementById('dropArea');
+const imageInput = document.getElementById('imageInput');
+const imagePreview = document.getElementById('imagePreview');
+const dropPrompt = document.getElementById('dropPrompt');
+const removeImageBtn = document.getElementById('removeImageBtn');
+const generateBtn = document.getElementById('generate-btn');
+const motionSlider = document.getElementById('motionAmount');
+const cfgSlider = document.getElementById('cfgScale');
+const seedInput = document.getElementById('seedInput');
+const motionValue = document.getElementById('motionValue');
+const cfgValue = document.getElementById('cfgValue');
+const seedValue = document.getElementById('seedValue');
+const captchaResponse = document.getElementById('cf-turnstile-response');
 
-        document.addEventListener('DOMContentLoaded', function() {
-            // DOM Elements
-            const form = document.getElementById('img2videoForm');
-            const dropArea = document.getElementById('dropArea');
-            const imageInput = document.getElementById('imageInput');
-            const imagePreview = document.getElementById('imagePreview');
-            const dropPrompt = document.getElementById('dropPrompt');
-            const removeImageBtn = document.getElementById('removeImageBtn');
-            const generateBtn = document.getElementById('generate-btn');
-            const motionSlider = document.getElementById('motionAmount');
-            const cfgSlider = document.getElementById('cfgScale');
-            const seedInput = document.getElementById('seedInput');
-            const motionValue = document.getElementById('motionValue');
-            const cfgValue = document.getElementById('cfgValue');
-            const seedValue = document.getElementById('seedValue');
-            
-            // Result states
-            const initialState = document.getElementById('initialState');
-            const loadingState = document.getElementById('loadingState');
-            const errorState = document.getElementById('errorState');
-            const successState = document.getElementById('successState');
-            const statusMessage = document.getElementById('statusMessage');
-            const errorMessage = document.getElementById('errorMessage');
-            const progressBar = document.getElementById('progressBar');
-            const generatedVideo = document.getElementById('generatedVideo');
-            const resultSeed = document.getElementById('resultSeed');
-            const resultStatus = document.getElementById('resultStatus');
-            const downloadLink = document.getElementById('downloadLink');
-            const regenerateBtn = document.getElementById('regenerateBtn');
-            const tryAgainBtn = document.getElementById('tryAgainBtn');
-            
-            // Help tooltips
-            const motionHelpTrigger = document.getElementById('motionHelpTrigger');
-            const cfgHelpTrigger = document.getElementById('cfgHelpTrigger');
-            const seedHelpTrigger = document.getElementById('seedHelpTrigger');
-            const motionHelp = document.getElementById('motionHelp');
-            const cfgHelp = document.getElementById('cfgHelp');
-            const seedHelp = document.getElementById('seedHelp');
-            
-            // Variables for generation
-            let selectedFile = null;
-            let generationId = null;
-            let pollingInterval = null;
-            let attemptCount = 0;
-            const maxAttempts = 120; // 10 minutes at 5 seconds per poll
+// Result Elements
+const initialState = document.getElementById('initialState');
+const loadingState = document.getElementById('loadingState');
+const errorState = document.getElementById('errorState');
+const successState = document.getElementById('successState');
+const statusMessage = document.getElementById('statusMessage');
+const errorMessage = document.getElementById('errorMessage');
+const progressBar = document.getElementById('progressBar');
+const generatedVideo = document.getElementById('generatedVideo');
+const resultSeed = document.getElementById('resultSeed');
+const resultStatus = document.getElementById('resultStatus');
+const downloadLink = document.getElementById('downloadLink');
+const regenerateBtn = document.getElementById('regenerateBtn');
+const tryAgainBtn = document.getElementById('tryAgainBtn');
 
-            
-            
-            // Set up tooltip triggers
-            
-            // Set up tooltip triggers
-            setupTooltips();
-            
-            // Event Listeners for image upload
-            dropArea.addEventListener('click', () => {
-                imageInput.click();
-            });
-            
-            imageInput.addEventListener('change', handleFileSelect);
-            
-            dropArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                dropArea.classList.add('drag-over');
-            });
-            
-            dropArea.addEventListener('dragleave', () => {
-                dropArea.classList.remove('drag-over');
-            });
-            
-            dropArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropArea.classList.remove('drag-over');
-                
-                if (e.dataTransfer.files.length) {
-                    imageInput.files = e.dataTransfer.files;
-                    handleFileSelect();
-                }
-            });
-            
-            removeImageBtn.addEventListener('click', () => {
-                // Clear image
-                imageInput.value = '';
-                imagePreview.classList.add('hidden');
-                dropPrompt.classList.remove('hidden');
-                removeImageBtn.classList.add('hidden');
-                selectedFile = null;
-            });
-            
-            // Event listeners for parameter controls
-            motionSlider.addEventListener('input', () => {
-                motionValue.textContent = motionSlider.value;
-                updateSliderBackground(motionSlider);
-            });
-            
-            cfgSlider.addEventListener('input', () => {
-                cfgValue.textContent = parseFloat(cfgSlider.value).toFixed(1);
-                updateSliderBackground(cfgSlider);
-            });
-            
-            seedInput.addEventListener('input', () => {
-                seedValue.textContent = seedInput.value > 0 ? seedInput.value : 'Random';
-            });
-            
-            // Initialize slider backgrounds
-            updateSliderBackground(motionSlider);
-            updateSliderBackground(cfgSlider);
+let selectedFile = null;
+let generationId = null;
+let pollingInterval = null;
+let attemptCount = 0;
+const maxAttempts = 15;
 
+window.turnstileReady = false;
+let turnstileWidgetId = null;
 
+window.onload = function () {
+  turnstileWidgetId = turnstile.render('#turnstile-widget', {
+    sitekey: '0x4AAAAAABkwoSYoc4LgE69c',    // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
+    callback: function (token) {
+      captchaResponse.value = token;
+      window.turnstileReady = true;
+      generateBtn.disabled = false;
+      document.getElementById('captcha-loading-message')?.remove();
+    },
+    'error-callback': function () {
+      console.error('Turnstile verification error');
+      window.turnstileReady = false;
+    }
+  });
+};
 
-            window.turnstileReady = false;
+function resetTurnstile() {
+  turnstile.reset(turnstileWidgetId);
+  window.turnstileReady = false;
+  captchaResponse.value = '';
+  generateBtn.disabled = true;
 
-  window.onload = function () {
-    // Render Turnstile
-    turnstile.render('#turnstile-widget', {
-      sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
-      callback: function (token) {
-        // console.log("Turnstile token received:", token);
-        document.getElementById('cf-turnstile-response').value = token;
-        window.turnstileReady = true;
-        document.getElementById('generate-btn').disabled = false;
-        document.getElementById('captcha-loading-message')?.remove(); // remove message if present
-      },
-      'error-callback': function () {
-        console.error("Turnstile failed.");
-        window.turnstileReady = false;
-      }
-    })};
-            
-            // Form submission
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
+  const message = document.createElement('div');
+  message.id = 'captcha-loading-message';
+  message.className = 'text-gray-600 text-sm mb-2';
+  message.innerText = '⏳ Verifying CAPTCHA... Please wait.';
+  document.getElementById('turnstile-widget').after(message);
+}
 
+// Handle file preview and validation
+imageInput.addEventListener('change', handleFileSelect);
+dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('drag-over'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag-over'));
+dropArea.addEventListener('drop', e => {
+  e.preventDefault();
+  dropArea.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) {
+    imageInput.files = e.dataTransfer.files;
+    handleFileSelect();
+  }
+});
+function handleFileSelect() {
+  const file = imageInput.files[0];
+  if (!file) return;
 
-                // ✅ Prevent submission if token not ready
-  if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').value) {
+  const validTypes = ['image/jpeg', 'image/png'];
+  if (!validTypes.includes(file.type)) return alert('Invalid image type. Only JPG/PNG allowed.');
+  if (file.size > 10 * 1024 * 1024) return alert('Max 10MB allowed.');
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    imagePreview.src = e.target.result;
+    imagePreview.classList.remove('hidden');
+    dropPrompt.classList.add('hidden');
+    removeImageBtn.classList.remove('hidden');
+    selectedFile = file;
+  };
+  reader.readAsDataURL(file);
+}
+
+removeImageBtn.addEventListener('click', () => {
+  imageInput.value = '';
+  imagePreview.classList.add('hidden');
+  dropPrompt.classList.remove('hidden');
+  removeImageBtn.classList.add('hidden');
+  selectedFile = null;
+});
+
+// Form submit
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  if (!window.turnstileReady || !captchaResponse.value) {
     alert("Turnstile verification is still in progress. Please wait...");
     return;
   }
-                
-                // Get login required alert element
-                const loginRequiredAlert = document.getElementById('login-required-alert');
 
-                // Hide all alerts and loading indicators at the start
-                initialState.classList.add('hidden');
-                loadingState.classList.add('hidden');
-                errorState.classList.add('hidden');
-                successState.classList.add('hidden');
-                document.getElementById('moderationAlert').classList.add('hidden'); // Assuming moderationAlert exists
-                loginRequiredAlert.classList.add('hidden'); // Hide login alert
+  if (!selectedFile) return alert('Please upload an image');
 
+  showLoadingState('Uploading and verifying image...');
 
+  const formData = new FormData();
+  formData.append('image', selectedFile);
+  formData.append('motion_bucket_id', motionSlider.value);
+  formData.append('cfg_scale', cfgSlider.value);
+  formData.append('seed', seedInput.value);
+  formData.append('cf_turnstile_response', captchaResponse.value);
 
-                if (!selectedFile) {
-                    showError('Please select an image to convert to video');
-                    return;
-                }
-                
-                startGeneration();
-            });
-            
-            // Result actions
-            regenerateBtn.addEventListener('click', () => {
-                // Reset to initial state
-                showInitialState();
-            });
-            
-            tryAgainBtn.addEventListener('click', () => {
-                // Reset to initial state
-                showInitialState();
-            });
-            
-            // Setup tooltip functionality
-            function setupTooltips() {
-                // Set up tooltip triggers
-                motionHelpTrigger.addEventListener('click', () => {
-                    toggleHelp(motionHelp);
-                });
-                
-                cfgHelpTrigger.addEventListener('click', () => {
-                    toggleHelp(cfgHelp);
-                });
-                
-                seedHelpTrigger.addEventListener('click', () => {
-                    toggleHelp(seedHelp);
-                });
-            }
-            
-            function toggleHelp(helpElement) {
-                if (helpElement.style.display === 'block') {
-                    helpElement.style.display = 'none';
-                } else {
-                    // Hide all help elements first
-                    [motionHelp, cfgHelp, seedHelp].forEach(el => {
-                        if (el) el.style.display = 'none';
-                    });
-                    // Show the selected help
-                    helpElement.style.display = 'block';
-                }
-            }
-            
-            // Update slider background gradient to show position
-            function updateSliderBackground(slider) {
-                const min = slider.min || 0;
-                const max = slider.max || 100;
-                const value = slider.value;
-                
-                // Calculate percentage
-                const percentage = ((value - min) / (max - min)) * 100;
-                
-                // Update background
-                slider.style.background = `linear-gradient(to right, var(--primary) 0%, var(--primary) ${percentage}%, #e5e7eb ${percentage}%, #e5e7eb 100%)`;
-            }
-            
-            function handleFileSelect() {
-                const file = imageInput.files[0];
-                
-                if (file) {
-                    // Validate file type
-                    const validTypes = ['image/jpeg', 'image/png'];
-                    if (!validTypes.includes(file.type)) {
-                        showError(`Please select a valid image file (JPG or PNG). The file type "${file.type}" is not supported.`);
-                        return;
-                    }
-                    
-                    // Validate file size (max 10MB)
-                    if (file.size > 10 * 1024 * 1024) {
-                        showError('Image size should be less than 10MB');
-                        return;
-                    }
-                    
-                    // Validate file extension
-                    const fileName = file.name.toLowerCase();
-                    const fileExt = fileName.split('.').pop();
-                    if (!['jpg', 'jpeg', 'png'].includes(fileExt)) {
-                        showError(`Invalid file extension: .${fileExt}. Please use .jpg, .jpeg, or .png`);
-                        return;
-                    }
-                    
-                    // Add loading animation to drop area
-                    dropArea.classList.add('loading');
-                    
-                    // Preview the image
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        // Create a new Image object to check if the image can be loaded
-                        const img = new Image();
-                        img.onload = function() {
-                            // Image loaded successfully
-                            dropArea.classList.remove('loading');
-                            imagePreview.src = e.target.result;
-                            imagePreview.classList.remove('hidden');
-                            dropPrompt.classList.add('hidden');
-                            removeImageBtn.classList.remove('hidden');
-                            selectedFile = file;
-                            
-                            // Show a subtle animation
-                            imagePreview.style.opacity = '0';
-                            setTimeout(() => {
-                                imagePreview.style.opacity = '1';
-                                imagePreview.style.transition = 'opacity 0.3s ease';
-                            }, 10);
-                        };
-                        img.onerror = function() {
-                            dropArea.classList.remove('loading');
-                            showError('The selected file appears to be corrupted or is not a valid image.');
-                        };
-                        img.src = e.target.result;
-                    };
-                    reader.onerror = function() {
-                        dropArea.classList.remove('loading');
-                        showError('Failed to read the image file. Please try another file.');
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-            
-            function showInitialState() {
-                initialState.classList.remove('hidden');
-                loadingState.classList.add('hidden');
-                errorState.classList.add('hidden');
-                successState.classList.add('hidden');
-                
-                // Reset progress
-                progressBar.style.width = '0%';
-                attemptCount = 0;
-                
-                // Stop any ongoing polling
-                clearInterval(pollingInterval);
-            }
-            
-            function showLoadingState(message) {
-                initialState.classList.add('hidden');
-                loadingState.classList.remove('hidden');
-                errorState.classList.add('hidden');
-                successState.classList.add('hidden');
-                
-                statusMessage.textContent = message || 'Starting video generation...';
-                
-                // Add a subtle loading animation
-                progressBar.style.transition = 'width 0.5s ease';
-                setTimeout(() => {
-                    progressBar.style.width = '30%';
-                }, 300);
-            }
-            
-            function showErrorState(message) {
-                initialState.classList.add('hidden');
-                loadingState.classList.add('hidden');
-                errorState.classList.remove('hidden');
-                successState.classList.add('hidden');
-                
-                errorMessage.textContent = message || 'An error occurred';
-            }
-            
-            function showSuccessState(videoUrl, seed, status, dimensions) {
-                initialState.classList.add('hidden');
-                loadingState.classList.add('hidden');
-                errorState.classList.add('hidden');
-                successState.classList.remove('hidden');
-                
-                // Set video source
-                generatedVideo.src = videoUrl;
-                
-                // Set download link
-                downloadLink.href = videoUrl;
-                
-                // Set result info
-                resultSeed.textContent = seed || 'Random';
-                resultStatus.textContent = status || 'Success';
-                
-                // Add dimensions to generation info if available
-                if (dimensions) {
-                    const dimensionsInfo = document.getElementById('dimensionsInfo');
-                    if (dimensionsInfo) {
-                        dimensionsInfo.textContent = dimensions;
-                    } else {
-                        const newDimensionsInfo = document.createElement('div');
-                        newDimensionsInfo.className = 'info-item';
-                        newDimensionsInfo.innerHTML = `\n                            <span class="info-label">Dimensions:</span>\n                            <span class="info-value" id="dimensionsInfo">${dimensions}</span>\n                        `;
-                        document.querySelector('.generation-info').appendChild(newDimensionsInfo);
-                    }
-                }
-            }
-            
-            function showError(message) {
-                // Display error message in the UI instead of using alert
-                showErrorState(message);
-            }
-            
-            function startGeneration() {
-                // Show loading state
-                showLoadingState();
-                
-                // Get form values
-                const motionBucketId = parseInt(motionSlider.value);
-                const cfgScale = parseFloat(cfgSlider.value);
-                const seed = parseInt(seedInput.value) || 0;
-                
-                // Create form data for the request
-                const formData = new FormData();
-                formData.append('image', selectedFile);
-                formData.append('motion_bucket_id', motionBucketId);
-                formData.append('cfg_scale', cfgScale);
-                formData.append('seed', seed);
+  fetch('/get-api-token')
+    .then(res => res.json())
+    .then(tokenData => {
+      return fetch('/img2video-ui', {
+        method: 'POST',
+        headers: { 'x-access-token': tokenData.token },
+        body: formData
+      });
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        generationId = data.id;
+        startPolling();
+        resetTurnstile();
+      } else {
+        showErrorState(data.error || 'Generation failed.');
+      }
+    })
+    .catch(err => {
+      showErrorState('Network error: ' + err.message);
+    });
+});
 
-                const token = document.getElementById('cf-turnstile-response').value;
-            formData.append('cf_turnstile_response', token);
+function startPolling() {
+  attemptCount = 0;
+  pollingInterval = setInterval(checkGenerationStatus, 5000);
+  checkGenerationStatus();
+}
 
+function checkGenerationStatus() {
+  attemptCount++;
+  progressBar.style.width = `${(attemptCount / maxAttempts) * 100}%`;
+  statusMessage.textContent = `Checking... (${attemptCount}/${maxAttempts})`;
 
-                // Add Turnstile response to form data
-                const turnstileResponse = document.querySelector('[name="cf-turnstile-response"]');
-                if (turnstileResponse) {
-                    formData.append('cf-turnstile-response', turnstileResponse.value);
-                }
-                
-                // Get API token first, then send request
-                fetch('/get-api-token')
-                .then(response => response.json())
-                .then(tokenData => {
-                    if (!tokenData.token) {
-                        throw new Error('Could not retrieve API token.');
-                    }
-                    window.apiToken = tokenData.token;
+  if (attemptCount >= maxAttempts) {
+    clearInterval(pollingInterval);
+    showErrorState('Generation timed out.');
+    return;
+  }
 
-                    // Send the request - do NOT set Content-Type header, browser will set it automatically with boundary
-                    fetch('/img2video-ui', {
-                        method: 'POST',
-                        headers: {
-                            'x-access-token': window.apiToken
-                        },
-                        body: formData
-                    })
-                .then(response => {
-                    if (!response.ok) {
-                        return response.json().then(errData => {
-                            // Special handling for payment required errors
-                            if (response.status === 402 || (errData.error_type && errData.error_type === 'payment_required')) {
-                                throw new Error('Insufficient API credits. The service is currently unavailable due to API credit limitations. Please try again later.');
-                            }
-                            throw new Error(errData.error || `Server error: ${response.status}`);
-                        });
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success) {
-                        // Store the generation ID for polling
-                        generationId = data.id;
-                        
-                        // Update status message with resized dimensions info
-                        if (data.dimensions) {
-                            statusMessage.textContent = `Image resized to ${data.dimensions}. Starting video generation...`;
-                        }
-                        
-                        // Start polling for results
-                        startPolling();
-                    } else {
-                        showErrorState(data.error || 'Failed to start video generation');
-                    }
-                })
-                .catch(error => {
-                    showErrorState(error.message || 'Network error: Failed to connect to the server');
-                    console.error('Error during video generation request:', error);
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching API token for video generation:', error);
-                showErrorState('Error fetching API token: ' + error.message);
-            });
-            }
-            
-            function startPolling() {
-                // Start polling immediately
-                attemptCount = 0;
-                checkGenerationStatus();
-                
-                // Then set up interval
-                pollingInterval = setInterval(checkGenerationStatus, 5000);
-            }
-            
-            function checkGenerationStatus() {
-                // Update progress indicator
-                attemptCount++;
-                const progress = Math.min((attemptCount / maxAttempts) * 100, 99);
-                progressBar.style.width = `${progress}%`;
-                
-                // Update status message
-                statusMessage.textContent = `Checking video status... (attempt ${attemptCount}/${maxAttempts})`;
-                
-                // Check if we've hit the maximum attempts
-                if (attemptCount >= maxAttempts) {
-                    clearInterval(pollingInterval);
-                    showErrorState('Generation timed out after 10 minutes');
-                    return;
-                }
-                
-                // Make the API call to check status
-                fetch(`/ui/img2video/result/${generationId}`, {
-                    headers: {
-                        'x-access-token': window.apiToken
-                    }
-                })
-                .then(response => {
-                    // Check if still in progress (202)
-                    if (response.status === 202) {
-                        return { status: 'in-progress' };
-                    }
-                    
-                    // Check for payment required error (402)
-                    if (response.status === 402) {
-                        return response.json().then(data => {
-                            throw new Error('Insufficient API credits. The service is currently unavailable due to API credit limitations. Please try again later.');
-                        });
-                    }
-                    
-                    // Otherwise parse the JSON response
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.status === 'in-progress') {
-                        // Still in progress, continue polling
-                        return;
-                    } else if (data.status === 'retry') {
-                        // API key was refreshed, continue polling
-                        statusMessage.textContent = data.message || 'API key refreshed. Continuing...';
-                        return;
-                    } else if (data.status === 'complete') {
-                        // Generation complete, stop polling and show the result
-                        clearInterval(pollingInterval);
-                        showSuccessState(data.video_url, data.seed, data.finish_reason, data.dimensions);
-                    } else if (data.status === 'error') {
-                        // Error occurred
-                        clearInterval(pollingInterval);
-                        console.error('Error status received from API:', data.error);
-                        
-                        // Special handling for payment required errors
-                        if (data.error_type && data.error_type === 'payment_required') {
-                            showErrorState('Insufficient API credits. The service is currently unavailable due to API credit limitations. Please try again later.');
-                        } else {
-                            showErrorState(data.error || 'An error occurred during video generation');
-                        }
-                    } else {
-                        // Unknown status
-                        clearInterval(pollingInterval);
-                        console.error('Unknown status received from API:', data);
-                        showErrorState(data.error || 'An error occurred during video generation');
-                    }
-                })
-                .catch(error => {
-                    // Special handling for known error types
-                    if (error.message && error.message.includes('Insufficient API credits')) {
-                        clearInterval(pollingInterval);
-                        showErrorState(error.message);
-                    } else {
-                        // Don't stop polling on network errors, they might be temporary
-                        statusMessage.textContent = `Network error, retrying... (attempt ${attemptCount}/${maxAttempts})`;
-                        console.error('Error during video status check:', error);
-                    }
-                });
-            }
-        });
-    </script>
+  fetch(`/ui/img2video/result/${generationId}`, {
+    headers: { 'x-access-token': window.apiToken }
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'complete') {
+        clearInterval(pollingInterval);
+        showSuccessState(data.video_url, data.seed, data.finish_reason, data.dimensions);
+      }
+    })
+    .catch(err => {
+      console.error('Polling error:', err);
+    });
+}
+
+function showLoadingState(msg) {
+  initialState.classList.add('hidden');
+  loadingState.classList.remove('hidden');
+  errorState.classList.add('hidden');
+  successState.classList.add('hidden');
+  statusMessage.textContent = msg || 'Generating...';
+}
+
+function showErrorState(msg) {
+  initialState.classList.add('hidden');
+  loadingState.classList.add('hidden');
+  errorState.classList.remove('hidden');
+  errorMessage.textContent = msg || 'Something went wrong.';
+}
+
+function showSuccessState(videoUrl, seed, reason, dimensions) {
+  loadingState.classList.add('hidden');
+  successState.classList.remove('hidden');
+  generatedVideo.src = videoUrl;
+  resultSeed.textContent = seed;
+  resultStatus.textContent = reason;
+  downloadLink.href = videoUrl;
+  if (dimensions) document.getElementById('dimensionsInfo').textContent = dimensions;
+  resetTurnstile();
+}
+</script>
+
 
     <!-- Floating Donate Button -->
     {% include 'donate_button.html' %}
