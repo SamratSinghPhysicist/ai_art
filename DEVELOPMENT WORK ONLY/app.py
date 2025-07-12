@@ -155,17 +155,19 @@ def token_required(f):
                 # Clean up old requests
                 app.config['anonymous_requests'][user_id] = [t for t in app.config['anonymous_requests'][user_id] if now - t < timedelta(days=1)]
                 
-                # Enforce a limit (e.g., 10 requests per day)
-                if len(app.config['anonymous_requests'][user_id]) >= 10:
-                    return jsonify({'error': 'Free generation limit reached. Please log in to continue.'}), 429 # Too Many Requests
-                
+                # Enforce a limit (e.g., 20 requests per day for anonymous users)
+                if len(app.config['anonymous_requests'][user_id]) >= 20: # Increased limit to 20 for free generations
+                    return jsonify({'error': 'Free generation limit reached. Please log in to continue or try again tomorrow'}), 429 # Too Many Requests
+                                            
                 app.config['anonymous_requests'][user_id].append(now)
 
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token has expired.'}), 401
         except jwt.InvalidTokenError:
             return jsonify({'error': 'Token is invalid.'}), 401
-
+        except Exception as e: # Add a general exception handler
+            app.logger.error(f"Error in token_required: {e}")
+            return jsonify({'error': 'An unexpected error occurred during token validation.'}), 500
         return f(*args, **kwargs)
     return decorated_function
 
@@ -1319,7 +1321,6 @@ def donate():
 @app.route('/img2video-ui', methods=['POST'])
 @token_required
 def img2video_generate():
-
     """API endpoint to generate a video from an image"""
     # Turnstile verification
     turnstile_token = request.form.get('cf_turnstile_response')
@@ -1329,13 +1330,22 @@ def img2video_generate():
     if not verify_turnstile(turnstile_token, client_ip):
         return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
         
+    temp_image_path = None # Initialize temp_image_path here for cleanup in outer except
+
     try:
         # Check if a video generation is already in progress for this session
-        if session.get('active_video_generation_id'):
-            return jsonify({
-                'error': 'A video is already being generated. Please wait for the current request to complete before starting a new one.',
-                'error_type': 'generation_in_progress'
-            }), 409 # Conflict status code
+        active_gen_info = session.get('active_video_generation_id')
+        if active_gen_info:
+            # Check if the active generation is stale (e.g., older than 10 minutes)
+            generation_timestamp = active_gen_info.get('timestamp')
+            if generation_timestamp and (datetime.utcnow() - generation_timestamp) > timedelta(minutes=30): # Increased timeout to 30 minutes
+                print("Stale video generation detected, clearing session.")
+                session.pop('active_video_generation_id', None)
+            else:
+                return jsonify({
+                    'error': 'A video is already being generated. Please wait for the current request to complete before starting a new one.',
+                    'error_type': 'generation_in_progress'
+                }), 409 # Conflict status code
             
         # Check if file was uploaded
         if 'image' not in request.files:
@@ -1377,89 +1387,83 @@ def img2video_generate():
         except ValueError:
             motion_bucket_id = 127
         
-        if file:
-            # Create processed_videos directory if it doesn't exist
-            if not os.path.exists(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos')):
-                os.makedirs(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos'), exist_ok=True)
+        # Create processed_videos directory if it doesn't exist
+        if not os.path.exists(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos')):
+            os.makedirs(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos'), exist_ok=True)
+        
+        # Create a safe filename
+        safe_filename = f"temp_{uuid.uuid4().hex}.{file_ext}"
+        temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+        
+        # Save the file
+        file.save(temp_image_path)
+        
+        # Validate the image can be opened
+        from PIL import Image
+        with Image.open(temp_image_path) as img:
+            # Just checking it can be opened
+            img_width, img_height = img.size
+            print(f"Received image with dimensions: {img_width}x{img_height}")
+        
+        # Import the img2video function
+        from img2video_stability import img2video, get_api_key
+        
+        # Get API key from the database (oldest available key)
+        api_key = get_api_key()
+        if not api_key:
+            return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
+        
+        # Start the video generation
+        generation_id, dimensions, api_key = img2video(
+            api_key=api_key,
+            image_path=temp_image_path,
+            seed=seed,
+            cfg_scale=cfg_scale,
+            motion_bucket_id=motion_bucket_id
+        )
+        
+        # Store dimensions in session for later retrieval
+        session[f'img2video_dimensions_{generation_id}'] = dimensions
+        # Store API key in session for later use (polling)
+        session[f'img2video_api_key_{generation_id}'] = api_key
+        # Set the active generation ID in session with a timestamp
+        session['active_video_generation_id'] = {
+            'id': generation_id,
+            'timestamp': datetime.utcnow()
+        }
+        
+        # Clean up the temporary file
+        os.remove(temp_image_path)
+        
+        # Return the generation ID to poll for results
+        return jsonify({
+            'success': True,
+            'id': generation_id,
+            'message': f'Video generation started. Image automatically resized to {dimensions}. Poll for results using the returned ID.',
+            'dimensions': dimensions
+        })
             
-            # Create a safe filename
-            safe_filename = f"temp_{uuid.uuid4().hex}.{file_ext}"
-            temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
-            
-            try:
-                # Save the file
-                file.save(temp_image_path)
-                
-                # Validate the image can be opened
-                try:
-                    from PIL import Image
-                    with Image.open(temp_image_path) as img:
-                        # Just checking it can be opened
-                        img_width, img_height = img.size
-                        print(f"Received image with dimensions: {img_width}x{img_height}")
-                except Exception as img_error:
-                    raise ValueError(f"Invalid image file: {str(img_error)}")
-                
-                # Import the img2video function
-                from img2video_stability import img2video, get_api_key
-                
-                # Get API key from the database (oldest available key)
-                api_key = get_api_key()
-                if not api_key:
-                    return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
-                
-                try:
-                    # Start the video generation
-                    generation_id, dimensions, api_key = img2video(
-                        api_key=api_key,
-                        image_path=temp_image_path,
-                        seed=seed,
-                        cfg_scale=cfg_scale,
-                        motion_bucket_id=motion_bucket_id
-                    )
-                    
-                    # Store dimensions in session for later retrieval
-                    session[f'img2video_dimensions_{generation_id}'] = dimensions
-                    # Store API key in session for later use (polling)
-                    session[f'img2video_api_key_{generation_id}'] = api_key
-                    # Set the active generation ID in session
-                    session['active_video_generation_id'] = generation_id
-                    
-                    # Clean up the temporary file
-                    os.remove(temp_image_path)
-                    
-                    # Return the generation ID to poll for results
-                    return jsonify({
-                        'success': True,
-                        'id': generation_id,
-                        'message': f'Video generation started. Image automatically resized to {dimensions}. Poll for results using the returned ID.',
-                        'dimensions': dimensions
-                    })
-                except Exception as e:
-                    error_str = str(e)
-                    if "402" in error_str and "credits" in error_str.lower():
-                        # Special handling for payment required errors
-                        return jsonify({
-                            'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
-                            'error_type': 'payment_required'
-                        }), 402
-                    else:
-                        raise e
-                
-            except Exception as e:
-                # Clean up temporary file if it exists
-                if os.path.exists(temp_image_path):
-                    os.remove(temp_image_path)
-                
-                print(f"Error in image-to-video generation: {str(e)}")
-                return jsonify({'error': str(e)}), 500
-    except Exception as e:
-        print(f"Unexpected error in image-to-video API: {str(e)}")
-        return jsonify({'error': f"An unexpected error occurred: {str(e)}"}), 500
+    except Exception as e: # Main except block for the entire function
+        # Clean up temporary file if it exists
+        if temp_image_path and os.path.exists(temp_image_path):
+            os.remove(temp_image_path)
+        
+        # Clear the active generation ID from session on any error
+        if 'active_video_generation_id' in session:
+            session.pop('active_video_generation_id', None)
+        
+        error_str = str(e)
+        print(f"Error in image-to-video generation: {error_str}")
+        if "402" in error_str and "credits" in error_str.lower():
+            return jsonify({
+                'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
+                'error_type': 'payment_required'
+            }), 402
+        else:
+            return jsonify({'error': error_str}), 500
 
 
 @app.route('/ui/img2video/result/<generation_id>', methods=['GET'])
-@token_required
 def img2video_result(generation_id):
 
     """API endpoint to check the status of a video generation or retrieve the result"""
@@ -1518,7 +1522,10 @@ def img2video_result(generation_id):
                 session.pop(f'img2video_api_key_{generation_id}')
             
             # Clear the active generation ID from session on successful completion
-            if session.get('active_video_generation_id') == generation_id:
+            active_gen_info = session.get('active_video_generation_id')
+            if isinstance(active_gen_info, dict) and active_gen_info.get('id') == generation_id:
+                session.pop('active_video_generation_id')
+            elif active_gen_info == generation_id: # For old format
                 session.pop('active_video_generation_id')
 
             # Return the success response with the video URL
@@ -1531,6 +1538,13 @@ def img2video_result(generation_id):
             }), 200
         except Exception as e:
             error_str = str(e)
+            # Clear the active generation ID from session on any error during result retrieval
+            active_gen_info = session.get('active_video_generation_id')
+            if isinstance(active_gen_info, dict) and active_gen_info.get('id') == generation_id:
+                session.pop('active_video_generation_id', None)
+            elif active_gen_info == generation_id: # For old format
+                session.pop('active_video_generation_id', None)
+
             if "402" in error_str and "credits" in error_str.lower():
                 # Try with a new API key
                 new_api_key = get_api_key()
@@ -1552,21 +1566,36 @@ def img2video_result(generation_id):
         
     except Exception as e:
         print(f"Error checking image-to-video status: {str(e)}")
+        # Clear the active generation ID from session on unexpected errors
+        active_gen_info = session.get('active_video_generation_id')
+        if isinstance(active_gen_info, dict) and active_gen_info.get('id') == generation_id:
+            session.pop('active_video_generation_id', None)
+        elif active_gen_info == generation_id: # For old format
+            session.pop('active_video_generation_id', None)
         return jsonify({'error': str(e), 'status': 'error'}), 500
 
 
 
 @app.route('/api/img2video', methods=['POST'])
-@limiter.limit("100/day")  # Apply rate limit: 100 requests per day per IP for UI users
+@limiter.limit("500/day")  # Apply rate limit: 500 requests per day per IP for UI users
 def api_img2video_generate():
     """API endpoint to generate a video from an image"""
+    temp_image_path = None # Initialize temp_image_path here for cleanup in outer except
+
     try:
         # Check if a video generation is already in progress for this session
-        if session.get('active_video_generation_id'):
-            return jsonify({
-                'error': 'A video is already being generated. Please wait for the current request to complete before starting a new one.',
-                'error_type': 'generation_in_progress'
-            }), 409 # Conflict status code
+        active_gen_info = session.get('active_video_generation_id')
+        if active_gen_info:
+            # Check if the active generation is stale (e.g., older than 10 minutes)
+            generation_timestamp = active_gen_info.get('timestamp')
+            if generation_timestamp and (datetime.utcnow() - generation_timestamp) > timedelta(minutes=30): # Increased timeout to 30 minutes
+                print("Stale video generation detected, clearing session.")
+                session.pop('active_video_generation_id', None)
+            else:
+                return jsonify({
+                    'error': 'A video is already being generated. Please wait for the current request to complete before starting a new one.',
+                    'error_type': 'generation_in_progress'
+                }), 409 # Conflict status code
             
         # Check if file was uploaded
         if 'image' not in request.files:
@@ -1608,85 +1637,80 @@ def api_img2video_generate():
         except ValueError:
             motion_bucket_id = 127
         
-        if file:
-            # Create processed_videos directory if it doesn't exist
-            if not os.path.exists(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos')):
-                os.makedirs(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos'), exist_ok=True)
+        # Create processed_videos directory if it doesn't exist
+        if not os.path.exists(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos')):
+            os.makedirs(app.config.get('PROCESSED_VIDEOS_FOLDER', 'processed_videos'), exist_ok=True)
+        
+        # Create a safe filename
+        safe_filename = f"temp_{uuid.uuid4().hex}.{file_ext}"
+        temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
+        
+        # Save the file
+        file.save(temp_image_path)
+        
+        # Validate the image can be opened
+        from PIL import Image
+        with Image.open(temp_image_path) as img:
+            # Just checking it can be opened
+            img_width, img_height = img.size
+            print(f"Received image with dimensions: {img_width}x{img_height}")
+        
+        # Import the img2video function
+        from img2video_stability import img2video, get_api_key
+        
+        # Get API key from the database (oldest available key)
+        api_key = get_api_key()
+        if not api_key:
+            return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
+        
+        # Start the video generation
+        generation_id, dimensions, api_key = img2video(
+            api_key=api_key,
+            image_path=temp_image_path,
+            seed=seed,
+            cfg_scale=cfg_scale,
+            motion_bucket_id=motion_bucket_id
+        )
+        
+        # Store dimensions in session for later retrieval
+        session[f'img2video_dimensions_{generation_id}'] = dimensions
+        # Store API key in session for later use (polling)
+        session[f'img2video_api_key_{generation_id}'] = api_key
+        # Set the active generation ID in session with a timestamp
+        session['active_video_generation_id'] = {
+            'id': generation_id,
+            'timestamp': datetime.utcnow()
+        }
+        
+        # Clean up the temporary file
+        os.remove(temp_image_path)
+        
+        # Return the generation ID to poll for results
+        return jsonify({
+            'success': True,
+            'id': generation_id,
+            'message': f'Video generation started. Image automatically resized to {dimensions}. Poll for results using the returned ID.',
+            'dimensions': dimensions
+        })
             
-            # Create a safe filename
-            safe_filename = f"temp_{uuid.uuid4().hex}.{file_ext}"
-            temp_image_path = os.path.join(app.config['UPLOAD_FOLDER'], safe_filename)
-            
-            try:
-                # Save the file
-                file.save(temp_image_path)
-                
-                # Validate the image can be opened
-                try:
-                    from PIL import Image
-                    with Image.open(temp_image_path) as img:
-                        # Just checking it can be opened
-                        img_width, img_height = img.size
-                        print(f"Received image with dimensions: {img_width}x{img_height}")
-                except Exception as img_error:
-                    raise ValueError(f"Invalid image file: {str(img_error)}")
-                
-                # Import the img2video function
-                from img2video_stability import img2video, get_api_key
-                
-                # Get API key from the database (oldest available key)
-                api_key = get_api_key()
-                if not api_key:
-                    return jsonify({'error': 'No Stability AI API keys available. Please add keys to the database.'}), 500
-                
-                try:
-                    # Start the video generation
-                    generation_id, dimensions, api_key = img2video(
-                        api_key=api_key,
-                        image_path=temp_image_path,
-                        seed=seed,
-                        cfg_scale=cfg_scale,
-                        motion_bucket_id=motion_bucket_id
-                    )
-                    
-                    # Store dimensions in session for later retrieval
-                    session[f'img2video_dimensions_{generation_id}'] = dimensions
-                    # Store API key in session for later use (polling)
-                    session[f'img2video_api_key_{generation_id}'] = api_key
-                    # Set the active generation ID in session
-                    session['active_video_generation_id'] = generation_id
-                    
-                    # Clean up the temporary file
-                    os.remove(temp_image_path)
-                    
-                    # Return the generation ID to poll for results
-                    return jsonify({
-                        'success': True,
-                        'id': generation_id,
-                        'message': f'Video generation started. Image automatically resized to {dimensions}. Poll for results using the returned ID.',
-                        'dimensions': dimensions
-                    })
-                except Exception as e:
-                    error_str = str(e)
-                    if "402" in error_str and "credits" in error_str.lower():
-                        # Special handling for payment required errors
-                        return jsonify({
-                            'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
-                            'error_type': 'payment_required'
-                        }), 402
-                    else:
-                        raise e
-                
-            except Exception as e:
-                # Clean up temporary file if it exists
-                if os.path.exists(temp_image_path):
-                    os.remove(temp_image_path)
-                
-                print(f"Error in image-to-video generation: {str(e)}")
-                return jsonify({'error': str(e)}), 500
-    except Exception as e:
-        print(f"Unexpected error in image-to-video API: {str(e)}")
-        return jsonify({'error': f"An unexpected error occurred: {str(e)}"}), 500
+    except Exception as e: # Main except block for the entire function
+        # Clean up temporary file if it exists
+        if temp_image_path and os.path.exists(temp_image_path):
+            os.remove(temp_image_path)
+        
+        # Clear the active generation ID from session on any error
+        if 'active_video_generation_id' in session:
+            session.pop('active_video_generation_id', None)
+        
+        error_str = str(e)
+        print(f"Unexpected error in image-to-video API: {error_str}")
+        if "402" in error_str and "credits" in error_str.lower():
+            return jsonify({
+                'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
+                'error_type': 'payment_required'
+            }), 402
+        else:
+            return jsonify({'error': f"An unexpected error occurred: {error_str}"}), 500
 
 @app.route('/api/img2video/result/<generation_id>', methods=['GET'])
 def api_img2video_result(generation_id):
@@ -1746,7 +1770,10 @@ def api_img2video_result(generation_id):
                 session.pop(f'img2video_api_key_{generation_id}')
             
             # Clear the active generation ID from session on successful completion
-            if session.get('active_video_generation_id') == generation_id:
+            active_gen_info = session.get('active_video_generation_id')
+            if isinstance(active_gen_info, dict) and active_gen_info.get('id') == generation_id:
+                session.pop('active_video_generation_id')
+            elif active_gen_info == generation_id: # For old format
                 session.pop('active_video_generation_id')
 
             # Return the success response with the video URL
@@ -1771,7 +1798,10 @@ def api_img2video_result(generation_id):
                         }), 200
                     else:
                         # Clear the active generation ID from session on final error (402)
-                        if session.get('active_video_generation_id') == generation_id:
+                        active_gen_info = session.get('active_video_generation_id')
+                        if isinstance(active_gen_info, dict) and active_gen_info.get('id') == generation_id:
+                            session.pop('active_video_generation_id')
+                        elif active_gen_info == generation_id: # For old format
                             session.pop('active_video_generation_id')
                         return jsonify({
                             'error': 'Insufficient credits on all available API keys. Please add a new API key with sufficient credits.',
@@ -1780,14 +1810,20 @@ def api_img2video_result(generation_id):
                         }), 402
             else:
                 # Clear the active generation ID from session on other errors
-                if session.get('active_video_generation_id') == generation_id:
+                active_gen_info = session.get('active_video_generation_id')
+                if isinstance(active_gen_info, dict) and active_gen_info.get('id') == generation_id:
+                    session.pop('active_video_generation_id')
+                elif active_gen_info == generation_id: # For old format
                     session.pop('active_video_generation_id')
                 raise e
         
     except Exception as e:
         print(f"Error checking image-to-video status: {str(e)}")
         # Clear the active generation ID from session on unexpected errors
-        if session.get('active_video_generation_id') == generation_id:
+        active_gen_info = session.get('active_video_generation_id')
+        if isinstance(active_gen_info, dict) and active_gen_info.get('id') == generation_id:
+            session.pop('active_video_generation_id')
+        elif active_gen_info == generation_id: # For old format
             session.pop('active_video_generation_id')
         return jsonify({'error': str(e), 'status': 'error'}), 500
 
