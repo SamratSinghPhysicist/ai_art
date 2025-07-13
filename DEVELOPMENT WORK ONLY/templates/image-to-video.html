@@ -1694,6 +1694,9 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
                 // Re-enable the generate button
                 isGenerating = false;
                 generateBtn.disabled = false;
+
+                // Reset Turnstile when returning to initial state
+                resetTurnstileAfterSubmit();
             }
             
             function showLoadingState(message) {
@@ -1722,6 +1725,9 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
                 // Re-enable the generate button
                 isGenerating = false;
                 generateBtn.disabled = false;
+
+                // Reset Turnstile after error
+                resetTurnstileAfterSubmit();
             }
             
             function showSuccessState(videoUrl, seed, status, dimensions) {
@@ -1733,6 +1739,9 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
                 // Re-enable the generate button
                 isGenerating = false;
                 generateBtn.disabled = false;
+
+                // Reset Turnstile after success
+                resetTurnstileAfterSubmit();
                 
                 // Set video source
                 generatedVideo.src = videoUrl;
@@ -1845,7 +1854,6 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
                             statusMessage.textContent = `Image resized to ${data.dimensions}. Starting video generation...`;
                         }
                         startPolling();
-                        resetTurnstileAfterSubmit();
                     } else {
                         // If the server responds with success: false
                         showErrorState(data.error || 'Failed to start video generation');
