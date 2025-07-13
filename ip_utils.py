@@ -83,11 +83,11 @@ def get_ip_history(ip):
         history.append(doc)
     return history
 
-def get_custom_rate_limit(ip):
-    """Check for a custom rate limit for a given IP."""
+def get_custom_rate_limit(ip, endpoint):
+    """Check for a custom rate limit for a given IP and endpoint."""
     if custom_rate_limits_collection is None:
         return None
-    return custom_rate_limits_collection.find_one({"ip": ip})
+    return custom_rate_limits_collection.find_one({"ip": ip, "endpoint": endpoint})
 
 def is_potential_abuser(ip):
     """

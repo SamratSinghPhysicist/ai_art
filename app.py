@@ -73,7 +73,8 @@ def log_and_block_check():
 
 def get_rate_limit():
     ip = get_client_ip()
-    custom_limit = get_custom_rate_limit(ip)
+    endpoint = request.endpoint
+    custom_limit = get_custom_rate_limit(ip, endpoint)
     if custom_limit:
         return custom_limit.get('limit_string', get_remote_address)
     return get_remote_address
@@ -262,6 +263,7 @@ def get_custom_rate_limits():
         for limit in custom_rate_limits_collection.find():
             limits.append({
                 'ip': limit['ip'],
+                'endpoint': limit['endpoint'],
                 'limit_string': limit['limit_string']
             })
     return jsonify(limits)
@@ -271,17 +273,27 @@ def get_custom_rate_limits():
 def set_custom_rate_limit():
     data = request.get_json()
     ip = data.get('ip')
+    endpoint = data.get('endpoint')
     limit_string = data.get('limit_string')
 
-    if not all([ip, limit_string]):
+    if not all([ip, endpoint, limit_string]):
         return jsonify({'success': False, 'error': 'Missing data'}), 400
 
     if custom_rate_limits_collection is not None:
-        custom_rate_limits_collection.update_one(
-            {'ip': ip},
-            {'$set': {'limit_string': limit_string}},
-            upsert=True
-        )
+        if endpoint == 'all':
+            endpoints = ['generate_image', 'api_generate_image', 'img2img_transform', 'api_img2img_transform', 'img2video_generate', 'api_img2video_generate']
+            for ep in endpoints:
+                custom_rate_limits_collection.update_one(
+                    {'ip': ip, 'endpoint': ep},
+                    {'$set': {'limit_string': limit_string}},
+                    upsert=True
+                )
+        else:
+            custom_rate_limits_collection.update_one(
+                {'ip': ip, 'endpoint': endpoint},
+                {'$set': {'limit_string': limit_string}},
+                upsert=True
+            )
         return jsonify({'success': True})
     else:
         return jsonify({'success': False, 'error': 'Database not connected'}), 500
@@ -291,16 +303,17 @@ def set_custom_rate_limit():
 def delete_custom_rate_limit():
     data = request.get_json()
     ip = data.get('ip')
+    endpoint = data.get('endpoint')
 
-    if not ip:
-        return jsonify({'success': False, 'error': 'Missing IP'}), 400
+    if not all([ip, endpoint]):
+        return jsonify({'success': False, 'error': 'Missing data'}), 400
 
     if custom_rate_limits_collection is not None:
-        result = custom_rate_limits_collection.delete_one({'ip': ip})
+        result = custom_rate_limits_collection.delete_one({'ip': ip, 'endpoint': endpoint})
         if result.deleted_count > 0:
             return jsonify({'success': True})
         else:
-            return jsonify({'success': False, 'error': 'IP not found'}), 404
+            return jsonify({'success': False, 'error': 'Rule not found'}), 404
     else:
         return jsonify({'success': False, 'error': 'Database not connected'}), 500
 
