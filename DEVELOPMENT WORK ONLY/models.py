@@ -21,11 +21,13 @@ try:
     db = client[DB_NAME]
     blocked_ips_collection = db["blocked_ips"]
     request_logs_collection = db["request_logs"]
+    custom_rate_limits_collection = db["custom_rate_limits"]
 except Exception as e:
     print(f"Error connecting to MongoDB: {e}")
     db = None
     blocked_ips_collection = None
     request_logs_collection = None
+    custom_rate_limits_collection = None
 import bcrypt
 import os
 import datetime

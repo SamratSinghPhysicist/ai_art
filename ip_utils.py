@@ -1,6 +1,6 @@
 from flask import request
 from datetime import datetime, timedelta
-from models import blocked_ips_collection, request_logs_collection
+from models import blocked_ips_collection, request_logs_collection, custom_rate_limits_collection
 
 def get_client_ip():
     """Extract client IP address from request, handling proxies."""
@@ -82,6 +82,12 @@ def get_ip_history(ip):
         doc['_id'] = str(doc['_id'])
         history.append(doc)
     return history
+
+def get_custom_rate_limit(ip):
+    """Check for a custom rate limit for a given IP."""
+    if custom_rate_limits_collection is None:
+        return None
+    return custom_rate_limits_collection.find_one({"ip": ip})
 
 def is_potential_abuser(ip):
     """

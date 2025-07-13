@@ -60,6 +60,12 @@
             </div>
         </div>
 
+        <!-- Custom Rate Limits Card -->
+        <div class="card">
+            <h2 class="text-xl font-semibold mb-4">Custom Rate Limits</h2>
+            <a href="/admin/rate-limits?secret={{ request.args.get('secret') }}" class="btn">Manage Rate Limits</a>
+        </div>
+
     </div>
 
     <script>

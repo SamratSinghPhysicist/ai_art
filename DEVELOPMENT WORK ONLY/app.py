@@ -21,7 +21,8 @@ from img2img_stability import img2img, save_image
 from img2video_stability import img2video, get_video_result
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from ip_utils import get_client_ip, is_ip_blocked, block_ip as block_ip_util, unblock_ip as unblock_ip_util, get_blocked_ips as get_blocked_ips_util, log_request, get_ip_history
+from ip_utils import get_client_ip, is_ip_blocked, block_ip as block_ip_util, unblock_ip as unblock_ip_util, get_blocked_ips as get_blocked_ips_util, log_request, get_ip_history, get_custom_rate_limit
+from models import custom_rate_limits_collection
 from functools import wraps
 import hashlib
 import time
@@ -70,9 +71,16 @@ def log_and_block_check():
     if request.endpoint in endpoints_to_log_and_check:
         log_request(ip, request.endpoint)
 
+def get_rate_limit():
+    ip = get_client_ip()
+    custom_limit = get_custom_rate_limit(ip)
+    if custom_limit:
+        return custom_limit.get('limit_string', get_remote_address)
+    return get_remote_address
+
 # Initialize Limiter with stricter limits
 limiter = Limiter(
-    get_client_ip, 
+    get_rate_limit, 
     app=app,
     default_limits=["1440 per day", "60 per hour"], # Stricter default limits
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
@@ -238,6 +246,63 @@ def ip_history(ip):
     """API endpoint to get the request history for a specific IP."""
     history = get_ip_history(ip)
     return jsonify(history)
+
+@app.route('/admin/rate-limits')
+def admin_rate_limits():
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+    return render_template('admin/rate_limits.html')
+
+@app.route('/admin/api/custom-rate-limits', methods=['GET'])
+@admin_required
+def get_custom_rate_limits():
+    limits = []
+    if custom_rate_limits_collection is not None:
+        for limit in custom_rate_limits_collection.find():
+            limits.append({
+                'ip': limit['ip'],
+                'limit_string': limit['limit_string']
+            })
+    return jsonify(limits)
+
+@app.route('/admin/api/set-custom-rate-limit', methods=['POST'])
+@admin_required
+def set_custom_rate_limit():
+    data = request.get_json()
+    ip = data.get('ip')
+    limit_string = data.get('limit_string')
+
+    if not all([ip, limit_string]):
+        return jsonify({'success': False, 'error': 'Missing data'}), 400
+
+    if custom_rate_limits_collection is not None:
+        custom_rate_limits_collection.update_one(
+            {'ip': ip},
+            {'$set': {'limit_string': limit_string}},
+            upsert=True
+        )
+        return jsonify({'success': True})
+    else:
+        return jsonify({'success': False, 'error': 'Database not connected'}), 500
+
+@app.route('/admin/api/delete-custom-rate-limit', methods=['POST'])
+@admin_required
+def delete_custom_rate_limit():
+    data = request.get_json()
+    ip = data.get('ip')
+
+    if not ip:
+        return jsonify({'success': False, 'error': 'Missing IP'}), 400
+
+    if custom_rate_limits_collection is not None:
+        result = custom_rate_limits_collection.delete_one({'ip': ip})
+        if result.deleted_count > 0:
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'IP not found'}), 404
+    else:
+        return jsonify({'success': False, 'error': 'Database not connected'}), 500
 
 def is_potential_abuser(ip):
     if request_logs_collection is None:
