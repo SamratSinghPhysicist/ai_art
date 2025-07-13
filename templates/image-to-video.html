@@ -1438,7 +1438,8 @@
             let generationId = null;
             let pollingInterval = null;
             let attemptCount = 0;
-            const maxAttempts = 20; // 100 seconds at 5 seconds per poll
+            let isGenerating = false; // Flag to track generation status
+            const maxAttempts = 10; // 50 seconds at 5 seconds per poll
 
             
             
@@ -1689,6 +1690,10 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
                 
                 // Stop any ongoing polling
                 clearInterval(pollingInterval);
+
+                // Re-enable the generate button
+                isGenerating = false;
+                generateBtn.disabled = false;
             }
             
             function showLoadingState(message) {
@@ -1713,6 +1718,10 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
                 successState.classList.add('hidden');
                 
                 errorMessage.textContent = message || 'An error occurred';
+
+                // Re-enable the generate button
+                isGenerating = false;
+                generateBtn.disabled = false;
             }
             
             function showSuccessState(videoUrl, seed, status, dimensions) {
@@ -1720,6 +1729,10 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
                 loadingState.classList.add('hidden');
                 errorState.classList.add('hidden');
                 successState.classList.remove('hidden');
+
+                // Re-enable the generate button
+                isGenerating = false;
+                generateBtn.disabled = false;
                 
                 // Set video source
                 generatedVideo.src = videoUrl;
@@ -1753,6 +1766,10 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
 
 
             function startGeneration() {
+                if (isGenerating) return; // Prevent multiple submissions
+                isGenerating = true;
+                generateBtn.disabled = true;
+
                 // Show loading state
                 showLoadingState();
                 
@@ -1944,7 +1961,9 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
             callback: function (token) {
                 document.getElementById('cf-turnstile-response').value = token;
                 window.turnstileReady = true;
-                document.getElementById('generate-btn').disabled = false;
+                if (!isGenerating) { // Only re-enable if not generating
+                    document.getElementById('generate-btn').disabled = false;
+                }
                 document.getElementById('captcha-loading-message')?.remove();
             },
             'error-callback': function () {

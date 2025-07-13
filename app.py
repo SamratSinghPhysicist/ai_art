@@ -153,22 +153,33 @@ def token_required(f):
             # Handle anonymous user limits
             if data.get('anonymous'):
                 user_id = data['user_id']
-                # Use a simple in-memory dictionary for rate limiting anonymous users
-                if 'anonymous_requests' not in app.config:
-                    app.config['anonymous_requests'] = {}
+                current_ip = get_client_ip() # Get the current IP
+                current_endpoint = request.endpoint # Get the current endpoint
+
+                # Check if a custom rate limit exists for this IP and endpoint
+                custom_limit = get_custom_rate_limit(current_ip, current_endpoint)
                 
-                now = datetime.utcnow()
-                if user_id not in app.config['anonymous_requests']:
-                    app.config['anonymous_requests'][user_id] = []
-                
-                # Clean up old requests
-                app.config['anonymous_requests'][user_id] = [t for t in app.config['anonymous_requests'][user_id] if now - t < timedelta(days=1)]
-                
-                # Enforce a limit (e.g., 20 requests per day for anonymous users)
-                if len(app.config['anonymous_requests'][user_id]) >= 20: # Increased limit to 20 for free generations
-                    return jsonify({'error': 'Free generation limit reached. Please log in to continue or try again tomorrow'}), 429 # Too Many Requests
-                                            
-                app.config['anonymous_requests'][user_id].append(now)
+                if custom_limit:
+                    # If a custom limit exists, we rely on flask_limiter to enforce it.
+                    # So, we bypass this in-memory anonymous limit check.
+                    pass 
+                else:
+                    # If no custom limit, apply the default anonymous user limit
+                    if 'anonymous_requests' not in app.config:
+                        app.config['anonymous_requests'] = {}
+                    
+                    now = datetime.utcnow()
+                    if user_id not in app.config['anonymous_requests']:
+                        app.config['anonymous_requests'][user_id] = []
+                    
+                    # Clean up old requests
+                    app.config['anonymous_requests'][user_id] = [t for t in app.config['anonymous_requests'][user_id] if now - t < timedelta(days=1)]
+                    
+                    # Enforce the default anonymous limit (e.g., 25 requests per day)
+                    if len(app.config['anonymous_requests'][user_id]) >= 25: # Revert to a reasonable default if no custom limit
+                        return jsonify({'error': 'Free generation limit reached. Please log in to continue or try again tomorrow'}), 429
+                                                
+                    app.config['anonymous_requests'][user_id].append(now)
 
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token has expired.'}), 401
