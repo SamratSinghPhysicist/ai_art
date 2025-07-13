@@ -1508,7 +1508,7 @@
   window.onload = function () {
     // Render Turnstile
     turnstile.render('#turnstile-widget', {
-      sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey)
+      sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey "0x4AAAAAABkwoSYoc4LgE69c")
       callback: function (token) {
         // console.log("Turnstile token received:", token);
         document.getElementById('cf-turnstile-response').value = token;
@@ -1780,61 +1780,65 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
                 
                 // Get API token first, then send request
                 fetch('/get-api-token')
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        // Get the response text to understand the error
+                        return response.text().then(text => {
+                            throw new Error(`Failed to fetch API token. Status: ${response.status}, Response: ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
                 .then(tokenData => {
                     if (!tokenData.token) {
-                        throw new Error('Could not retrieve API token.');
+                        throw new Error('Could not retrieve a valid API token from the server.');
                     }
                     window.apiToken = tokenData.token;
 
-                    // Send the request - do NOT set Content-Type header, browser will set it automatically with boundary
-                    fetch('/img2video-ui', {
+                    // Return the fetch promise so that the outer catch can handle errors
+                    return fetch('/img2video-ui', {
                         method: 'POST',
                         headers: {
                             'x-access-token': window.apiToken
                         },
                         body: formData
-                    })
+                    });
+                })
                 .then(response => {
                     if (!response.ok) {
+                        // Try to parse the error response as JSON
                         return response.json().then(errData => {
-                            // Special handling for payment required errors
+                            // Check for specific error types
                             if (response.status === 402 || (errData.error_type && errData.error_type === 'payment_required')) {
                                 throw new Error('Insufficient API credits. The service is currently unavailable due to API credit limitations. Please try again later.');
                             }
+                            // General server error
                             throw new Error(errData.error || `Server error: ${response.status}`);
+                        }).catch(() => {
+                            // If parsing as JSON fails, throw a generic error
+                            throw new Error(`Server returned an invalid response. Status: ${response.status}`);
                         });
                     }
                     return response.json();
                 })
                 .then(data => {
                     if (data.success) {
-                        // Store the generation ID for polling
                         generationId = data.id;
-                        
-                        // Update status message with resized dimensions info
                         if (data.dimensions) {
                             statusMessage.textContent = `Image resized to ${data.dimensions}. Starting video generation...`;
                         }
-                        
-                        // Start polling for results
                         startPolling();
-
-                        // Reset Turnstile after successful submission
                         resetTurnstileAfterSubmit();
                     } else {
+                        // If the server responds with success: false
                         showErrorState(data.error || 'Failed to start video generation');
                     }
                 })
                 .catch(error => {
-                    showErrorState(error.message || 'Network error: Failed to connect to the server');
-                    console.error('Error during video generation request:', error);
+                    // This single catch block will now handle errors from all previous steps
+                    console.error('An error occurred during the video generation process:', error);
+                    showErrorState(error.message || 'An unexpected error occurred. Please try again.');
                 });
-            })
-            .catch(error => {
-                console.error('Error fetching API token for video generation:', error);
-                showErrorState('Error fetching API token: ' + error.message);
-            });
             }
             
             function startPolling() {
@@ -1936,7 +1940,7 @@ if (!window.turnstileReady || !document.getElementById('cf-turnstile-response').
     // Render Turnstile and attach callbacks
     function renderTurnstile() {
         turnstileWidgetId = turnstile.render('#turnstile-widget', {
-            sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Production key
+            sitekey: '0x4AAAAAABkwoSYoc4LgE69c',  // Replace with your actual sitekey (For Development, use "1x00000000000000000000AA", for Production, use your actual sitekey "0x4AAAAAABkwoSYoc4LgE69c")
             callback: function (token) {
                 document.getElementById('cf-turnstile-response').value = token;
                 window.turnstileReady = true;
