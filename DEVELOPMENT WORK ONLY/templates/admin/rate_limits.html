@@ -18,6 +18,20 @@
                     <input type="text" id="ip" name="ip" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                 </div>
 
+                <div class="mb-4">
+                    <label for="endpoint" class="block text-sm font-medium text-gray-700">Feature (Endpoint)</label>
+                    <p class="text-xs text-gray-500">Select the feature you want to apply the limit to.</p>
+                    <select id="endpoint" name="endpoint" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                        <option value="all">All Features</option>
+                        <option value="generate_image">Text-to-Image (UI)</option>
+                        <option value="api_generate_image">Text-to-Image (API)</option>
+                        <option value="img2img_transform">Image-to-Image (UI)</option>
+                        <option value="api_img2img_transform">Image-to-Image (API)</option>
+                        <option value="img2video_generate">Image-to-Video (UI)</option>
+                        <option value="api_img2video_generate">Image-to-Video (API)</option>
+                    </select>
+                </div>
+
                 <div id="rules-container"> 
                     <h3 class="text-lg font-semibold mb-2">Rules</h3>
                      <p class="text-xs text-gray-500 mb-2">Define one or more rate limit rules. For example, to set a limit of 20 requests per minute AND 1000 per day, add two separate rules.</p>
@@ -54,6 +68,7 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Endpoint</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Limit String</th>
                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -81,6 +96,7 @@
             document.getElementById('rate-limit-form').addEventListener('submit', function(e) {
                 e.preventDefault();
                 const ip = document.getElementById('ip').value;
+                const endpoint = document.getElementById('endpoint').value;
                 const rules = [];
                 document.querySelectorAll('.rule-template').forEach(ruleEl => {
                     const requests = ruleEl.querySelector('[name="requests"]').value;
@@ -96,7 +112,7 @@
                 }
 
                 const limitString = rules.join(';');
-                setRateLimit(ip, limitString);
+                setRateLimit(ip, endpoint, limitString);
             });
         });
 
@@ -121,9 +137,10 @@
                 data.forEach(limit => {
                     const row = `<tr>
                         <td class="px-6 py-4 whitespace-nowrap">${limit.ip}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">${limit.endpoint}</td>
                         <td class="px-6 py-4 whitespace-nowrap">${limit.limit_string}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <button onclick="deleteRateLimit('${limit.ip}')" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded">Delete</button>
+                            <button onclick="deleteRateLimit('${limit.ip}', '${limit.endpoint}')" class="bg-red-500 hover:bg-red-700 text-white font-bold py-1 px-2 rounded">Delete</button>
                         </td>
                     </tr>`;
                     tableBody.innerHTML += row;
@@ -131,14 +148,14 @@
             });
         }
 
-        function setRateLimit(ip, limitString) {
+        function setRateLimit(ip, endpoint, limitString) {
             fetch('/admin/api/set-custom-rate-limit', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Admin-Secret-Key': adminSecretKey
                 },
-                body: JSON.stringify({ ip, limit_string: limitString })
+                body: JSON.stringify({ ip, endpoint, limit_string: limitString })
             })
             .then(response => response.json())
             .then(data => {
@@ -156,14 +173,14 @@
             });
         }
 
-        function deleteRateLimit(ip) {
+        function deleteRateLimit(ip, endpoint) {
             fetch('/admin/api/delete-custom-rate-limit', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Admin-Secret-Key': adminSecretKey
                 },
-                body: JSON.stringify({ ip })
+                body: JSON.stringify({ ip, endpoint })
             })
             .then(response => response.json())
             .then(data => {
