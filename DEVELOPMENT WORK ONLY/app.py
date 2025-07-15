@@ -32,6 +32,7 @@ from datetime import datetime, timedelta
 import os
 import requests
 from turnstile_utils import verify_turnstile
+from qwen_generator import generate_qwen_video
 
 # Load environment variables
 load_dotenv()
@@ -1915,6 +1916,34 @@ def api_img2video_result(generation_id):
         elif active_gen_info == generation_id: # For old format
             session.pop('active_video_generation_id')
         return jsonify({'error': str(e), 'status': 'error'}), 500
+
+@app.route('/qwen-video')
+def qwen_video_page():
+    """Render the Qwen video generation page"""
+    return render_template('qwen-video.html',
+                          user=current_user,
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
+
+@app.route('/generate-qwen-video', methods=['POST'])
+@token_required
+def generate_qwen_video_route():
+    """API endpoint to generate a video using Qwen"""
+    data = request.get_json()
+    prompt = data.get('prompt')
+
+    if not prompt:
+        return jsonify({'error': 'Prompt is required'}), 400
+
+    result = generate_qwen_video(prompt)
+
+    if 'error' in result:
+        return jsonify(result), 500
+
+    return jsonify(result)
+
 
 if __name__ == '__main__':
     if ADMIN_SECRET_KEY:

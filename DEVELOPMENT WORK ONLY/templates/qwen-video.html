@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qwen Video Generation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Qwen Video Generation</h1>
+        <form id="qwen-video-form">
+            <div class="form-group">
+                <label for="prompt">Prompt:</label>
+                <input type="text" id="prompt" name="prompt" required>
+            </div>
+            <button type="submit">Generate Video</button>
+        </form>
+        <div id="result-container">
+            <div id="loading-spinner" style="display: none;">
+                <img src="{{ url_for('static', filename='loading-spinner.svg') }}" alt="Loading...">
+            </div>
+            <div id="video-result"></div>
+            <div id="error-message"></div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('qwen-video-form').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const prompt = document.getElementById('prompt').value;
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const videoResult = document.getElementById('video-result');
+            const errorMessage = document.getElementById('error-message');
+
+            loadingSpinner.style.display = 'block';
+            videoResult.innerHTML = '';
+            errorMessage.innerHTML = '';
+
+            try {
+                const response = await fetch('/generate-qwen-video', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-access-token': await getApiToken()
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    if (result.video_url) {
+                        videoResult.innerHTML = `<video controls src="${result.video_url}" width="512"></video>`;
+                    } else {
+                        errorMessage.textContent = 'Video generation completed, but no video URL was returned.';
+                    }
+                } else {
+                    errorMessage.textContent = result.error || 'An unknown error occurred.';
+                }
+            } catch (error) {
+                errorMessage.textContent = 'An error occurred while communicating with the server.';
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        });
+
+        async function getApiToken() {
+            const response = await fetch('/get-api-token');
+            const data = await response.json();
+            return data.token;
+        }
+    </script>
+</body>
+</html>
