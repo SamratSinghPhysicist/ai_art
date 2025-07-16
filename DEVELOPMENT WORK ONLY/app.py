@@ -89,7 +89,7 @@ def get_rate_limit():
 limiter = Limiter(
     get_rate_limit, 
     app=app,
-    default_limits=["14400 per day", "3600 per hour"], # Stricter default limits
+    default_limits=["1440 per day", "60 per hour"], # Stricter default limits
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
     strategy="moving-window" # Moving window for better abuse prevention
 )
@@ -161,7 +161,7 @@ def token_required(f):
                 user_id = data['user_id']
                 
                 # Define endpoints that should NOT count towards the free limit (e.g., status polling)
-                rate_limit_exempt_endpoints = ['get_qwen_video_status']
+                rate_limit_exempt_endpoints = ['get_qwen_video_status', 'api_img2video_result', 'img2video_result']
 
                 # Only apply the anonymous user limit for non-exempt endpoints
                 if request.endpoint not in rate_limit_exempt_endpoints:
@@ -1565,6 +1565,7 @@ def img2video_generate():
 
 
 @app.route('/ui/img2video/result/<generation_id>', methods=['GET'])
+@limiter.exempt
 def img2video_result(generation_id):
 
     """API endpoint to check the status of a video generation or retrieve the result"""
@@ -1814,6 +1815,7 @@ def api_img2video_generate():
             return jsonify({'error': f"An unexpected error occurred: {error_str}"}), 500
 
 @app.route('/api/img2video/result/<generation_id>', methods=['GET'])
+@limiter.exempt
 def api_img2video_result(generation_id):
     """API endpoint to check the status of a video generation or retrieve the result"""
     try:
