@@ -39,7 +39,7 @@
             errorMessage.innerHTML = '';
 
             try {
-                // Step 1: Start the generation and get a task ID
+                // Step 1: Start the generation (this still requires a token)
                 const startResponse = await fetch('/generate-qwen-video', {
                     method: 'POST',
                     headers: {
@@ -58,7 +58,7 @@
                 const taskId = startResult.task_id;
                 errorMessage.textContent = 'Video generation started. Waiting for completion...';
 
-                // Step 2: Poll for the result
+                // Step 2: Poll for the result (no token needed)
                 pollForVideo(taskId);
 
             } catch (error) {
@@ -67,18 +67,15 @@
             }
         });
 
-        async function pollForVideo(taskId) {
+        function pollForVideo(taskId) {
             const loadingSpinner = document.getElementById('loading-spinner');
             const videoResult = document.getElementById('video-result');
             const errorMessage = document.getElementById('error-message');
 
             const interval = setInterval(async () => {
                 try {
-                    const statusResponse = await fetch(`/qwen-video/status/${taskId}`, {
-                         headers: {
-                            'x-access-token': await getApiToken()
-                        }
-                    });
+                    // Polling fetch no longer sends a token
+                    const statusResponse = await fetch(`/qwen-video/status/${taskId}`);
                     const statusResult = await statusResponse.json();
 
                     if (statusResponse.ok) {
@@ -110,8 +107,6 @@
         }
 
         async function getApiToken() {
-            // This function should already exist if you use it elsewhere
-            // If not, implement it to fetch your JWT token
             try {
                 const response = await fetch('/get-api-token');
                 if (!response.ok) {

@@ -89,7 +89,7 @@ def get_rate_limit():
 limiter = Limiter(
     get_rate_limit, 
     app=app,
-    default_limits=["1440 per day", "60 per hour"], # Stricter default limits
+    default_limits=["14400 per day", "3600 per hour"], # Stricter default limits
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
     strategy="moving-window" # Moving window for better abuse prevention
 )
@@ -2010,6 +2010,7 @@ def generate_qwen_video_route():
     }), 202
 
 @app.route('/qwen-video/status/<string:task_id>', methods=['GET'])
+@limiter.exempt
 def get_qwen_video_status(task_id):
     """
     API endpoint to check the status of a Qwen video generation task.
