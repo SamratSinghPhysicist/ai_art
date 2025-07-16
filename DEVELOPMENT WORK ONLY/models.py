@@ -492,6 +492,16 @@ class QwenApiKey:
         key = db['qwen_api_keys'].find_one({'_id': ObjectId(key_id)})
         return key.get('status') if key else None
 
+    @staticmethod
+    def reset_all_generating_to_available():
+        """Resets all keys with 'generating' status back to 'available'."""
+        if db is None: return 0
+        result = db['qwen_api_keys'].update_many(
+            {'status': 'generating'},
+            {'$set': {'status': 'available'}}
+        )
+        return result.modified_count
+
 class VideoTask:
     @staticmethod
     def create(prompt):

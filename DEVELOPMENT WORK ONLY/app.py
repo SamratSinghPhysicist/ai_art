@@ -2037,6 +2037,11 @@ def get_qwen_video_status(task_id):
 
 
 if __name__ == '__main__':
+    # Reset any keys that were stuck in 'generating' state on server restart
+    with app.app_context():
+        reset_count = QwenApiKey.reset_all_generating_to_available()
+        app.logger.info(f"Startup Check: Reset {reset_count} stuck Qwen API keys to 'available'.")
+
     if ADMIN_SECRET_KEY:
         print("="*60)
         print("Admin Dashboard URL:")
