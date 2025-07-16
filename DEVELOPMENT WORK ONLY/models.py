@@ -408,15 +408,19 @@ class StabilityApiKey:
             return 0
 
 
+import uuid
+from datetime import timezone
+
 class QwenApiKey:
     """Model for managing Qwen API keys"""
 
-    def __init__(self, auth_token, chat_id, fid, children_ids, x_request_id, _id=None):
+    def __init__(self, auth_token, chat_id, fid, children_ids, x_request_id, status='available', _id=None):
         self.auth_token = auth_token
         self.chat_id = chat_id
         self.fid = fid
         self.children_ids = children_ids
         self.x_request_id = x_request_id
+        self.status = status
         self._id = _id
 
     def save(self):
@@ -427,6 +431,7 @@ class QwenApiKey:
             'fid': self.fid,
             'children_ids': self.children_ids,
             'x_request_id': self.x_request_id,
+            'status': self.status
         }
 
         if self._id:
@@ -460,3 +465,76 @@ class QwenApiKey:
         except Exception as e:
             print(f"Error deleting Qwen API key: {e}")
             return False
+
+    @staticmethod
+    def find_available_key():
+        """Atomically finds an available key and marks it as 'generating'."""
+        if db is None: return None
+        return db['qwen_api_keys'].find_one_and_update(
+            {'status': 'available'},
+            {'$set': {'status': 'generating', 'updated_at': datetime.datetime.now(timezone.utc)}},
+            return_document=True
+        )
+
+    @staticmethod
+    def mark_key_available(key_id):
+        """Marks a key as available by its ID."""
+        if db is None: return
+        db['qwen_api_keys'].update_one(
+            {'_id': ObjectId(key_id)},
+            {'$set': {'status': 'available', 'updated_at': datetime.datetime.now(timezone.utc)}}
+        )
+    
+    @staticmethod
+    def get_key_status(key_id):
+        """Gets the status of a specific key."""
+        if db is None: return None
+        key = db['qwen_api_keys'].find_one({'_id': ObjectId(key_id)})
+        return key.get('status') if key else None
+
+class VideoTask:
+    @staticmethod
+    def create(prompt):
+        """Creates a new video task in the queue."""
+        if db is None: return None
+        
+        task_id = str(uuid.uuid4())
+        task_document = {
+            "task_id": task_id,
+            "prompt": prompt,
+            "status": "pending", # pending, processing, completed, failed
+            "result_url": None,
+            "error_message": None,
+            "assigned_key_id": None,
+            "created_at": datetime.datetime.now(timezone.utc),
+            "updated_at": datetime.datetime.now(timezone.utc),
+        }
+        db['video_tasks'].insert_one(task_document)
+        return db['video_tasks'].find_one({"task_id": task_id})
+
+    @staticmethod
+    def get_by_id(task_id):
+        """Retrieves a task by its task_id."""
+        if db is None: return None
+        return db['video_tasks'].find_one({"task_id": task_id})
+
+    @staticmethod
+    def update(task_id, status, result_url=None, assigned_key_id=None, error_message=None):
+        """Updates a task's status and other fields."""
+        if db is None: return
+        
+        update_fields = {
+            "status": status,
+            "updated_at": datetime.datetime.now(timezone.utc)
+        }
+        if result_url is not None:
+            update_fields["result_url"] = result_url
+        if assigned_key_id is not None:
+            update_fields["assigned_key_id"] = assigned_key_id
+        if error_message is not None:
+            update_fields["error_message"] = error_message
+            
+        db['video_tasks'].update_one(
+            {"task_id": task_id},
+            {"$set": update_fields}
+        )

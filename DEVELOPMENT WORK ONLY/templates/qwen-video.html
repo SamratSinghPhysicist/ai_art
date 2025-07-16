@@ -39,7 +39,8 @@
             errorMessage.innerHTML = '';
 
             try {
-                const response = await fetch('/generate-qwen-video', {
+                // Step 1: Start the generation and get a task ID
+                const startResponse = await fetch('/generate-qwen-video', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -48,28 +49,80 @@
                     body: JSON.stringify({ prompt: prompt })
                 });
 
-                const result = await response.json();
+                const startResult = await startResponse.json();
 
-                if (response.ok) {
-                    if (result.video_url) {
-                        videoResult.innerHTML = `<video controls src="${result.video_url}" width="512"></video>`;
-                    } else {
-                        errorMessage.textContent = 'Video generation completed, but no video URL was returned.';
-                    }
-                } else {
-                    errorMessage.textContent = result.error || 'An unknown error occurred.';
+                if (!startResponse.ok) {
+                    throw new Error(startResult.error || 'Failed to start video generation.');
                 }
+
+                const taskId = startResult.task_id;
+                errorMessage.textContent = 'Video generation started. Waiting for completion...';
+
+                // Step 2: Poll for the result
+                pollForVideo(taskId);
+
             } catch (error) {
-                errorMessage.textContent = 'An error occurred while communicating with the server.';
-            } finally {
+                errorMessage.textContent = error.message || 'An error occurred while communicating with the server.';
                 loadingSpinner.style.display = 'none';
             }
         });
 
+        async function pollForVideo(taskId) {
+            const loadingSpinner = document.getElementById('loading-spinner');
+            const videoResult = document.getElementById('video-result');
+            const errorMessage = document.getElementById('error-message');
+
+            const interval = setInterval(async () => {
+                try {
+                    const statusResponse = await fetch(`/qwen-video/status/${taskId}`, {
+                         headers: {
+                            'x-access-token': await getApiToken()
+                        }
+                    });
+                    const statusResult = await statusResponse.json();
+
+                    if (statusResponse.ok) {
+                        if (statusResult.status === 'completed') {
+                            clearInterval(interval);
+                            loadingSpinner.style.display = 'none';
+                            errorMessage.textContent = 'Video generated successfully!';
+                            videoResult.innerHTML = `<video controls src="${statusResult.result_url}" width="512"></video>`;
+                        } else if (statusResult.status === 'failed') {
+                            clearInterval(interval);
+                            loadingSpinner.style.display = 'none';
+                            errorMessage.textContent = `Error: ${statusResult.error_message || 'Video generation failed.'}`;
+                        } else if (statusResult.status === 'processing') {
+                            errorMessage.textContent = 'Processing video... please wait.';
+                        } else {
+                            errorMessage.textContent = 'Your request is in the queue...';
+                        }
+                    } else {
+                         clearInterval(interval);
+                         loadingSpinner.style.display = 'none';
+                         errorMessage.textContent = statusResult.error || 'Failed to get video status.';
+                    }
+                } catch (error) {
+                    clearInterval(interval);
+                    loadingSpinner.style.display = 'none';
+                    errorMessage.textContent = 'An error occurred while checking the video status.';
+                }
+            }, 5000); // Poll every 5 seconds
+        }
+
         async function getApiToken() {
-            const response = await fetch('/get-api-token');
-            const data = await response.json();
-            return data.token;
+            // This function should already exist if you use it elsewhere
+            // If not, implement it to fetch your JWT token
+            try {
+                const response = await fetch('/get-api-token');
+                if (!response.ok) {
+                    throw new Error('Could not get API token');
+                }
+                const data = await response.json();
+                return data.token;
+            } catch (e) {
+                console.error(e);
+                return null;
+            }
         }
     </script>
 </body>

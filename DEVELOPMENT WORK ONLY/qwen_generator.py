@@ -5,47 +5,33 @@ import json
 import uuid
 from models import QwenApiKey
 
-def get_qwen_keys():
-    """Fetches the latest Qwen API keys from MongoDB."""
-    keys = QwenApiKey.get_all()
-    if keys:
-        # Return the first key in the list
-        return keys[0]
-    else:
-        raise Exception("Qwen keys not found in the database.")
 
-def find_video_url(data):
-    """Recursively search for a video URL in the response data."""
-    if not isinstance(data, dict):
-        return None
 
-    # Check for common keys at the current level
-    for key in ['video_url', 'url', 'link', 'file', 'content']:
-        if key in data and isinstance(data[key], str) and data[key].startswith('http'):
-            return data[key]
+def find_video_url_in_response(data):
+    """Finds the video URL in the Qwen API response."""
+    try:
+        # Primary location: The 'content' field of the success response.
+        if data.get('task_status') == 'success' and isinstance(data.get('content'), str) and data['content'].startswith('http'):
+            return data['content']
 
-    # Recursively search in nested dictionaries and lists
-    for key, value in data.items():
-        if isinstance(value, dict):
-            url = find_video_url(value)
-            if url:
-                return url
-        elif isinstance(value, list):
-            for item in value:
-                url = find_video_url(item)
-                if url:
-                    return url
+        # The URL is also often in the `output` field of the `task` dictionary
+        if data.get('task') and data['task'].get('output') and data['task']['output'].get('video_url'):
+            return data['task']['output']['video_url']
+        
+        # Fallback for other possible structures
+        if data.get('data') and data['data'].get('video_url'):
+            return data['data']['video_url']
+
+    except (KeyError, TypeError):
+        pass # Ignore errors if keys don't exist
+
     return None
 
-def generate_qwen_video(prompt):
+def generate_qwen_video(prompt, api_key):
     """
     Generates a video using the Qwen API.
     """
-    try:
-        keys = get_qwen_keys()
-    except Exception as e:
-        print(f"Error fetching Qwen keys: {e}")
-        return {"error": "Could not fetch Qwen API keys from the database."}
+    keys = api_key
 
     BASE_URL = "https://chat.qwen.ai"
     AUTH_TOKEN = keys.get("auth_token")
@@ -138,7 +124,7 @@ def generate_qwen_video(prompt):
             task_status = status_data.get('task_status')
             if task_status in ['completed', 'success']:
                 print("Video generation completed. Parsing final response...")
-                video_url = find_video_url(status_data)
+                video_url = find_video_url_in_response(status_data)
 
                 if video_url:
                     print(f"Successfully extracted video URL: {video_url}")

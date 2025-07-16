@@ -33,11 +33,16 @@ import os
 import requests
 from turnstile_utils import verify_turnstile
 from qwen_generator import generate_qwen_video
+from models import VideoTask
+import threading
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+
+
+
 
 # Load admin secret key for IP blocking management
 ADMIN_SECRET_KEY = os.getenv('ADMIN_SECRET_KEY')
@@ -154,33 +159,39 @@ def token_required(f):
             # Handle anonymous user limits
             if data.get('anonymous'):
                 user_id = data['user_id']
-                current_ip = get_client_ip() # Get the current IP
-                current_endpoint = request.endpoint # Get the current endpoint
-
-                # Check if a custom rate limit exists for this IP and endpoint
-                custom_limit = get_custom_rate_limit(current_ip, current_endpoint)
                 
-                if custom_limit:
-                    # If a custom limit exists, we rely on flask_limiter to enforce it.
-                    # So, we bypass this in-memory anonymous limit check.
-                    pass 
-                else:
-                    # If no custom limit, apply the default anonymous user limit
-                    if 'anonymous_requests' not in app.config:
-                        app.config['anonymous_requests'] = {}
+                # Define endpoints that should NOT count towards the free limit (e.g., status polling)
+                rate_limit_exempt_endpoints = ['get_qwen_video_status']
+
+                # Only apply the anonymous user limit for non-exempt endpoints
+                if request.endpoint not in rate_limit_exempt_endpoints:
+                    current_ip = get_client_ip() # Get the current IP
+                    current_endpoint = request.endpoint # Get the current endpoint
+
+                    # Check if a custom rate limit exists for this IP and endpoint
+                    custom_limit = get_custom_rate_limit(current_ip, current_endpoint)
                     
-                    now = datetime.utcnow()
-                    if user_id not in app.config['anonymous_requests']:
-                        app.config['anonymous_requests'][user_id] = []
-                    
-                    # Clean up old requests
-                    app.config['anonymous_requests'][user_id] = [t for t in app.config['anonymous_requests'][user_id] if now - t < timedelta(days=1)]
-                    
-                    # Enforce the default anonymous limit (e.g., 25 requests per day)
-                    if len(app.config['anonymous_requests'][user_id]) >= 25: # Revert to a reasonable default if no custom limit
-                        return jsonify({'error': 'Free generation limit reached. Please log in to continue or try again tomorrow'}), 429
-                                                
-                    app.config['anonymous_requests'][user_id].append(now)
+                    if custom_limit:
+                        # If a custom limit exists, we rely on flask_limiter to enforce it.
+                        # So, we bypass this in-memory anonymous limit check.
+                        pass 
+                    else:
+                        # If no custom limit, apply the default anonymous user limit
+                        if 'anonymous_requests' not in app.config:
+                            app.config['anonymous_requests'] = {}
+                        
+                        now = datetime.utcnow()
+                        if user_id not in app.config['anonymous_requests']:
+                            app.config['anonymous_requests'][user_id] = []
+                        
+                        # Clean up old requests
+                        app.config['anonymous_requests'][user_id] = [t for t in app.config['anonymous_requests'][user_id] if now - t < timedelta(days=1)]
+                        
+                        # Enforce the default anonymous limit (e.g., 25 requests per day)
+                        if len(app.config['anonymous_requests'][user_id]) >= 25: # Revert to a reasonable default if no custom limit
+                            return jsonify({'error': 'Free generation limit reached. Please log in to continue or try again tomorrow'}), 429
+                                                    
+                        app.config['anonymous_requests'][user_id].append(now)
 
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token has expired.'}), 401
@@ -1927,22 +1938,99 @@ def qwen_video_page():
                           firebase_project_id=firebase_config.get('projectId'),
                           firebase_app_id=firebase_config.get('appId'))
 
+
+def process_qwen_video_task(app, task_id):
+    """
+    This function runs in a background thread to generate a video.
+    It will wait for an available key before processing.
+    """
+    with app.app_context():
+        logger = app.logger
+        logger.info(f"Thread for VideoTask {task_id}: Starting.")
+        
+        assigned_key = None
+        try:
+            # Loop until a key is available
+            while assigned_key is None:
+                assigned_key = QwenApiKey.find_available_key()
+                if assigned_key is None:
+                    logger.info(f"Thread for {task_id}: No available Qwen keys. Waiting...")
+                    time.sleep(30) # Wait for 30 seconds before retrying
+
+            logger.info(f"Thread for {task_id}: Key {assigned_key['_id']} acquired. Processing.")
+            
+            VideoTask.update(task_id, status='processing', assigned_key_id=str(assigned_key['_id']))
+            
+            task_doc = VideoTask.get_by_id(task_id)
+            if not task_doc:
+                raise ValueError("VideoTask document not found.")
+
+            result = generate_qwen_video(prompt=task_doc['prompt'], api_key=assigned_key)
+
+            if 'error' in result:
+                 raise Exception(result['error'])
+
+            logger.info(f"Thread for {task_id}: Video generation successful. URL: {result['video_url']}")
+            VideoTask.update(task_id, status='completed', result_url=result['video_url'])
+
+        except Exception as e:
+            logger.error(f"Thread for {task_id} failed: {e}", exc_info=True)
+            VideoTask.update(task_id, status='failed', error_message=str(e))
+            
+        finally:
+            if assigned_key:
+                QwenApiKey.mark_key_available(assigned_key['_id'])
+                logger.info(f"Thread for {task_id}: Key {assigned_key['_id']} released.")
+
 @app.route('/generate-qwen-video', methods=['POST'])
 @token_required
 def generate_qwen_video_route():
-    """API endpoint to generate a video using Qwen"""
+    """
+    API endpoint to queue a video generation task using a background thread.
+    """
     data = request.get_json()
     prompt = data.get('prompt')
 
     if not prompt:
         return jsonify({'error': 'Prompt is required'}), 400
 
-    result = generate_qwen_video(prompt)
+    task = VideoTask.create(prompt=prompt)
+    if not task:
+        return jsonify({'error': 'Failed to create video task in database.'}), 500
 
-    if 'error' in result:
-        return jsonify(result), 500
+    # Start the video generation in a background thread
+    thread = threading.Thread(target=process_qwen_video_task, args=(app, task['task_id']))
+    thread.daemon = True
+    thread.start()
 
-    return jsonify(result)
+    return jsonify({
+        'success': True,
+        'message': 'Your video request has been queued. You can check the status using the task ID.',
+        'task_id': task['task_id']
+    }), 202
+
+@app.route('/qwen-video/status/<string:task_id>', methods=['GET'])
+def get_qwen_video_status(task_id):
+    """
+    API endpoint to check the status of a Qwen video generation task.
+    """
+    task = VideoTask.get_by_id(task_id)
+
+    if not task:
+        return jsonify({'error': 'Task not found'}), 404
+
+    response = {
+        'task_id': task['task_id'],
+        'status': task['status'],
+        'prompt': task['prompt'],
+        'created_at': task['created_at'].isoformat() if task.get('created_at') else None,
+        'updated_at': task['updated_at'].isoformat() if task.get('updated_at') else None,
+        'result_url': task.get('result_url'),
+        'error_message': task.get('error_message')
+    }
+    
+    return jsonify(response)
+
 
 
 if __name__ == '__main__':
