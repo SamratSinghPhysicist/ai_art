@@ -1992,6 +1992,12 @@ def generate_qwen_video_route():
     """
     data = request.get_json()
     prompt = data.get('prompt')
+    turnstile_token = data.get('cf_turnstile_response')
+    
+    # Verify Turnstile token
+    client_ip = get_client_ip()
+    if not verify_turnstile(turnstile_token, client_ip):
+        return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
 
     if not prompt:
         return jsonify({'error': 'Prompt is required'}), 400

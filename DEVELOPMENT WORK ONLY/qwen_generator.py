@@ -1,10 +1,9 @@
-
 import requests
 import time
 import json
 import uuid
 from models import QwenApiKey
-
+from turnstile_utils import verify_turnstile
 
 
 def find_video_url_in_response(data):
