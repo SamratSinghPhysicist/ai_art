@@ -1930,10 +1930,10 @@ def api_img2video_result(generation_id):
             session.pop('active_video_generation_id')
         return jsonify({'error': str(e), 'status': 'error'}), 500
 
-@app.route('/qwen-video')
+@app.route('/text-to-video')
 def qwen_video_page():
     """Render the Qwen video generation page"""
-    return render_template('qwen-video.html',
+    return render_template('text-to-video.html',
                           user=current_user,
                           firebase_api_key=firebase_config.get('apiKey'),
                           firebase_auth_domain=firebase_config.get('authDomain'),
@@ -1984,7 +1984,7 @@ def process_qwen_video_task(app, task_id):
                 QwenApiKey.mark_key_available(assigned_key['_id'])
                 logger.info(f"Thread for {task_id}: Key {assigned_key['_id']} released.")
 
-@app.route('/generate-qwen-video', methods=['POST'])
+@app.route('/generate-text-to-video-ui', methods=['POST'])
 @token_required
 def generate_qwen_video_route():
     """
@@ -1995,7 +1995,7 @@ def generate_qwen_video_route():
     turnstile_token = data.get('cf_turnstile_response')
     
     # Verify Turnstile token
-    client_ip = get_client_ip()
+    client_ip = request.headers.get("CF-Connecting-IP")
     if not verify_turnstile(turnstile_token, client_ip):
         return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
 
@@ -2017,7 +2017,7 @@ def generate_qwen_video_route():
         'task_id': task['task_id']
     }), 202
 
-@app.route('/qwen-video/status/<string:task_id>', methods=['GET'])
+@app.route('/generate-text-to-video-ui/status/<string:task_id>', methods=['GET'])
 @limiter.exempt
 def get_qwen_video_status(task_id):
     """
