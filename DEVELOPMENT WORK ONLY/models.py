@@ -554,6 +554,151 @@ class VideoTask:
         )
 
 
+class UserGenerationHistory:
+    """Model for managing user generation history"""
+    
+    def __init__(self):
+        if db is None:
+            raise Exception("Database connection not available")
+        self.collection = db['user_generation_history']
+        
+        # Create indexes for efficient queries
+        try:
+            self.collection.create_index([('user_id', 1), ('created_at', -1)], name='user_id_created_at')
+            self.collection.create_index('session_id', name='session_id_index')
+            self.collection.create_index('generation_type', name='generation_type_index')
+            self.collection.create_index('created_at', name='created_at_index')
+        except Exception as e:
+            print(f"Warning: Could not create user_generation_history indexes: {e}")
+    
+    def save_generation(self, user_id=None, session_id=None, generation_type='text-to-video', 
+                       prompt=None, result_url=None, proxy_url=None, task_id=None, 
+                       generation_params=None):
+        """Save a user's generation to history"""
+        try:
+            generation_data = {
+                'user_id': user_id,  # None for anonymous users
+                'session_id': session_id,  # For anonymous users
+                'generation_type': generation_type,
+                'prompt': prompt,
+                'result_url': result_url,
+                'proxy_url': proxy_url,
+                'task_id': task_id,
+                'generation_params': generation_params or {},
+                'created_at': datetime.datetime.now(timezone.utc),
+                'is_active': True  # For soft deletion if needed
+            }
+            
+            result = self.collection.insert_one(generation_data)
+            return str(result.inserted_id)
+        except Exception as e:
+            print(f"Error saving generation to history: {e}")
+            return None
+    
+    def get_user_generations(self, user_id=None, session_id=None, generation_type=None, 
+                           limit=50, skip=0):
+        """Get user's generation history"""
+        try:
+            # Build query based on user type
+            query = {'is_active': True}
+            
+            if user_id:
+                query['user_id'] = user_id
+            elif session_id:
+                query['session_id'] = session_id
+            else:
+                return []  # No user identification provided
+            
+            if generation_type:
+                query['generation_type'] = generation_type
+            
+            # Get generations sorted by creation date (newest first)
+            cursor = self.collection.find(query).sort('created_at', -1).skip(skip).limit(limit)
+            
+            generations = []
+            for doc in cursor:
+                doc['_id'] = str(doc['_id'])
+                # Convert datetime to ISO string for JSON serialization
+                if 'created_at' in doc:
+                    doc['created_at'] = doc['created_at'].isoformat()
+                generations.append(doc)
+            
+            return generations
+        except Exception as e:
+            print(f"Error retrieving user generations: {e}")
+            return []
+    
+    def get_generation_by_id(self, generation_id):
+        """Get a specific generation by ID"""
+        try:
+            from bson.objectid import ObjectId
+            doc = self.collection.find_one({'_id': ObjectId(generation_id), 'is_active': True})
+            if doc:
+                doc['_id'] = str(doc['_id'])
+                if 'created_at' in doc:
+                    doc['created_at'] = doc['created_at'].isoformat()
+            return doc
+        except Exception as e:
+            print(f"Error retrieving generation by ID: {e}")
+            return None
+    
+    def update_generation_urls(self, task_id, result_url=None, proxy_url=None):
+        """Update generation with result URLs after completion"""
+        try:
+            update_data = {'updated_at': datetime.datetime.now(timezone.utc)}
+            if result_url:
+                update_data['result_url'] = result_url
+            if proxy_url:
+                update_data['proxy_url'] = proxy_url
+            
+            result = self.collection.update_one(
+                {'task_id': task_id, 'is_active': True},
+                {'$set': update_data}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error updating generation URLs: {e}")
+            return False
+    
+    def count_user_generations(self, user_id=None, session_id=None, generation_type=None, 
+                             hours_back=None):
+        """Count user's generations, optionally within a time window"""
+        try:
+            query = {'is_active': True}
+            
+            if user_id:
+                query['user_id'] = user_id
+            elif session_id:
+                query['session_id'] = session_id
+            else:
+                return 0
+            
+            if generation_type:
+                query['generation_type'] = generation_type
+            
+            if hours_back:
+                cutoff_time = datetime.datetime.now(timezone.utc) - timedelta(hours=hours_back)
+                query['created_at'] = {'$gte': cutoff_time}
+            
+            return self.collection.count_documents(query)
+        except Exception as e:
+            print(f"Error counting user generations: {e}")
+            return 0
+    
+    def cleanup_old_generations(self, days_old=30):
+        """Clean up old generations (soft delete)"""
+        try:
+            cutoff_date = datetime.datetime.now(timezone.utc) - timedelta(days=days_old)
+            result = self.collection.update_many(
+                {'created_at': {'$lt': cutoff_date}, 'is_active': True},
+                {'$set': {'is_active': False, 'deleted_at': datetime.datetime.now(timezone.utc)}}
+            )
+            return result.modified_count
+        except Exception as e:
+            print(f"Error cleaning up old generations: {e}")
+            return 0
+
+
 class VideoUrlMapping:
     """Model for managing video URL proxy mappings"""
     

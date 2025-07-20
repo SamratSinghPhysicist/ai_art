@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Generation History - Admin</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 24px;
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 20px;
+        background: #f8f9fa;
+      }
+      .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        text-align: center;
+      }
+      .stat-number {
+        font-size: 32px;
+        font-weight: bold;
+        color: #667eea;
+        margin-bottom: 5px;
+      }
+      .stat-label {
+        color: #666;
+        font-size: 14px;
+      }
+      .controls {
+        padding: 20px;
+        border-bottom: 1px solid #eee;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+      .table-container {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #eee;
+      }
+      th {
+        background: #f8f9fa;
+        font-weight: 600;
+        color: #333;
+      }
+      .status-badge {
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+      .status-completed {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-processing {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .status-failed {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .prompt-cell {
+        max-width: 300px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .loading {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+        padding: 15px;
+        margin: 20px;
+        border-radius: 4px;
+        border: 1px solid #f5c6cb;
+      }
+      .pagination {
+        padding: 20px;
+        text-align: center;
+      }
+      .pagination button {
+        margin: 0 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>User Generation History</h1>
+        <p>Monitor and manage user video generations</p>
+      </div>
+
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card">
+          <div class="stat-number" id="total-generations">-</div>
+          <div class="stat-label">Total Generations</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="today-generations">-</div>
+          <div class="stat-label">Today's Generations</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="active-users">-</div>
+          <div class="stat-label">Active Users (24h)</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number" id="success-rate">-</div>
+          <div class="stat-label">Success Rate</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" onclick="loadGenerations()">
+          Refresh
+        </button>
+        <button class="btn btn-secondary" onclick="exportData()">
+          Export CSV
+        </button>
+        <select id="filter-type" onchange="loadGenerations()">
+          <option value="">All Types</option>
+          <option value="text-to-video">Text to Video</option>
+        </select>
+        <select id="filter-status" onchange="loadGenerations()">
+          <option value="">All Status</option>
+          <option value="completed">Completed</option>
+          <option value="processing">Processing</option>
+          <option value="failed">Failed</option>
+        </select>
+      </div>
+
+      <div class="table-container">
+        <div id="loading" class="loading" style="display: none">
+          Loading generations...
+        </div>
+        <div id="error" class="error" style="display: none"></div>
+        <table id="generations-table" style="display: none">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>User</th>
+              <th>Type</th>
+              <th>Prompt</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="generations-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination" id="pagination" style="display: none">
+        <button
+          class="btn btn-secondary"
+          id="prev-btn"
+          onclick="previousPage()"
+        >
+          Previous
+        </button>
+        <span id="page-info">Page 1 of 1</span>
+        <button class="btn btn-secondary" id="next-btn" onclick="nextPage()">
+          Next
+        </button>
+      </div>
+    </div>
+
+    <script>
+      let currentPage = 1;
+      const pageSize = 20;
+      let totalPages = 1;
+
+      async function loadGenerations() {
+        const loading = document.getElementById("loading");
+        const error = document.getElementById("error");
+        const table = document.getElementById("generations-table");
+
+        loading.style.display = "block";
+        error.style.display = "none";
+        table.style.display = "none";
+
+        try {
+          const filterType = document.getElementById("filter-type").value;
+          const filterStatus = document.getElementById("filter-status").value;
+
+          const params = new URLSearchParams({
+            page: currentPage,
+            limit: pageSize,
+          });
+
+          if (filterType) params.append("type", filterType);
+          if (filterStatus) params.append("status", filterStatus);
+
+          const response = await fetch(
+            `/admin/api/user-generations?${params}`,
+            {
+              headers: {
+                "X-Admin-Secret-Key": getAdminKey(),
+              },
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+          displayGenerations(data.generations);
+          updatePagination(data.total_count);
+          updateStats(data.stats);
+        } catch (err) {
+          error.textContent = `Error loading generations: ${err.message}`;
+          error.style.display = "block";
+        } finally {
+          loading.style.display = "none";
+        }
+      }
+
+      function displayGenerations(generations) {
+        const tbody = document.getElementById("generations-tbody");
+        const table = document.getElementById("generations-table");
+
+        tbody.innerHTML = "";
+
+        generations.forEach((gen) => {
+          const row = document.createElement("tr");
+
+          const statusClass = gen.proxy_url ? "completed" : "processing";
+          const statusText = gen.proxy_url ? "Completed" : "Processing";
+
+          row.innerHTML = `
+                    <td>${gen._id.substring(0, 8)}...</td>
+                    <td>${gen.user_id ? "User" : "Anonymous"}</td>
+                    <td>${gen.generation_type}</td>
+                    <td class="prompt-cell" title="${gen.prompt}">${
+            gen.prompt
+          }</td>
+                    <td><span class="status-badge status-${statusClass}">${statusText}</span></td>
+                    <td>${new Date(gen.created_at).toLocaleString()}</td>
+                    <td>
+                        ${
+                          gen.proxy_url
+                            ? `<button class="btn btn-primary" onclick="viewVideo('${gen.proxy_url}')">View</button>`
+                            : "-"
+                        }
+                    </td>
+                `;
+
+          tbody.appendChild(row);
+        });
+
+        table.style.display = "table";
+      }
+
+      function updatePagination(totalCount) {
+        totalPages = Math.ceil(totalCount / pageSize);
+        const pagination = document.getElementById("pagination");
+        const pageInfo = document.getElementById("page-info");
+        const prevBtn = document.getElementById("prev-btn");
+        const nextBtn = document.getElementById("next-btn");
+
+        pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= totalPages;
+
+        pagination.style.display = totalPages > 1 ? "block" : "none";
+      }
+
+      function updateStats(stats) {
+        if (stats) {
+          document.getElementById("total-generations").textContent =
+            stats.total || "-";
+          document.getElementById("today-generations").textContent =
+            stats.today || "-";
+          document.getElementById("active-users").textContent =
+            stats.active_users || "-";
+          document.getElementById("success-rate").textContent =
+            stats.success_rate ? `${stats.success_rate}%` : "-";
+        }
+      }
+
+      function previousPage() {
+        if (currentPage > 1) {
+          currentPage--;
+          loadGenerations();
+        }
+      }
+
+      function nextPage() {
+        if (currentPage < totalPages) {
+          currentPage++;
+          loadGenerations();
+        }
+      }
+
+      function viewVideo(proxyUrl) {
+        window.open(proxyUrl, "_blank");
+      }
+
+      function exportData() {
+        const adminKey = getAdminKey();
+        window.open(
+          `/admin/api/user-generations/export?format=csv&admin_key=${adminKey}`,
+          "_blank"
+        );
+      }
+
+      function getAdminKey() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get("secret");
+      }
+
+      // Load data when page loads
+      document.addEventListener("DOMContentLoaded", function () {
+        loadGenerations();
+      });
+    </script>
+  </body>
+</html>

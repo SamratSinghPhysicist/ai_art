@@ -1396,12 +1396,1349 @@
     .highlight-pulse {
       animation: highlight-pulse 1.5s ease-out;
     }
+
+    /* Previous Generations Section */
+    .previous-generations-section {
+      margin-top: 4rem;
+      margin-bottom: 4rem;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .section-description {
+      font-size: 1rem;
+      color: var(--text-light);
+      margin-top: 0.5rem;
+    }
+
+    .generations-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .generations-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2rem;
+      color: var(--text-light);
+    }
+
+    .loading-spinner-small {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(91, 143, 249, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .generations-grid {
+      display: grid;
+      grid-template-columns: repeat(1, 1fr);
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .generations-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .generations-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .generation-card {
+      background-color: var(--card-bg);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(91, 143, 249, 0.08);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: 1px solid rgba(225, 232, 245, 0.7);
+      position: relative;
+    }
+
+    .generation-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(91, 143, 249, 0.15);
+    }
+
+    .generation-video-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      background-color: #000;
+      overflow: hidden;
+    }
+
+    .generation-video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .generation-video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      cursor: pointer;
+    }
+
+    .generation-card:hover .generation-video-overlay {
+      opacity: 1;
+    }
+
+    .play-button {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.5rem;
+      transition: transform 0.3s ease;
+    }
+
+    .generation-video-overlay:hover .play-button {
+      transform: scale(1.1);
+    }
+
+    .generation-content {
+      padding: 1.5rem;
+    }
+
+    .generation-prompt {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .generation-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .generation-date {
+      font-size: 0.75rem;
+      color: var(--text-light);
+    }
+
+    .generation-status {
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-completed {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #059669;
+    }
+
+    .status-processing {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+    }
+
+    .status-failed {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+
+    .generation-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+
+    .action-btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .action-btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .action-btn-secondary {
+      background-color: rgba(91, 143, 249, 0.1);
+      color: var(--primary);
+    }
+
+    .action-btn-secondary:hover {
+      background-color: rgba(91, 143, 249, 0.2);
+    }
+
+    .generations-empty {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-light);
+    }
+
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(91, 143, 249, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      color: var(--primary);
+      font-size: 2rem;
+    }
+
+    .generations-empty h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .generations-empty p {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .load-more-container {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .load-more-btn {
+      padding: 0.75rem 2rem;
+      background-color: rgba(91, 143, 249, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(91, 143, 249, 0.2);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .load-more-btn:hover {
+      background-color: rgba(91, 143, 249, 0.2);
+      border-color: rgba(91, 143, 249, 0.3);
+    }
+
+    .load-more-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Video Modal */
+    .video-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .video-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .video-modal-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .video-modal-video {
+      width: 100%;
+      height: auto;
+      max-height: 80vh;
+    }
+
+    .video-modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+      z-index: 10001;
+    }
+
+    .video-modal-close:hover {
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    .previous-generations-section {
+      margin-top: 4rem;
+      margin-bottom: 4rem;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .section-description {
+      font-size: 1rem;
+      color: var(--text-light);
+      margin-top: 0.5rem;
+    }
+
+    .generations-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .generations-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2rem;
+      color: var(--text-light);
+    }
+
+    .loading-spinner-small {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(91, 143, 249, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .generations-grid {
+      display: grid;
+      grid-template-columns: repeat(1, 1fr);
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .generations-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .generations-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .generation-card {
+      background-color: var(--card-bg);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(91, 143, 249, 0.08);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: 1px solid rgba(225, 232, 245, 0.7);
+      position: relative;
+    }
+
+    .generation-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(91, 143, 249, 0.15);
+    }
+
+    .generation-video-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      background-color: #000;
+      overflow: hidden;
+    }
+
+    .generation-video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .generation-video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      cursor: pointer;
+    }
+
+    .generation-card:hover .generation-video-overlay {
+      opacity: 1;
+    }
+
+    .play-button {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.5rem;
+      transition: transform 0.3s ease;
+    }
+
+    .generation-video-overlay:hover .play-button {
+      transform: scale(1.1);
+    }
+
+    .generation-content {
+      padding: 1.5rem;
+    }
+
+    .generation-prompt {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .generation-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .generation-date {
+      font-size: 0.75rem;
+      color: var(--text-light);
+    }
+
+    .generation-status {
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-completed {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #059669;
+    }
+
+    .status-processing {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+    }
+
+    .status-failed {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+
+    .generation-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+
+    .action-btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .action-btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .action-btn-secondary {
+      background-color: rgba(91, 143, 249, 0.1);
+      color: var(--primary);
+    }
+
+    .action-btn-secondary:hover {
+      background-color: rgba(91, 143, 249, 0.2);
+    }
+
+    .generations-empty {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-light);
+    }
+
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(91, 143, 249, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      color: var(--primary);
+      font-size: 2rem;
+    }
+
+    .generations-empty h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .generations-empty p {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .load-more-container {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .load-more-btn {
+      padding: 0.75rem 2rem;
+      background-color: rgba(91, 143, 249, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(91, 143, 249, 0.2);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .load-more-btn:hover {
+      background-color: rgba(91, 143, 249, 0.2);
+      border-color: rgba(91, 143, 249, 0.3);
+    }
+
+    .load-more-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Video Modal */
+    .video-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .video-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .video-modal-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .video-modal-video {
+      width: 100%;
+      height: auto;
+      max-height: 80vh;
+    }
+
+    .video-modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+      z-index: 10001;
+    }
+
+    .video-modal-close:hover {
+      background: rgba(0, 0, 0, 0.9);
+    }ns Section */
+    .previous-generations-section {
+      margin-top: 4rem;
+      margin-bottom: 4rem;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .section-description {
+      font-size: 1rem;
+      color: var(--text-light);
+      margin-top: 0.5rem;
+    }
+
+    .generations-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .generations-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2rem;
+      color: var(--text-light);
+    }
+
+    .loading-spinner-small {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(91, 143, 249, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .generations-grid {
+      display: grid;
+      grid-template-columns: repeat(1, 1fr);
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .generations-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .generations-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .generation-card {
+      background-color: var(--card-bg);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(91, 143, 249, 0.08);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: 1px solid rgba(225, 232, 245, 0.7);
+      position: relative;
+    }
+
+    .generation-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(91, 143, 249, 0.15);
+    }
+
+    .generation-video-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 aspect ratio */
+      background-color: #000;
+      overflow: hidden;
+    }
+
+    .generation-video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .generation-video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      cursor: pointer;
+    }
+
+    .generation-card:hover .generation-video-overlay {
+      opacity: 1;
+    }
+
+    .play-button {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.5rem;
+      transition: transform 0.3s ease;
+    }
+
+    .generation-video-overlay:hover .play-button {
+      transform: scale(1.1);
+    }
+
+    .generation-content {
+      padding: 1.5rem;
+    }
+
+    .generation-prompt {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .generation-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .generation-date {
+      font-size: 0.75rem;
+      color: var(--text-light);
+    }
+
+    .generation-status {
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-completed {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #059669;
+    }
+
+    .status-processing {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+    }
+
+    .status-failed {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+
+    .generation-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+
+    .action-btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .action-btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .action-btn-secondary {
+      background-color: rgba(91, 143, 249, 0.1);
+      color: var(--primary);
+    }
+
+    .action-btn-secondary:hover {
+      background-color: rgba(91, 143, 249, 0.2);
+    }
+
+    .generations-empty {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-light);
+    }
+
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(91, 143, 249, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      color: var(--primary);
+      font-size: 2rem;
+    }
+
+    .generations-empty h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .generations-empty p {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .load-more-container {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .load-more-btn {
+      padding: 0.75rem 2rem;
+      background-color: rgba(91, 143, 249, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(91, 143, 249, 0.2);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .load-more-btn:hover {
+      background-color: rgba(91, 143, 249, 0.2);
+      border-color: rgba(91, 143, 249, 0.3);
+    }
+
+    .load-more-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Video Modal */
+    .video-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .video-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .video-modal-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .video-modal-video {
+      width: 100%;
+      height: auto;
+      max-height: 80vh;
+    }
+
+    .video-modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+      z-index: 10001;
+    }
+
+    .video-modal-close:hover {
+      background: rgba(0, 0, 0, 0.9);
+    }ns Section */
+    .previous-generations-section {
+      margin-top: 4rem;
+      margin-bottom: 4rem;
+    }
+
+    .section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+
+    .section-description {
+      font-size: 1rem;
+      color: var(--text-light);
+      margin-top: 0.5rem;
+    }
+
+    .generations-container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .generations-loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2rem;
+      color: var(--text-light);
+    }
+
+    .loading-spinner-small {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(91, 143, 249, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    .generations-grid {
+      display: grid;
+      grid-template-columns: repeat(1, 1fr);
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 768px) {
+      .generations-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .generations-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    .generation-card {
+      background-color: var(--card-bg);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 8px 20px rgba(91, 143, 249, 0.08);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      border: 1px solid rgba(225, 232, 245, 0.7);
+      position: relative;
+    }
+
+    .generation-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 30px rgba(91, 143, 249, 0.15);
+    }
+
+    .generation-video-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%; /* 16:9 aspect ratio */
+      background-color: #000;
+      overflow: hidden;
+    }
+
+    .generation-video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .generation-video-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      cursor: pointer;
+    }
+
+    .generation-card:hover .generation-video-overlay {
+      opacity: 1;
+    }
+
+    .play-button {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.5rem;
+      transition: transform 0.3s ease;
+    }
+
+    .generation-video-overlay:hover .play-button {
+      transform: scale(1.1);
+    }
+
+    .generation-content {
+      padding: 1.5rem;
+    }
+
+    .generation-prompt {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .generation-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .generation-date {
+      font-size: 0.75rem;
+      color: var(--text-light);
+    }
+
+    .generation-status {
+      padding: 0.25rem 0.5rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-completed {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #059669;
+    }
+
+    .status-processing {
+      background-color: rgba(245, 158, 11, 0.1);
+      color: #d97706;
+    }
+
+    .status-failed {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+    }
+
+    .generation-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-btn {
+      flex: 1;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+
+    .action-btn-primary {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .action-btn-primary:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .action-btn-secondary {
+      background-color: rgba(91, 143, 249, 0.1);
+      color: var(--primary);
+    }
+
+    .action-btn-secondary:hover {
+      background-color: rgba(91, 143, 249, 0.2);
+    }
+
+    .generations-empty {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-light);
+    }
+
+    .empty-icon {
+      width: 80px;
+      height: 80px;
+      background: rgba(91, 143, 249, 0.1);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+      color: var(--primary);
+      font-size: 2rem;
+    }
+
+    .generations-empty h3 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+    }
+
+    .generations-empty p {
+      font-size: 1rem;
+      margin: 0;
+    }
+
+    .load-more-container {
+      text-align: center;
+      margin-top: 2rem;
+    }
+
+    .load-more-btn {
+      padding: 0.75rem 2rem;
+      background-color: rgba(91, 143, 249, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(91, 143, 249, 0.2);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .load-more-btn:hover {
+      background-color: rgba(91, 143, 249, 0.2);
+      border-color: rgba(91, 143, 249, 0.3);
+    }
+
+    .load-more-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Video Modal */
+    .video-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .video-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .video-modal-content {
+      position: relative;
+      max-width: 90vw;
+      max-height: 90vh;
+      background: #000;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .video-modal-video {
+      width: 100%;
+      height: auto;
+      max-height: 80vh;
+    }
+
+    .video-modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      width: 40px;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+      z-index: 10001;
+    }
+
+    .video-modal-close:hover {
+      background: rgba(0, 0, 0, 0.9);
+    }
   </style>
 </head>
 
 <body>
   <div class="bg-decoration"></div>
   <div class="confetti-container" id="confetti-container"></div>
+  
+  <!-- Video Modal (will be created dynamically) -->
 
   <header class="header">
     <div class="container">
@@ -1539,6 +2876,40 @@
       </div>
     </div>
 
+    <!-- Previous Generations Section -->
+    <div class="previous-generations-section" id="previous-generations-section" style="display: block;">
+      <div class="section-header">
+        <h2 class="section-title">Your Previous Videos</h2>
+        <p class="section-description">View and access your previously generated videos</p>
+      </div>
+      
+      <div class="generations-container">
+        <div class="generations-loading" id="generations-loading" style="display: none;">
+          <div class="loading-spinner-small"></div>
+          <span>Loading your videos...</span>
+        </div>
+        
+        <div class="generations-grid" id="generations-grid">
+          <!-- Previous generations will be loaded here -->
+        </div>
+        
+        <div class="generations-empty" id="generations-empty" style="display: none;">
+          <div class="empty-icon">
+            <i class="fas fa-film"></i>
+          </div>
+          <h3>No videos yet</h3>
+          <p>Your generated videos will appear here</p>
+        </div>
+        
+        <div class="load-more-container" id="load-more-container" style="display: none;">
+          <button class="load-more-btn" id="load-more-btn">
+            <i class="fas fa-chevron-down"></i>
+            Load More Videos
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="features-grid">
       <div class="feature-item">
         <div class="feature-bg"></div>
@@ -1605,50 +2976,14 @@
             Your browser does not support the video tag.
           </video>
           <div class="example-content">
-            <h3 class="example-prompt">"Waterfall in a lush forest"</h3>
-            <p class="example-description">
-              A serene nature scene featuring a cascading waterfall surrounded
-              by vibrant greenery and mist.
-            </p>
-            <button class="try-prompt-btn" data-prompt="Waterfall in a lush forest">
-              <i class="fas fa-play"></i> Try this prompt
-            </button>
-          </div>
-        </div>
-
-        <div class="example-card shimmer">
-          <video class="example-video" controls poster="{{ url_for('static', filename='images/sample3.jpg') }}">
-            <source src="#" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-          <div class="example-content">
             <h3 class="example-prompt">
-              "A futuristic city with flying cars"
+              "A magical forest with glowing fireflies"
             </h3>
             <p class="example-description">
-              Experience a glimpse of the future with this dynamic cityscape
-              featuring advanced architecture and flying vehicles.
+              Experience an enchanted woodland scene with mystical lighting
+              and dancing fireflies creating a dreamlike atmosphere.
             </p>
-            <button class="try-prompt-btn" data-prompt="A futuristic city with flying cars">
-              <i class="fas fa-play"></i> Try this prompt
-            </button>
-          </div>
-        </div>
-
-        <div class="example-card shimmer">
-          <video class="example-video" controls poster="{{ url_for('static', filename='images/sample4.jpg') }}">
-            <source src="#" type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
-          <div class="example-content">
-            <h3 class="example-prompt">
-              "Ocean waves crashing on a beach at sunset"
-            </h3>
-            <p class="example-description">
-              A calming scene of golden hour at the beach with gentle waves
-              and a vibrant sunset sky.
-            </p>
-            <button class="try-prompt-btn" data-prompt="Ocean waves crashing on a beach at sunset">
+            <button class="try-prompt-btn" data-prompt="A magical forest with glowing fireflies">
               <i class="fas fa-play"></i> Try this prompt
             </button>
           </div>
@@ -1656,8 +2991,84 @@
       </div>
     </div>
 
+    <!-- FAQ Section -->
+    <div class="faq-section">
+      <div class="faq-container">
+        <h2 class="faq-title">Frequently Asked Questions</h2>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>How long does it take to generate a video?</h3>
+            <div class="faq-toggle">
+              <svg class="plus" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <svg class="minus" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="faq-answer">
+            <p>Video generation typically takes 5-7 minutes depending on the complexity of your prompt and current server load. You can monitor the progress in real-time with our status updates.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>What video formats are supported?</h3>
+            <div class="faq-toggle">
+              <svg class="plus" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <svg class="minus" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="faq-answer">
+            <p>All generated videos are provided in MP4 format with H.264 encoding, ensuring compatibility with all modern browsers and devices. Videos are optimized for web playback and sharing.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>Can I use the generated videos commercially?</h3>
+            <div class="faq-toggle">
+              <svg class="plus" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <svg class="minus" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="faq-answer">
+            <p>Yes, you have full rights to use the generated videos for both personal and commercial purposes. This includes social media content, marketing materials, presentations, and any other creative projects.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <h3>What makes a good video prompt?</h3>
+            <div class="faq-toggle">
+              <svg class="plus" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <svg class="minus" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 12H6"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="faq-answer">
+            <p>Effective prompts are descriptive and specific. Include details about the scene, lighting, movement, and style. For example: "A serene lake at sunset with gentle ripples and birds flying overhead" works better than just "lake video".</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Testimonials Section -->
     <div class="testimonials-section">
-      <h2 class="section-title">What Users Are Saying</h2>
+      <h2 class="section-title">What Our Users Say</h2>
       <div class="testimonials-container">
         <div class="testimonial-card">
           <div class="testimonial-content">
@@ -1669,16 +3080,14 @@
               <i class="fas fa-star"></i>
             </div>
             <p class="testimonial-text">
-              "I was blown away by the quality of the videos this AI
-              generates. I've used it for my YouTube channel intros and the
-              results are professional-grade. Definitely worth the wait!"
+              "The video quality is incredible! I've been using this for my social media content and the results are always impressive. The AI understands exactly what I'm looking for."
             </p>
             <div class="testimonial-author">
               <div class="testimonial-avatar">
-                <i class="fas fa-user-circle"></i>
+                <i class="fas fa-user"></i>
               </div>
               <div class="testimonial-info">
-                <h4 class="testimonial-name">Alex Johnson</h4>
+                <p class="testimonial-name">Sarah Johnson</p>
                 <p class="testimonial-title">Content Creator</p>
               </div>
             </div>
@@ -1692,20 +3101,18 @@
               <i class="fas fa-star"></i>
               <i class="fas fa-star"></i>
               <i class="fas fa-star"></i>
-              <i class="fas fa-star-half-alt"></i>
+              <i class="fas fa-star"></i>
             </div>
             <p class="testimonial-text">
-              "This tool has revolutionized how I create visual content for my
-              social media. The AI understands exactly what I'm looking for
-              and delivers stunning videos every time."
+              "As a marketing professional, this tool has revolutionized how we create video content. Fast, reliable, and the quality is consistently excellent."
             </p>
             <div class="testimonial-author">
               <div class="testimonial-avatar">
-                <i class="fas fa-user-circle"></i>
+                <i class="fas fa-user"></i>
               </div>
               <div class="testimonial-info">
-                <h4 class="testimonial-name">Sarah Miller</h4>
-                <p class="testimonial-title">Digital Marketer</p>
+                <p class="testimonial-name">Mike Chen</p>
+                <p class="testimonial-title">Marketing Director</p>
               </div>
             </div>
           </div>
@@ -1721,17 +3128,15 @@
               <i class="fas fa-star"></i>
             </div>
             <p class="testimonial-text">
-              "As a small business owner, I couldn't afford professional video
-              production. This AI video generator has been a game-changer for
-              my product demonstrations and social media content."
+              "I love how easy it is to bring my creative ideas to life. The interface is intuitive and the results exceed my expectations every time."
             </p>
             <div class="testimonial-author">
               <div class="testimonial-avatar">
-                <i class="fas fa-user-circle"></i>
+                <i class="fas fa-user"></i>
               </div>
               <div class="testimonial-info">
-                <h4 class="testimonial-name">Michael Chen</h4>
-                <p class="testimonial-title">Entrepreneur</p>
+                <p class="testimonial-name">Emily Rodriguez</p>
+                <p class="testimonial-title">Artist</p>
               </div>
             </div>
           </div>
@@ -1739,158 +3144,23 @@
       </div>
     </div>
 
-    <div class="faq-section">
-      <h2 class="faq-title">Frequently Asked Questions</h2>
-      <div class="faq-container">
-        <div class="faq-item">
-          <div class="faq-question">
-            <h3>How does AI video generation work?</h3>
-            <div class="faq-toggle">
-              <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </div>
-          </div>
-          <div class="faq-answer">
-            <p>
-              Our AI video generation technology uses advanced deep learning
-              models to understand your text prompt and create a corresponding
-              video. The system analyzes your description, generates key
-              frames, and then creates smooth transitions between them to
-              produce a cohesive video that matches your vision.
-            </p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <div class="faq-question">
-            <h3>How long does it take to generate a video?</h3>
-            <div class="faq-toggle">
-              <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </div>
-          </div>
-          <div class="faq-answer">
-            <p>
-              Video generation typically takes about 5-7 minutes. This time is
-              needed for our AI to process your prompt, generate the video
-              frames, enhance the quality, and finalize the output. More
-              complex prompts or higher quality settings may take slightly
-              longer.
-            </p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <div class="faq-question">
-            <h3>What types of videos can I create?</h3>
-            <div class="faq-toggle">
-              <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </div>
-          </div>
-          <div class="faq-answer">
-            <p>
-              You can create a wide variety of videos including landscapes,
-              space scenes, nature footage, abstract animations, cityscapes,
-              and more. The AI works best with clear, descriptive prompts that
-              provide details about the scene, movement, and atmosphere you
-              want to create.
-            </p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <div class="faq-question">
-            <h3>Can I download and use the generated videos?</h3>
-            <div class="faq-toggle">
-              <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </div>
-          </div>
-          <div class="faq-answer">
-            <p>
-              Yes! All videos you generate are available for download and can
-              be used for personal or commercial projects. You can right-click
-              on the video player and select "Save video as..." to download
-              your creation.
-            </p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <div class="faq-question">
-            <h3>How can I get the best results?</h3>
-            <div class="faq-toggle">
-              <svg class="plus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-              <svg class="minus" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="5" y1="12" x2="19" y2="12"></line>
-              </svg>
-            </div>
-          </div>
-          <div class="faq-answer">
-            <p>
-              For best results, use detailed and specific prompts. Include
-              information about the scene, lighting, movement, and mood. For
-              example, instead of "beach scene," try "A tropical beach at
-              sunset with gentle waves lapping at the shore, palm trees
-              swaying in the breeze, and golden light reflecting off the
-              water."
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    <!-- CTA Section -->
     <div class="cta-section">
       <div class="cta-card">
-        <div class="cta-content">
-          <h2 class="cta-title">Ready to Create Amazing Videos?</h2>
-          <p class="cta-description">
-            Transform your ideas into stunning videos with our AI technology.
-            No technical skills required!
-          </p>
-          <a href="#" class="cta-button" onclick="scrollToForm(event)">
-            <i class="fas fa-magic"></i>
-            Start Creating Now
-          </a>
-        </div>
         <div class="cta-decoration">
           <div class="cta-circle"></div>
           <div class="cta-circle"></div>
           <div class="cta-circle"></div>
+        </div>
+        <div class="cta-content">
+          <h2 class="cta-title">Ready to Create Amazing Videos?</h2>
+          <p class="cta-description">
+            Join thousands of creators who are already using our AI video generation platform to bring their ideas to life.
+          </p>
+          <a href="#" class="cta-button" onclick="scrollToForm(event)">
+            <i class="fas fa-play"></i>
+            Start Creating Now
+          </a>
         </div>
       </div>
     </div>
@@ -1946,6 +3216,19 @@
           }
         });
       });
+
+      // Load initial generations when page loads
+      setTimeout(() => {
+        loadPreviousGenerations(true);
+      }, 1000);
+
+      // Load more button event listener
+      const loadMoreBtn = document.getElementById('load-more-btn');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', function() {
+          loadPreviousGenerations(false);
+        });
+      }
     });
 
     window.onload = function () {
@@ -1983,245 +3266,304 @@
           });
         });
 
-      // Add event listeners to example prompt buttons
-      document.querySelectorAll(".try-prompt-btn").forEach((button) => {
-        button.addEventListener("click", function () {
+      // Add try prompt functionality
+      document.querySelectorAll(".try-prompt-btn").forEach((btn) => {
+        btn.addEventListener("click", function () {
           const prompt = this.getAttribute("data-prompt");
           document.getElementById("prompt").value = prompt;
-          document.getElementById("prompt").focus();
-          // Scroll to the form
-          document
-            .querySelector(".video-form-container")
-            .scrollIntoView({ behavior: "smooth" });
+          scrollToForm({ preventDefault: () => {} });
         });
       });
-
-      // Add ripple effect to generate button
-      document
-        .getElementById("generate-btn")
-        .addEventListener("click", createRipple);
     };
 
-    // Create ripple effect
-    function createRipple(event) {
-      if (this.disabled) return;
-
-      const button = event.currentTarget;
-      const circle = document.createElement("span");
-      const diameter = Math.max(button.clientWidth, button.clientHeight);
-      const radius = diameter / 2;
-
-      circle.style.width = circle.style.height = `${diameter}px`;
-      circle.style.left = `${event.clientX - button.getBoundingClientRect().left - radius
-        }px`;
-      circle.style.top = `${event.clientY - button.getBoundingClientRect().top - radius
-        }px`;
-      circle.classList.add("btn-ripple");
-
-      const ripple = button.getElementsByClassName("btn-ripple")[0];
-      if (ripple) {
-        ripple.remove();
-      }
-
-      button.appendChild(circle);
+    // Generate a UUID-like string for anonymous users
+    function generateUUID() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
     }
 
-    // Create particles
-    function createParticles(containerId, count) {
-      const container = document.getElementById(containerId);
-      if (!container) return;
-
-      for (let i = 0; i < count; i++) {
-        const particle = document.createElement("div");
-        particle.classList.add("particle");
-
-        // Random size between 3px and 8px
-        const size = Math.random() * 5 + 3;
-        particle.style.width = `${size}px`;
-        particle.style.height = `${size}px`;
-
-        // Random position
-        particle.style.left = `${Math.random() * 100}%`;
-        particle.style.top = `${Math.random() * 100}%`;
-
-        // Random opacity
-        particle.style.opacity = Math.random() * 0.5 + 0.1;
-
-        container.appendChild(particle);
-
-        // Animate with GSAP
-        gsap.to(particle, {
-          x: `${Math.random() * 50 - 25}`,
-          y: `${Math.random() * 50 - 25}`,
-          opacity: Math.random() * 0.7,
-          duration: Math.random() * 5 + 3,
-          repeat: -1,
-          yoyo: true,
-          ease: "sine.inOut",
-          delay: Math.random() * 2,
-        });
-      }
-    }
-
-    // Create loading particles
-    function createLoadingParticles() {
-      const container = document.getElementById("loading-particles");
-      if (!container) return;
-
-      container.innerHTML = "";
-
-      for (let i = 0; i < 20; i++) {
-        const particle = document.createElement("div");
-        particle.classList.add("particle");
-
-        // Random size between 3px and 6px
-        const size = Math.random() * 3 + 3;
-        particle.style.width = `${size}px`;
-        particle.style.height = `${size}px`;
-
-        // Random position around the circle
-        const angle = Math.random() * Math.PI * 2;
-        const radius = Math.random() * 80 + 20;
-        const x = Math.cos(angle) * radius + 100;
-        const y = Math.sin(angle) * radius + 100;
-
-        particle.style.left = `${x}px`;
-        particle.style.top = `${y}px`;
-
-        container.appendChild(particle);
-
-        // Animate with GSAP
-        gsap.to(particle, {
-          x: Math.random() * 100 - 50,
-          y: Math.random() * 100 - 50,
-          opacity: Math.random(),
-          duration: Math.random() * 3 + 2,
-          repeat: -1,
-          yoyo: true,
-          ease: "sine.inOut",
-          delay: Math.random() * 2,
-        });
-      }
-    }
-
-    // Create confetti animation
-    function createConfetti() {
-      const container = document.getElementById("confetti-container");
-      container.style.display = "block";
-      container.innerHTML = "";
-
-      const colors = ["#5B8FF9", "#83CFFF", "#AFD8F8", "#58C896", "#FFB957"];
-
-      for (let i = 0; i < 100; i++) {
-        const confetti = document.createElement("div");
-        confetti.classList.add("confetti");
-
-        // Random size between 5px and 15px
-        const size = Math.random() * 10 + 5;
-        confetti.style.width = `${size}px`;
-        confetti.style.height = `${size}px`;
-
-        // Random position at the top of the screen
-        confetti.style.left = `${Math.random() * 100}vw`;
-        confetti.style.top = "-20px";
-
-        // Random color
-        confetti.style.backgroundColor =
-          colors[Math.floor(Math.random() * colors.length)];
-
-        // Random shape
-        const shapes = ["circle", "square", "triangle"];
-        const shape = shapes[Math.floor(Math.random() * shapes.length)];
-
-        if (shape === "circle") {
-          confetti.style.borderRadius = "50%";
-        } else if (shape === "triangle") {
-          confetti.style.width = "0";
-          confetti.style.height = "0";
-          confetti.style.backgroundColor = "transparent";
-          confetti.style.borderLeft = `${size / 2}px solid transparent`;
-          confetti.style.borderRight = `${size / 2}px solid transparent`;
-          confetti.style.borderBottom = `${size}px solid ${colors[Math.floor(Math.random() * colors.length)]
-            }`;
+    async function getApiToken() {
+      try {
+        // Get or create persistent anonymous ID
+        let anonymousId = localStorage.getItem('anonymous_user_id');
+        if (!anonymousId) {
+          // Generate a new UUID-like ID for anonymous user
+          anonymousId = generateUUID();
+          localStorage.setItem('anonymous_user_id', anonymousId);
         }
 
-        container.appendChild(confetti);
-
-        // Animate with GSAP
-        gsap.to(confetti, {
-          x: Math.random() * 200 - 100,
-          y: `${window.innerHeight + 100}px`,
-          rotation: Math.random() * 360,
-          opacity: 1,
-          duration: Math.random() * 3 + 2,
-          ease: "power1.out",
-          onComplete: function () {
-            confetti.remove();
+        // Send the anonymous ID to the server
+        const response = await fetch("/get-api-token", {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
           },
+          body: JSON.stringify({
+            anonymous_id: anonymousId
+          })
         });
-      }
-
-      // Remove container after animation completes
-      setTimeout(() => {
-        container.style.display = "none";
-      }, 5000);
-    }
-
-    // Update loading progress
-    function updateProgress(percent) {
-      const progressBar = document.getElementById("progress-bar");
-      progressBar.style.width = `${percent}%`;
-    }
-
-    // Update loading steps
-    function updateLoadingStep(step) {
-      // Reset all steps
-      for (let i = 1; i <= 4; i++) {
-        const dot = document.getElementById(`step-${i}`);
-        const label = document.getElementById(`step-${i}-label`);
-
-        dot.classList.remove("active", "completed");
-        label.classList.remove("active", "completed");
-      }
-
-      // Set current step as active and previous steps as completed
-      for (let i = 1; i <= 4; i++) {
-        const dot = document.getElementById(`step-${i}`);
-        const label = document.getElementById(`step-${i}-label`);
-
-        if (i < step) {
-          dot.classList.add("completed");
-          label.classList.add("completed");
-        } else if (i === step) {
-          dot.classList.add("active");
-          label.classList.add("active");
+        
+        if (!response.ok) {
+          throw new Error("Could not get API token");
         }
+        
+        const data = await response.json();
+        
+        // Update the stored anonymous ID if server provided a different one
+        if (data.anonymous_id && data.anonymous_id !== anonymousId) {
+          localStorage.setItem('anonymous_user_id', data.anonymous_id);
+        }
+        
+        return data.token;
+      } catch (e) {
+        console.error(e);
+        return null;
       }
     }
 
-    // Timer for loading
-    let startTime;
-    let timerInterval;
+    function scrollToForm(event) {
+      event.preventDefault();
+      const formContainer = document.querySelector(".video-form-container");
+      formContainer.scrollIntoView({ behavior: "smooth" });
 
-    function startTimer() {
-      startTime = new Date();
-      timerInterval = setInterval(updateTimer, 1000);
+      // Add a highlight effect to the form
+      const formCard = document.querySelector(".form-card");
+      formCard.classList.add("highlight-pulse");
+
+      // Remove the highlight effect after animation
+      setTimeout(() => {
+        formCard.classList.remove("highlight-pulse");
+      }, 1500);
     }
 
-    function stopTimer() {
-      clearInterval(timerInterval);
+    // Previous Generations Functionality
+    let currentGenerationsPage = 0;
+    const generationsPerPage = 12;
+    let isLoadingGenerations = false;
+    let hasMoreGenerations = true;
+
+    // Load user's previous generations
+    async function loadPreviousGenerations(reset = false) {
+      if (isLoadingGenerations) return;
+      
+      if (reset) {
+        currentGenerationsPage = 0;
+        hasMoreGenerations = true;
+        document.getElementById('generations-grid').innerHTML = '';
+      }
+
+      isLoadingGenerations = true;
+      const loadingElement = document.getElementById('generations-loading');
+      const emptyElement = document.getElementById('generations-empty');
+      const loadMoreContainer = document.getElementById('load-more-container');
+      
+      loadingElement.style.display = 'flex';
+
+      try {
+        const token = await getApiToken();
+        if (!token) {
+          showGenerationsEmpty();
+          return;
+        }
+
+        const response = await fetch(`/api/user-generations?type=text-to-video&limit=${generationsPerPage}&skip=${currentGenerationsPage * generationsPerPage}`, {
+          headers: {
+            'x-access-token': token,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to load generations');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          const generations = data.generations;
+          hasMoreGenerations = data.has_more;
+          
+          if (generations.length === 0 && currentGenerationsPage === 0) {
+            showGenerationsEmpty();
+          } else {
+            displayGenerations(generations, reset);
+            updateLoadMoreButton();
+          }
+          
+          currentGenerationsPage++;
+        } else {
+          throw new Error(data.error || 'Failed to load generations');
+        }
+      } catch (error) {
+        console.error('Error loading generations:', error);
+        if (currentGenerationsPage === 0) {
+          showGenerationsEmpty();
+        }
+      } finally {
+        isLoadingGenerations = false;
+        loadingElement.style.display = 'none';
+      }
     }
 
-    function updateTimer() {
-      const now = new Date();
-      const diff = Math.floor((now - startTime) / 1000);
-      const minutes = Math.floor(diff / 60);
-      const seconds = diff % 60;
+    function showGenerationsEmpty() {
+      document.getElementById('generations-empty').style.display = 'block';
+      document.getElementById('load-more-container').style.display = 'none';
+      // Show the previous generations section even when empty
+      document.getElementById('previous-generations-section').style.display = 'block';
+    }
 
-      document.getElementById(
-        "loading-time"
-      ).textContent = `Time elapsed: ${minutes}:${seconds < 10 ? "0" : ""
-      }${seconds}`;
+    function displayGenerations(generations, reset = false) {
+      const grid = document.getElementById('generations-grid');
+      
+      if (reset) {
+        grid.innerHTML = '';
+      }
+
+      generations.forEach(generation => {
+        const card = createGenerationCard(generation);
+        grid.appendChild(card);
+      });
+
+      document.getElementById('generations-empty').style.display = 'none';
+      
+      // Show the previous generations section
+      document.getElementById('previous-generations-section').style.display = 'block';
+    }
+
+    function createGenerationCard(generation) {
+      const card = document.createElement('div');
+      card.className = 'generation-card';
+      
+      const createdAt = new Date(generation.created_at);
+      const formattedDate = createdAt.toLocaleDateString() + ' ' + createdAt.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      
+      let statusClass = 'status-completed';
+      let statusText = 'Completed';
+      
+      // Check if we have a proxy_url to determine if it's actually completed
+      if (!generation.proxy_url && !generation.result_url) {
+        statusClass = 'status-processing';
+        statusText = 'Processing';
+      }
+
+      card.innerHTML = `
+        <div class="generation-video-container">
+          ${generation.proxy_url ? `
+            <video class="generation-video" preload="metadata" muted>
+              <source src="${generation.proxy_url}" type="video/mp4">
+            </video>
+            <div class="generation-video-overlay" onclick="openVideoModal('${generation.proxy_url}')">
+              <div class="play-button">
+                <i class="fas fa-play"></i>
+              </div>
+            </div>
+          ` : `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; color: #666;">
+              <i class="fas fa-film" style="font-size: 2rem;"></i>
+            </div>
+          `}
+        </div>
+        <div class="generation-content">
+          <div class="generation-prompt">${generation.prompt}</div>
+          <div class="generation-meta">
+            <span class="generation-date">${formattedDate}</span>
+            <span class="generation-status ${statusClass}">${statusText}</span>
+          </div>
+          <div class="generation-actions">
+            ${generation.proxy_url ? `
+              <button class="action-btn action-btn-primary" onclick="openVideoModal('${generation.proxy_url}')">
+                <i class="fas fa-play"></i> Watch
+              </button>
+              <button class="action-btn action-btn-secondary" onclick="downloadVideo('${generation.proxy_url}', '${generation.prompt}')">
+                <i class="fas fa-download"></i> Download
+              </button>
+            ` : `
+              <button class="action-btn action-btn-secondary" disabled>
+                <i class="fas fa-clock"></i> Processing...
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+      
+      return card;
+    }
+
+    function updateLoadMoreButton() {
+      const loadMoreContainer = document.getElementById('load-more-container');
+      const loadMoreBtn = document.getElementById('load-more-btn');
+      
+      if (hasMoreGenerations) {
+        loadMoreContainer.style.display = 'block';
+        loadMoreBtn.disabled = false;
+      } else {
+        loadMoreContainer.style.display = 'none';
+      }
+    }
+
+    // Video modal functionality
+    function openVideoModal(videoUrl) {
+      const modal = document.createElement('div');
+      modal.className = 'video-modal';
+      modal.innerHTML = `
+        <div class="video-modal-content">
+          <button class="video-modal-close" onclick="closeVideoModal(this)">
+            <i class="fas fa-times"></i>
+          </button>
+          <video class="video-modal-video" controls autoplay>
+            <source src="${videoUrl}" type="video/mp4">
+          </video>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
+      
+      // Trigger animation
+      setTimeout(() => {
+        modal.classList.add('active');
+      }, 10);
+      
+      // Close on background click
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          closeVideoModal(modal.querySelector('.video-modal-close'));
+        }
+      });
+      
+      // Close on escape key
+      const escapeHandler = function(e) {
+        if (e.key === 'Escape') {
+          closeVideoModal(modal.querySelector('.video-modal-close'));
+          document.removeEventListener('keydown', escapeHandler);
+        }
+      };
+      document.addEventListener('keydown', escapeHandler);
+    }
+
+    function closeVideoModal(closeBtn) {
+      const modal = closeBtn.closest('.video-modal');
+      modal.classList.remove('active');
+      
+      setTimeout(() => {
+        modal.remove();
+      }, 300);
+    }
+
+    function downloadVideo(videoUrl, prompt) {
+      const link = document.createElement('a');
+      link.href = videoUrl;
+      link.download = `video-${prompt.substring(0, 30).replace(/[^a-zA-Z0-9]/g, '-')}.mp4`;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Refresh generations when a new video is completed
+    function refreshGenerations() {
+      loadPreviousGenerations(true);
     }
 
     document
@@ -2368,6 +3710,11 @@
 
               // Show confetti animation
               createConfetti();
+
+              // Refresh the previous generations list
+              setTimeout(() => {
+                refreshGenerations();
+              }, 2000);
             } else if (statusResult.status === "failed") {
               clearInterval(interval);
               loadingSpinner.style.display = "none";
@@ -2429,34 +3776,165 @@
       errorContainer.classList.add("shake");
     }
 
-    async function getApiToken() {
-      try {
-        const response = await fetch("/get-api-token");
-        if (!response.ok) {
-          throw new Error("Could not get API token");
-        }
-        const data = await response.json();
-        return data.token;
-      } catch (e) {
-        console.error(e);
-        return null;
+    function updateProgress(percent) {
+      const progressBar = document.getElementById("progress-bar");
+      progressBar.style.width = `${percent}%`;
+    }
+
+    function updateLoadingStep(step) {
+      // Reset all steps
+      for (let i = 1; i <= 4; i++) {
+        const dot = document.getElementById(`step-${i}`);
+        const label = document.getElementById(`step-${i}-label`);
+        dot.classList.remove("active", "completed");
+        label.classList.remove("active", "completed");
+      }
+
+      // Mark completed steps
+      for (let i = 1; i < step; i++) {
+        const dot = document.getElementById(`step-${i}`);
+        const label = document.getElementById(`step-${i}-label`);
+        dot.classList.add("completed");
+        label.classList.add("completed");
+      }
+
+      // Mark current step as active
+      const currentDot = document.getElementById(`step-${step}`);
+      const currentLabel = document.getElementById(`step-${step}-label`);
+      currentDot.classList.add("active");
+      currentLabel.classList.add("active");
+    }
+
+    let timerInterval;
+    let startTime;
+
+    function startTimer() {
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 1000);
+    }
+
+    function stopTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
       }
     }
 
-    function scrollToForm(event) {
-      event.preventDefault();
-      const formContainer = document.querySelector(".video-form-container");
-      formContainer.scrollIntoView({ behavior: "smooth" });
+    function updateTimer() {
+      const elapsed = Date.now() - startTime;
+      const minutes = Math.floor(elapsed / 60000);
+      const seconds = Math.floor((elapsed % 60000) / 1000);
+      document.getElementById(
+        "loading-time"
+      ).textContent = `Time elapsed: ${minutes}:${seconds
+        .toString()
+        .padStart(2, "0")}`;
+    }
 
-      // Add a highlight effect to the form
-      const formCard = document.querySelector(".form-card");
-      formCard.classList.add("highlight-pulse");
+    function createLoadingParticles() {
+      const container = document.getElementById("loading-particles");
+      container.innerHTML = ""; // Clear existing particles
 
-      // Focus on the input field
+      for (let i = 0; i < 20; i++) {
+        const particle = document.createElement("div");
+        particle.className = "particle";
+
+        // Random size
+        const size = Math.random() * 6 + 2;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+
+        // Random position around the circle
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 80 + 20;
+        const x = Math.cos(angle) * radius + 100;
+        const y = Math.sin(angle) * radius + 100;
+
+        particle.style.left = `${x}px`;
+        particle.style.top = `${y}px`;
+
+        container.appendChild(particle);
+
+        // Animate with GSAP
+        gsap.to(particle, {
+          x: Math.random() * 100 - 50,
+          y: Math.random() * 100 - 50,
+          opacity: 1,
+          duration: Math.random() * 2 + 1,
+          repeat: -1,
+          yoyo: true,
+          ease: "power2.inOut",
+          delay: Math.random() * 2,
+        });
+      }
+    }
+
+    function createParticles(containerId, count) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      for (let i = 0; i < count; i++) {
+        const particle = document.createElement("div");
+        particle.className = "particle";
+
+        // Random size
+        const size = Math.random() * 4 + 2;
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+
+        // Random position
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+
+        container.appendChild(particle);
+
+        // Animate with GSAP
+        gsap.to(particle, {
+          x: Math.random() * 50 - 25,
+          y: Math.random() * 50 - 25,
+          opacity: Math.random() * 0.5 + 0.2,
+          duration: Math.random() * 3 + 2,
+          repeat: -1,
+          yoyo: true,
+          ease: "power2.inOut",
+          delay: Math.random() * 2,
+        });
+      }
+    }
+
+    function createConfetti() {
+      const container = document.getElementById("confetti-container");
+      container.style.display = "block";
+
+      const colors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4", "#ffeaa7"];
+
+      for (let i = 0; i < 100; i++) {
+        const confetti = document.createElement("div");
+        confetti.className = "confetti";
+        confetti.style.backgroundColor =
+          colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = `${Math.random() * 100}%`;
+        confetti.style.top = "-10px";
+
+        container.appendChild(confetti);
+
+        // Animate with GSAP
+        gsap.to(confetti, {
+          y: window.innerHeight + 100,
+          x: Math.random() * 200 - 100,
+          rotation: Math.random() * 360,
+          opacity: 1,
+          duration: Math.random() * 3 + 2,
+          ease: "power2.out",
+          onComplete: () => {
+            confetti.remove();
+          },
+        });
+      }
+
+      // Hide container after animation
       setTimeout(() => {
-        document.getElementById("prompt").focus();
-        formCard.classList.remove("highlight-pulse");
-      }, 1000);
+        container.style.display = "none";
+      }, 5000);
     }
   </script>
 </body>

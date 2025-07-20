@@ -3,7 +3,7 @@ import os
 import uuid
 from image_generator import main_image_function
 from prompt_translate import translate_to_english
-from models import User, db, request_logs_collection, QwenApiKey
+from models import User, db, request_logs_collection, QwenApiKey, UserGenerationHistory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 import logging
@@ -626,6 +626,183 @@ def get_video_proxy_error_summary():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/admin/user-generations')
+def admin_user_generations():
+    """Admin page for user generation history management"""
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+    return render_template('admin/user_generations.html')
+
+@app.route('/admin/api/user-generations', methods=['GET'])
+@admin_required
+def admin_get_user_generations():
+    """API endpoint to get user generation history for admin"""
+    try:
+        # Get query parameters
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('limit', 20)), 100)  # Max 100 items
+        generation_type = request.args.get('type')
+        status_filter = request.args.get('status')
+        
+        skip = (page - 1) * limit
+        
+        history = UserGenerationHistory()
+        
+        # Build query
+        query = {'is_active': True}
+        if generation_type:
+            query['generation_type'] = generation_type
+        
+        # Get generations with pagination
+        cursor = history.collection.find(query).sort('created_at', -1).skip(skip).limit(limit)
+        generations = []
+        
+        for doc in cursor:
+            doc['_id'] = str(doc['_id'])
+            if 'created_at' in doc:
+                doc['created_at'] = doc['created_at'].isoformat()
+            
+            # Apply status filter if specified
+            if status_filter:
+                if status_filter == 'completed' and not doc.get('proxy_url'):
+                    continue
+                elif status_filter == 'processing' and doc.get('proxy_url'):
+                    continue
+                elif status_filter == 'failed':
+                    # For now, we don't have explicit failed status in history
+                    continue
+            
+            generations.append(doc)
+        
+        # Get total count
+        total_count = history.collection.count_documents(query)
+        
+        # Calculate stats
+        stats = calculate_generation_stats(history)
+        
+        return jsonify({
+            'success': True,
+            'generations': generations,
+            'total_count': total_count,
+            'page': page,
+            'limit': limit,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error retrieving admin user generations: {e}")
+        return jsonify({'error': 'Failed to retrieve generation history'}), 500
+
+def calculate_generation_stats(history):
+    """Calculate statistics for admin dashboard"""
+    try:
+        from datetime import datetime, timezone, timedelta
+        
+        now = datetime.now(timezone.utc)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        yesterday_start = today_start - timedelta(days=1)
+        
+        # Total generations
+        total = history.collection.count_documents({'is_active': True})
+        
+        # Today's generations
+        today = history.collection.count_documents({
+            'is_active': True,
+            'created_at': {'$gte': today_start}
+        })
+        
+        # Active users in last 24h (unique user_id and session_id)
+        pipeline = [
+            {'$match': {
+                'is_active': True,
+                'created_at': {'$gte': yesterday_start}
+            }},
+            {'$group': {
+                '_id': {
+                    'user_id': '$user_id',
+                    'session_id': '$session_id'
+                }
+            }},
+            {'$count': 'active_users'}
+        ]
+        
+        active_users_result = list(history.collection.aggregate(pipeline))
+        active_users = active_users_result[0]['active_users'] if active_users_result else 0
+        
+        # Success rate (generations with proxy_url)
+        completed = history.collection.count_documents({
+            'is_active': True,
+            'proxy_url': {'$exists': True, '$ne': None}
+        })
+        
+        success_rate = round((completed / total * 100), 1) if total > 0 else 0
+        
+        return {
+            'total': total,
+            'today': today,
+            'active_users': active_users,
+            'success_rate': success_rate
+        }
+        
+    except Exception as e:
+        app.logger.error(f"Error calculating generation stats: {e}")
+        return {
+            'total': 0,
+            'today': 0,
+            'active_users': 0,
+            'success_rate': 0
+        }
+
+@app.route('/admin/api/user-generations/export', methods=['GET'])
+@admin_required
+def admin_export_user_generations():
+    """Export user generation history as CSV"""
+    try:
+        import csv
+        from io import StringIO
+        
+        history = UserGenerationHistory()
+        
+        # Get all generations
+        cursor = history.collection.find({'is_active': True}).sort('created_at', -1)
+        
+        # Create CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'ID', 'User Type', 'Generation Type', 'Prompt', 
+            'Status', 'Created At', 'Has Video'
+        ])
+        
+        # Write data
+        for doc in cursor:
+            writer.writerow([
+                str(doc['_id']),
+                'User' if doc.get('user_id') else 'Anonymous',
+                doc.get('generation_type', ''),
+                doc.get('prompt', ''),
+                'Completed' if doc.get('proxy_url') else 'Processing',
+                doc.get('created_at', '').isoformat() if doc.get('created_at') else '',
+                'Yes' if doc.get('proxy_url') else 'No'
+            ])
+        
+        # Create response
+        output.seek(0)
+        response = Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=user_generations.csv'}
+        )
+        
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error exporting user generations: {e}")
+        return jsonify({'error': 'Failed to export data'}), 500
+
 @app.route('/admin/api/video-proxy-health', methods=['GET'])
 @admin_required
 def get_video_proxy_health():
@@ -873,7 +1050,7 @@ def check_auth_status():
     else:
         return jsonify({'authenticated': False})
 
-@app.route('/get-api-token', methods=['GET'])
+@app.route('/get-api-token', methods=['GET', 'POST'])
 def get_api_token():
     """Generate a JWT for the authenticated or anonymous user."""
     try:
@@ -883,10 +1060,30 @@ def get_api_token():
             user_id = current_user.get_id()
             is_anonymous = False
         else:
-            # For anonymous users, use a session-based ID
-            if 'anonymous_id' not in session:
-                session['anonymous_id'] = str(uuid.uuid4())
-            user_id = session['anonymous_id']
+            # For anonymous users, try to get client-provided anonymous ID first
+            client_anonymous_id = None
+            
+            if request.method == 'POST':
+                data = request.get_json()
+                client_anonymous_id = data.get('anonymous_id') if data else None
+            else:
+                client_anonymous_id = request.args.get('anonymous_id')
+            
+            # Validate the client-provided ID (should be a valid UUID format)
+            if client_anonymous_id:
+                try:
+                    # Validate UUID format
+                    uuid.UUID(client_anonymous_id)
+                    user_id = client_anonymous_id
+                except ValueError:
+                    # Invalid UUID format, generate a new one
+                    user_id = str(uuid.uuid4())
+            else:
+                # No client ID provided, check session or generate new
+                if 'anonymous_id' not in session:
+                    session['anonymous_id'] = str(uuid.uuid4())
+                user_id = session['anonymous_id']
+            
             is_anonymous = True
 
         payload = {
@@ -898,7 +1095,7 @@ def get_api_token():
         
         token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
         
-        return jsonify({'token': token})
+        return jsonify({'token': token, 'anonymous_id': user_id if is_anonymous else None})
     except Exception as e:
         app.logger.error(f"Error generating API token: {str(e)}")
         return jsonify({'error': 'Could not generate API token.'}), 500
@@ -2219,6 +2416,7 @@ def process_qwen_video_task(app, task_id):
             logger.info(f"Thread for {task_id}: Video generation successful. URL: {result['video_url']}")
             
             # Create proxy mapping for the video URL
+            proxy_url = None
             try:
                 url_mapping = VideoUrlMapping()
                 proxy_id = url_mapping.create_mapping(result['video_url'], task_id)
@@ -2231,6 +2429,18 @@ def process_qwen_video_task(app, task_id):
                 logger.error(f"Thread for {task_id}: Failed to create proxy mapping: {proxy_error}")
                 # Still mark as completed but without proxy URL
                 VideoTask.update(task_id, status='completed', result_url=result['video_url'])
+
+            # Update user generation history with result URLs
+            try:
+                history = UserGenerationHistory()
+                history.update_generation_urls(
+                    task_id=task_id,
+                    result_url=result['video_url'],
+                    proxy_url=proxy_url
+                )
+                logger.info(f"Thread for {task_id}: Updated generation history with URLs")
+            except Exception as history_error:
+                logger.warning(f"Thread for {task_id}: Failed to update generation history: {history_error}")
 
         except Exception as e:
             logger.error(f"Thread for {task_id} failed: {e}", exc_info=True)
@@ -2263,6 +2473,29 @@ def generate_qwen_video_route():
     if not task:
         return jsonify({'error': 'Failed to create video task in database.'}), 500
 
+    # Save generation to user history
+    try:
+        history = UserGenerationHistory()
+        user_id = None
+        session_id = None
+        
+        # Get user identification from token
+        token_data = getattr(g, 'token_data', {})
+        if token_data.get('anonymous'):
+            session_id = token_data.get('user_id')  # For anonymous users, user_id is actually session_id
+        else:
+            user_id = token_data.get('user_id')
+        
+        history.save_generation(
+            user_id=user_id,
+            session_id=session_id,
+            generation_type='text-to-video',
+            prompt=prompt,
+            task_id=task['task_id']
+        )
+    except Exception as e:
+        app.logger.warning(f"Failed to save generation to history: {e}")
+
     # Start the video generation in a background thread
     thread = threading.Thread(target=process_qwen_video_task, args=(app, task['task_id']))
     thread.daemon = True
@@ -2273,6 +2506,94 @@ def generate_qwen_video_route():
         'message': 'Your video request has been queued. You can check the status using the task ID.',
         'task_id': task['task_id']
     }), 202
+
+@app.route('/api/user-generations', methods=['GET'])
+@token_required
+def get_user_generations():
+    """API endpoint to get user's generation history"""
+    try:
+        # Get query parameters
+        generation_type = request.args.get('type', 'text-to-video')
+        limit = min(int(request.args.get('limit', 20)), 50)  # Max 50 items
+        skip = int(request.args.get('skip', 0))
+        
+        # Get user identification from token
+        token_data = getattr(g, 'token_data', {})
+        user_id = None
+        session_id = None
+        
+        if token_data.get('anonymous'):
+            session_id = token_data.get('user_id')  # For anonymous users
+        else:
+            user_id = token_data.get('user_id')
+        
+        if not user_id and not session_id:
+            return jsonify({'error': 'User identification not found'}), 400
+        
+        # Get user's generation history
+        history = UserGenerationHistory()
+        generations = history.get_user_generations(
+            user_id=user_id,
+            session_id=session_id,
+            generation_type=generation_type,
+            limit=limit,
+            skip=skip
+        )
+        
+        # Get total count for pagination
+        total_count = history.count_user_generations(
+            user_id=user_id,
+            session_id=session_id,
+            generation_type=generation_type
+        )
+        
+        return jsonify({
+            'success': True,
+            'generations': generations,
+            'total_count': total_count,
+            'limit': limit,
+            'skip': skip,
+            'has_more': (skip + limit) < total_count
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error retrieving user generations: {e}")
+        return jsonify({'error': 'Failed to retrieve generation history'}), 500
+
+@app.route('/api/user-generations/<string:generation_id>', methods=['GET'])
+@token_required
+def get_user_generation_by_id(generation_id):
+    """API endpoint to get a specific generation by ID"""
+    try:
+        history = UserGenerationHistory()
+        generation = history.get_generation_by_id(generation_id)
+        
+        if not generation:
+            return jsonify({'error': 'Generation not found'}), 404
+        
+        # Verify ownership - check if the generation belongs to the current user
+        token_data = getattr(g, 'token_data', {})
+        user_id = None
+        session_id = None
+        
+        if token_data.get('anonymous'):
+            session_id = token_data.get('user_id')
+        else:
+            user_id = token_data.get('user_id')
+        
+        # Check ownership
+        if (generation.get('user_id') != user_id and 
+            generation.get('session_id') != session_id):
+            return jsonify({'error': 'Access denied'}), 403
+        
+        return jsonify({
+            'success': True,
+            'generation': generation
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error retrieving generation by ID: {e}")
+        return jsonify({'error': 'Failed to retrieve generation'}), 500
 
 @app.route('/generate-text-to-video-ui/status/<string:task_id>', methods=['GET'])
 @limiter.exempt
