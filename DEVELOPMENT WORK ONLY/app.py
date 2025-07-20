@@ -28,13 +28,16 @@ import hashlib
 import time
 import secrets
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import requests
 from turnstile_utils import verify_turnstile
 from qwen_generator import generate_qwen_video
-from models import VideoTask
+from models import VideoTask, VideoUrlMapping
 import threading
+from flask import Response, stream_with_context
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Load environment variables
 load_dotenv()
@@ -93,6 +96,37 @@ limiter = Limiter(
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
     strategy="moving-window" # Moving window for better abuse prevention
 )
+
+# Connection pooling for Qwen service requests
+def create_qwen_session():
+    """Create a requests session with connection pooling and retry strategy for Qwen service"""
+    session = requests.Session()
+    
+    # Configure retry strategy
+    retry_strategy = Retry(
+        total=3,
+        status_forcelist=[429, 500, 502, 503, 504],
+        method_whitelist=["HEAD", "GET", "OPTIONS"],
+        backoff_factor=1
+    )
+    
+    # Configure HTTP adapter with connection pooling
+    adapter = HTTPAdapter(
+        pool_connections=10,  # Number of connection pools to cache
+        pool_maxsize=20,      # Maximum number of connections to save in the pool
+        max_retries=retry_strategy
+    )
+    
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
+    # Set default timeout
+    session.timeout = 30
+    
+    return session
+
+# Global session for Qwen requests with connection pooling
+qwen_session = create_qwen_session()
 
 # Imagen 4 specific rate limits
 IMAGEN4_MINUTE_LIMIT = 3
@@ -437,6 +471,216 @@ def admin_delete_qwen_key(key_id):
     QwenApiKey.delete(key_id)
     flash('Qwen API key deleted successfully!', 'success')
     return redirect(url_for('admin_qwen_keys', secret=secret_key))
+
+# Video URL Mapping Admin Endpoints
+@app.route('/admin/api/video-mapping-stats', methods=['GET'])
+@admin_required
+def get_video_mapping_stats():
+    """API endpoint to get video URL mapping storage statistics"""
+    try:
+        mapping = VideoUrlMapping()
+        stats = mapping.get_storage_usage_stats()
+        cleanup_status = VideoUrlMapping.get_cleanup_status()
+        
+        # Combine stats and cleanup status
+        response = {**stats, **cleanup_status}
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/video-mapping-cleanup', methods=['POST'])
+@admin_required
+def manual_video_mapping_cleanup():
+    """API endpoint to manually trigger cleanup of expired video URL mappings"""
+    try:
+        mapping = VideoUrlMapping()
+        deleted_count = mapping.cleanup_expired_mappings()
+        
+        return jsonify({
+            'success': True,
+            'deleted_count': deleted_count,
+            'message': f'Cleaned up {deleted_count} expired video URL mappings'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/video-mappings')
+def admin_video_mappings():
+    """Admin page for video URL mapping management"""
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+    return render_template('admin/video_mappings.html')
+
+@app.route('/admin/video-proxy-monitoring')
+def admin_video_proxy_monitoring():
+    """Admin page for video proxy performance monitoring"""
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+    return render_template('admin/video_proxy_monitoring.html')
+
+@app.route('/admin/api/video-proxy-performance', methods=['GET'])
+@admin_required
+def get_video_proxy_performance():
+    """API endpoint to get video proxy performance statistics"""
+    try:
+        hours = int(request.args.get('hours', 24))
+        stats = get_proxy_performance_stats(hours)
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/video-proxy-logs', methods=['GET'])
+@admin_required
+def get_video_proxy_logs():
+    """API endpoint to get recent video proxy access logs"""
+    try:
+        if db is None:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        # Get query parameters
+        limit = int(request.args.get('limit', 100))
+        hours = int(request.args.get('hours', 24))
+        status_code = request.args.get('status_code')
+        
+        # Build query
+        query = {
+            'timestamp': {
+                '$gte': datetime.now(timezone.utc) - timedelta(hours=hours)
+            }
+        }
+        
+        if status_code:
+            query['status_code'] = int(status_code)
+        
+        # Get logs
+        logs = list(db['video_proxy_logs'].find(
+            query,
+            {'_id': 0}  # Exclude MongoDB _id field
+        ).sort('timestamp', -1).limit(limit))
+        
+        # Convert datetime objects to ISO strings for JSON serialization
+        for log in logs:
+            if 'timestamp' in log:
+                log['timestamp'] = log['timestamp'].isoformat()
+        
+        return jsonify({
+            'logs': logs,
+            'total_count': len(logs),
+            'query_hours': hours,
+            'query_limit': limit
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/video-proxy-error-summary', methods=['GET'])
+@admin_required
+def get_video_proxy_error_summary():
+    """API endpoint to get summary of video proxy errors"""
+    try:
+        if db is None:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        hours = int(request.args.get('hours', 24))
+        start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+        
+        # Aggregate error statistics
+        pipeline = [
+            {'$match': {
+                'timestamp': {'$gte': start_time},
+                'status_code': {'$gte': 400}
+            }},
+            {'$group': {
+                '_id': {
+                    'status_code': '$status_code',
+                    'error_message': '$error_message'
+                },
+                'count': {'$sum': 1},
+                'latest_occurrence': {'$max': '$timestamp'}
+            }},
+            {'$sort': {'count': -1}},
+            {'$limit': 20}
+        ]
+        
+        error_summary = list(db['video_proxy_logs'].aggregate(pipeline))
+        
+        # Convert datetime objects to ISO strings
+        for error in error_summary:
+            if 'latest_occurrence' in error:
+                error['latest_occurrence'] = error['latest_occurrence'].isoformat()
+        
+        # Get total error count
+        total_errors = db['video_proxy_logs'].count_documents({
+            'timestamp': {'$gte': start_time},
+            'status_code': {'$gte': 400}
+        })
+        
+        return jsonify({
+            'error_summary': error_summary,
+            'total_errors': total_errors,
+            'hours_analyzed': hours
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/video-proxy-health', methods=['GET'])
+@admin_required
+def get_video_proxy_health():
+    """API endpoint to check video proxy system health"""
+    try:
+        health_status = check_video_proxy_health()
+        
+        # Determine overall health status
+        overall_status = 'healthy'
+        if not health_status['database_connected'] or not health_status['mapping_service_available']:
+            overall_status = 'unhealthy'
+        elif health_status['error_rate_last_hour'] > 10:  # More than 10% error rate
+            overall_status = 'degraded'
+        elif health_status['avg_response_time_last_hour'] > 5000:  # More than 5 seconds
+            overall_status = 'degraded'
+        
+        health_status['overall_status'] = overall_status
+        health_status['timestamp'] = datetime.now(timezone.utc).isoformat()
+        
+        # Return appropriate HTTP status code
+        if overall_status == 'healthy':
+            return jsonify(health_status), 200
+        elif overall_status == 'degraded':
+            return jsonify(health_status), 200  # Still operational but degraded
+        else:
+            return jsonify(health_status), 503  # Service unavailable
+        
+    except Exception as e:
+        return jsonify({
+            'overall_status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 500
+
+@app.route('/health/video-proxy', methods=['GET'])
+def video_proxy_health_check():
+    """Public health check endpoint for video proxy functionality"""
+    try:
+        health_status = check_video_proxy_health()
+        
+        # Return simplified health status for public endpoint
+        public_health = {
+            'status': 'healthy' if health_status['database_connected'] and 
+                     health_status['mapping_service_available'] and
+                     health_status['error_rate_last_hour'] < 20 else 'unhealthy',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+        
+        return jsonify(public_health), 200 if public_health['status'] == 'healthy' else 503
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 503
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -1973,7 +2217,20 @@ def process_qwen_video_task(app, task_id):
                  raise Exception(result['error'])
 
             logger.info(f"Thread for {task_id}: Video generation successful. URL: {result['video_url']}")
-            VideoTask.update(task_id, status='completed', result_url=result['video_url'])
+            
+            # Create proxy mapping for the video URL
+            try:
+                url_mapping = VideoUrlMapping()
+                proxy_id = url_mapping.create_mapping(result['video_url'], task_id)
+                proxy_url = f"/video/{proxy_id}"
+                logger.info(f"Thread for {task_id}: Created proxy URL: {proxy_url}")
+                
+                # Update task with both original URL and proxy URL
+                VideoTask.update(task_id, status='completed', result_url=result['video_url'], proxy_url=proxy_url)
+            except Exception as proxy_error:
+                logger.error(f"Thread for {task_id}: Failed to create proxy mapping: {proxy_error}")
+                # Still mark as completed but without proxy URL
+                VideoTask.update(task_id, status='completed', result_url=result['video_url'])
 
         except Exception as e:
             logger.error(f"Thread for {task_id} failed: {e}", exc_info=True)
@@ -2028,18 +2285,699 @@ def get_qwen_video_status(task_id):
     if not task:
         return jsonify({'error': 'Task not found'}), 404
 
+    # Return proxy URL if available, otherwise fall back to result_url
+    video_url = task.get('proxy_url') or task.get('result_url')
+    
     response = {
         'task_id': task['task_id'],
         'status': task['status'],
         'prompt': task['prompt'],
         'created_at': task['created_at'].isoformat() if task.get('created_at') else None,
         'updated_at': task['updated_at'].isoformat() if task.get('updated_at') else None,
-        'result_url': task.get('result_url'),
+        'result_url': video_url,
         'error_message': task.get('error_message')
     }
     
     return jsonify(response)
 
+
+def log_video_proxy_access(proxy_id, client_ip, user_agent, status_code, error_message=None, response_time_ms=None, bytes_transferred=None):
+    """
+    Enhanced logging for video proxy access with performance monitoring.
+    Logs detailed information without exposing sensitive data.
+    """
+    try:
+        if db is None:
+            return
+        
+        log_entry = {
+            'proxy_id': proxy_id,
+            'client_ip': client_ip,
+            'user_agent': user_agent,
+            'status_code': status_code,
+            'timestamp': datetime.now(timezone.utc),
+            'endpoint': 'video_proxy'
+        }
+        
+        # Add performance metrics if provided
+        if response_time_ms is not None:
+            log_entry['response_time_ms'] = response_time_ms
+        
+        if bytes_transferred is not None:
+            log_entry['bytes_transferred'] = bytes_transferred
+        
+        # Add error information without exposing sensitive details
+        if error_message:
+            # Sanitize error message to avoid exposing Qwen service details
+            sanitized_error = sanitize_error_message(error_message)
+            log_entry['error_message'] = sanitized_error
+        
+        # Add request context for monitoring
+        log_entry['referer'] = request.headers.get('Referer', 'Direct')
+        log_entry['range_request'] = bool(request.headers.get('Range'))
+        
+        # Store in video_proxy_logs collection
+        db['video_proxy_logs'].insert_one(log_entry)
+        
+        # Update performance metrics
+        update_proxy_performance_metrics(status_code, response_time_ms, error_message is not None)
+        
+    except Exception as e:
+        app.logger.error(f"Error logging video proxy access: {e}")
+
+
+def sanitize_error_message(error_message):
+    """
+    Sanitize error messages to remove sensitive information while preserving useful debugging info.
+    Removes Qwen-specific details and URLs while keeping error types and codes.
+    """
+    if not error_message:
+        return error_message
+    
+    # List of sensitive patterns to remove or replace
+    sensitive_patterns = [
+        (r'https?://[^/]*qwen[^/]*[^\s]*', '[UPSTREAM_URL]'),
+        (r'https?://[^/]*alibaba[^/]*[^\s]*', '[UPSTREAM_URL]'),
+        (r'qwen[a-zA-Z0-9\-\.]*', '[UPSTREAM_SERVICE]'),
+        (r'alibaba[a-zA-Z0-9\-\.]*', '[UPSTREAM_SERVICE]'),
+        (r'X-Request-Id: [^\s]+', 'X-Request-Id: [REDACTED]'),
+        (r'X-Trace-Id: [^\s]+', 'X-Trace-Id: [REDACTED]'),
+        (r'auth_token[^,\s]*', 'auth_token=[REDACTED]'),
+        (r'api[_-]?key[^,\s]*', 'api_key=[REDACTED]')
+    ]
+    
+    sanitized = error_message
+    for pattern, replacement in sensitive_patterns:
+        import re
+        sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+    
+    return sanitized
+
+
+def update_proxy_performance_metrics(status_code, response_time_ms, has_error):
+    """
+    Update performance metrics for monitoring proxy endpoint health.
+    Tracks success rates, response times, and error patterns.
+    """
+    try:
+        if db is None:
+            return
+        
+        current_time = datetime.now(timezone.utc)
+        
+        # Create or update performance metrics document
+        metrics_doc = {
+            'timestamp': current_time,
+            'status_code': status_code,
+            'response_time_ms': response_time_ms,
+            'has_error': has_error,
+            'success': status_code < 400
+        }
+        
+        # Store individual metric
+        db['video_proxy_metrics'].insert_one(metrics_doc)
+        
+        # Update aggregated metrics (hourly summary)
+        hour_key = current_time.replace(minute=0, second=0, microsecond=0)
+        
+        # Upsert hourly aggregated metrics
+        db['video_proxy_hourly_metrics'].update_one(
+            {'hour': hour_key},
+            {
+                '$inc': {
+                    'total_requests': 1,
+                    'success_count': 1 if status_code < 400 else 0,
+                    'error_count': 1 if status_code >= 400 else 0,
+                    f'status_{status_code}_count': 1
+                },
+                '$push': {
+                    'response_times': response_time_ms
+                } if response_time_ms is not None else {},
+                '$setOnInsert': {
+                    'hour': hour_key
+                }
+            },
+            upsert=True
+        )
+        
+    except Exception as e:
+        app.logger.error(f"Error updating proxy performance metrics: {e}")
+
+
+def check_video_proxy_health():
+    """
+    Comprehensive health check for video proxy functionality.
+    Returns detailed health status including database connectivity,
+    mapping service availability, and performance metrics.
+    """
+    health_status = {
+        'database_connected': False,
+        'mapping_service_available': False,
+        'cleanup_thread_running': False,
+        'total_active_mappings': 0,
+        'error_rate_last_hour': 0,
+        'avg_response_time_last_hour': 0,
+        'last_successful_request': None,
+        'qwen_session_healthy': False,
+        'recent_errors': []
+    }
+    
+    try:
+        # Check database connectivity
+        if db is not None:
+            # Test database connection with a simple operation
+            db.command('ismaster')
+            health_status['database_connected'] = True
+            
+            # Check mapping service availability
+            try:
+                mapping = VideoUrlMapping()
+                stats = mapping.get_storage_usage_stats()
+                health_status['mapping_service_available'] = True
+                health_status['total_active_mappings'] = stats.get('active_mappings', 0)
+                
+                # Check cleanup thread status
+                cleanup_status = VideoUrlMapping.get_cleanup_status()
+                health_status['cleanup_thread_running'] = cleanup_status.get('cleanup_running', False)
+                
+            except Exception as e:
+                health_status['mapping_service_available'] = False
+                health_status['mapping_service_error'] = str(e)
+            
+            # Get performance metrics for the last hour
+            try:
+                one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+                
+                # Calculate error rate
+                total_requests = db['video_proxy_logs'].count_documents({
+                    'timestamp': {'$gte': one_hour_ago}
+                })
+                
+                error_requests = db['video_proxy_logs'].count_documents({
+                    'timestamp': {'$gte': one_hour_ago},
+                    'status_code': {'$gte': 400}
+                })
+                
+                if total_requests > 0:
+                    health_status['error_rate_last_hour'] = (error_requests / total_requests) * 100
+                
+                # Calculate average response time
+                response_times = list(db['video_proxy_logs'].find({
+                    'timestamp': {'$gte': one_hour_ago},
+                    'response_time_ms': {'$exists': True, '$ne': None}
+                }, {'response_time_ms': 1}))
+                
+                if response_times:
+                    avg_response_time = sum(log['response_time_ms'] for log in response_times) / len(response_times)
+                    health_status['avg_response_time_last_hour'] = round(avg_response_time, 2)
+                
+                # Get last successful request timestamp
+                last_success = db['video_proxy_logs'].find_one({
+                    'status_code': {'$lt': 400}
+                }, sort=[('timestamp', -1)])
+                
+                if last_success:
+                    health_status['last_successful_request'] = last_success['timestamp'].isoformat()
+                
+                # Get recent errors (last 10)
+                recent_errors = list(db['video_proxy_logs'].find({
+                    'timestamp': {'$gte': one_hour_ago},
+                    'status_code': {'$gte': 400}
+                }, {
+                    'timestamp': 1,
+                    'status_code': 1,
+                    'error_message': 1,
+                    'proxy_id': 1
+                }).sort('timestamp', -1).limit(10))
+                
+                # Format recent errors for response
+                health_status['recent_errors'] = [
+                    {
+                        'timestamp': error['timestamp'].isoformat(),
+                        'status_code': error['status_code'],
+                        'error_message': error.get('error_message', 'Unknown error'),
+                        'proxy_id': error.get('proxy_id', 'Unknown')[:8] + '...' if error.get('proxy_id') else 'Unknown'
+                    }
+                    for error in recent_errors
+                ]
+                
+            except Exception as e:
+                health_status['metrics_error'] = str(e)
+        
+        # Check Qwen session health
+        try:
+            # Test if the global qwen_session is properly configured
+            if qwen_session and hasattr(qwen_session, 'adapters'):
+                health_status['qwen_session_healthy'] = True
+            else:
+                health_status['qwen_session_healthy'] = False
+                health_status['qwen_session_error'] = 'Session not properly initialized'
+        except Exception as e:
+            health_status['qwen_session_healthy'] = False
+            health_status['qwen_session_error'] = str(e)
+        
+        return health_status
+        
+    except Exception as e:
+        health_status['health_check_error'] = str(e)
+        return health_status
+
+
+def get_proxy_performance_stats(hours=24):
+    """
+    Get performance statistics for the video proxy endpoint.
+    Returns success rates, average response times, and error patterns.
+    """
+    try:
+        if db is None:
+            return {'error': 'Database not available'}
+        
+        # Calculate time range
+        end_time = datetime.now(timezone.utc)
+        start_time = end_time - timedelta(hours=hours)
+        
+        # Aggregate metrics from hourly summaries
+        pipeline = [
+            {'$match': {'hour': {'$gte': start_time, '$lte': end_time}}},
+            {'$group': {
+                '_id': None,
+                'total_requests': {'$sum': '$total_requests'},
+                'success_count': {'$sum': '$success_count'},
+                'error_count': {'$sum': '$error_count'},
+                'all_response_times': {'$push': '$response_times'}
+            }}
+        ]
+        
+        result = list(db['video_proxy_hourly_metrics'].aggregate(pipeline))
+        
+        if not result:
+            return {
+                'total_requests': 0,
+                'success_rate': 0,
+                'error_rate': 0,
+                'avg_response_time_ms': 0,
+                'hours_analyzed': hours
+            }
+        
+        stats = result[0]
+        total_requests = stats.get('total_requests', 0)
+        success_count = stats.get('success_count', 0)
+        error_count = stats.get('error_count', 0)
+        
+        # Calculate response time statistics
+        all_response_times = []
+        for response_time_list in stats.get('all_response_times', []):
+            if response_time_list:
+                all_response_times.extend(response_time_list)
+        
+        avg_response_time = sum(all_response_times) / len(all_response_times) if all_response_times else 0
+        
+        # Get error breakdown by status code
+        error_breakdown = {}
+        error_pipeline = [
+            {'$match': {'hour': {'$gte': start_time, '$lte': end_time}}},
+            {'$project': {
+                'status_codes': {
+                    '$objectToArray': {
+                        '$filter': {
+                            'input': {'$objectToArray': '$$ROOT'},
+                            'cond': {'$regexMatch': {'input': '$$this.k', 'regex': '^status_\\d+_count$'}}
+                        }
+                    }
+                }
+            }},
+            {'$unwind': '$status_codes'},
+            {'$group': {
+                '_id': '$status_codes.k',
+                'count': {'$sum': '$status_codes.v'}
+            }}
+        ]
+        
+        error_results = list(db['video_proxy_hourly_metrics'].aggregate(error_pipeline))
+        for error_result in error_results:
+            status_code = error_result['_id'].replace('status_', '').replace('_count', '')
+            error_breakdown[f'status_{status_code}'] = error_result['count']
+        
+        return {
+            'total_requests': total_requests,
+            'success_count': success_count,
+            'error_count': error_count,
+            'success_rate': (success_count / total_requests * 100) if total_requests > 0 else 0,
+            'error_rate': (error_count / total_requests * 100) if total_requests > 0 else 0,
+            'avg_response_time_ms': round(avg_response_time, 2),
+            'error_breakdown': error_breakdown,
+            'hours_analyzed': hours
+        }
+        
+    except Exception as e:
+        app.logger.error(f"Error getting proxy performance stats: {e}")
+        return {'error': str(e)}
+
+@app.route('/video/<proxy_id>', methods=['GET'])
+@limiter.limit("100 per minute")  # Rate limiting for video proxy endpoint
+def video_proxy(proxy_id):
+    """
+    Enhanced video proxy endpoint with comprehensive error handling and monitoring.
+    Streams video content from Qwen to the user while hiding original URLs.
+    Includes performance monitoring, retry logic, and detailed logging.
+    """
+    client_ip = get_client_ip()
+    user_agent = request.headers.get('User-Agent', 'Unknown')
+    start_time = time.time()
+    bytes_transferred = 0
+    
+    try:
+        # Initialize the VideoUrlMapping service
+        url_mapping = VideoUrlMapping()
+        
+        # Get the original Qwen URL from the proxy ID
+        qwen_url = url_mapping.get_qwen_url(proxy_id)
+        
+        if not qwen_url:
+            # Calculate response time
+            response_time_ms = int((time.time() - start_time) * 1000)
+            
+            # Log access attempt for security monitoring
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 404, 
+                                 "Proxy ID not found or expired", response_time_ms)
+            
+            # Return user-friendly error page for browser requests
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html', 
+                                     error_title='Video Not Found',
+                                     error_message='The video you requested could not be found.',
+                                     error_code='VIDEO_NOT_FOUND',
+                                     help_text='The video may have expired. Please regenerate your video to get a new link.',
+                                     retry_action='regenerate'), 404
+            
+            # Return JSON for API requests
+            return jsonify({
+                'error': 'Video not found',
+                'code': 'VIDEO_NOT_FOUND',
+                'help_text': 'The video may have expired. Please regenerate your video to get a new link.'
+            }), 404
+        
+        # Handle range requests for video seeking
+        range_header = request.headers.get('Range')
+        headers = {}
+        
+        if range_header:
+            # Parse range header (e.g., "bytes=0-1023")
+            headers['Range'] = range_header
+        
+        # Enhanced retry logic for transient Qwen service errors
+        max_retries = 3
+        retry_delay = 1  # Start with 1 second delay
+        last_exception = None
+        response = None
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # Use connection pooling session for Qwen service requests
+                response = qwen_session.get(qwen_url, headers=headers, stream=True, timeout=30)
+                break  # Success, exit retry loop
+                
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                last_exception = e
+                
+                if attempt < max_retries:
+                    # Log retry attempt
+                    app.logger.warning(f"Video proxy retry {attempt + 1}/{max_retries} for proxy {proxy_id}: {type(e).__name__}")
+                    
+                    # Exponential backoff with jitter
+                    import random
+                    jitter = random.uniform(0.1, 0.5)
+                    sleep_time = retry_delay * (2 ** attempt) + jitter
+                    time.sleep(sleep_time)
+                    continue
+                else:
+                    # All retries exhausted, handle the exception
+                    response_time_ms = int((time.time() - start_time) * 1000)
+                    
+                    if isinstance(e, requests.exceptions.Timeout):
+                        log_video_proxy_access(proxy_id, client_ip, user_agent, 503, 
+                                             "Request timeout to upstream service", response_time_ms)
+                        
+                        if 'text/html' in request.headers.get('Accept', ''):
+                            return render_template('video_error.html',
+                                                 error_title='Request Timeout',
+                                                 error_message='The video request timed out.',
+                                                 error_code='SERVICE_TIMEOUT',
+                                                 help_text='Please try again in a few minutes.',
+                                                 retry_action='retry',
+                                                 retry_after=300), 503
+                        
+                        return jsonify({
+                            'error': 'Video temporarily unavailable. Please try again in a few minutes.',
+                            'code': 'SERVICE_TIMEOUT',
+                            'retry_after': 300
+                        }), 503
+                    
+                    else:  # ConnectionError
+                        log_video_proxy_access(proxy_id, client_ip, user_agent, 503, 
+                                             "Connection error to upstream service", response_time_ms)
+                        
+                        if 'text/html' in request.headers.get('Accept', ''):
+                            return render_template('video_error.html',
+                                                 error_title='Connection Error',
+                                                 error_message='Unable to connect to the video service.',
+                                                 error_code='SERVICE_UNAVAILABLE',
+                                                 help_text='Please try again in a few minutes.',
+                                                 retry_action='retry',
+                                                 retry_after=300), 503
+                        
+                        return jsonify({
+                            'error': 'Video temporarily unavailable. Please try again in a few minutes.',
+                            'code': 'SERVICE_UNAVAILABLE',
+                            'retry_after': 300
+                        }), 503
+            
+            except Exception as e:
+                # For non-retryable exceptions, fail immediately
+                response_time_ms = int((time.time() - start_time) * 1000)
+                sanitized_error = sanitize_error_message(str(e))
+                app.logger.error(f"Non-retryable error in video proxy for {proxy_id}: {sanitized_error}")
+                log_video_proxy_access(proxy_id, client_ip, user_agent, 500, 
+                                     f"Non-retryable error: {sanitized_error}", response_time_ms)
+                
+                if 'text/html' in request.headers.get('Accept', ''):
+                    return render_template('video_error.html',
+                                         error_title='Streaming Error',
+                                         error_message='An error occurred while accessing the video.',
+                                         error_code='STREAMING_ERROR',
+                                         help_text='Please try again or regenerate your video.',
+                                         retry_action='retry'), 500
+                
+                return jsonify({
+                    'error': 'Error streaming video. Please try again or regenerate your video.',
+                    'code': 'STREAMING_ERROR'
+                }), 500
+        
+        # If we get here without a successful response, something went wrong
+        if response is None:
+            response_time_ms = int((time.time() - start_time) * 1000)
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 500, 
+                                 "Failed to get response after retries", response_time_ms)
+            
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html',
+                                     error_title='Service Unavailable',
+                                     error_message='Unable to access the video after multiple attempts.',
+                                     error_code='SERVICE_UNAVAILABLE',
+                                     help_text='Please try again later.',
+                                     retry_action='retry'), 503
+            
+            return jsonify({
+                'error': 'Video temporarily unavailable. Please try again in a few minutes.',
+                'code': 'SERVICE_UNAVAILABLE',
+                'retry_after': 300
+            }), 503
+        
+        # Handle different response status codes from Qwen
+        response_time_ms = int((time.time() - start_time) * 1000)
+        
+        if response.status_code == 404:
+                log_video_proxy_access(proxy_id, client_ip, user_agent, 410, 
+                                     "Upstream service returned 404", response_time_ms)
+                
+                # Return user-friendly error page for browser requests
+                if 'text/html' in request.headers.get('Accept', ''):
+                    return render_template('video_error.html',
+                                         error_title='Video Expired',
+                                         error_message='This video is no longer available.',
+                                         error_code='VIDEO_EXPIRED',
+                                         help_text='Please regenerate your video to get a new link.',
+                                         retry_action='regenerate'), 410
+                
+                return jsonify({
+                    'error': 'Video no longer available. Please regenerate your video to get a new link.',
+                    'code': 'VIDEO_EXPIRED',
+                    'help_text': 'Please regenerate your video to get a new link'
+                }), 410
+            
+        if response.status_code == 403:
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 410, 
+                                 "Upstream service returned 403", response_time_ms)
+            
+            # Return user-friendly error page for browser requests
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html',
+                                     error_title='Video Access Denied',
+                                     error_message='Access to this video has been denied.',
+                                     error_code='VIDEO_EXPIRED',
+                                     help_text='Please regenerate your video to get a new link.',
+                                     retry_action='regenerate'), 410
+            
+            return jsonify({
+                'error': 'Video no longer available. Please regenerate your video to get a new link.',
+                'code': 'VIDEO_EXPIRED', 
+                'help_text': 'Please regenerate your video to get a new link'
+            }), 410
+        
+        if response.status_code >= 500:
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 503, 
+                                 f"Upstream service error: {response.status_code}", response_time_ms)
+            
+            # Return user-friendly error page for browser requests
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html',
+                                     error_title='Service Temporarily Unavailable',
+                                     error_message='The video service is temporarily unavailable.',
+                                     error_code='SERVICE_UNAVAILABLE',
+                                     help_text='Please try again in a few minutes.',
+                                     retry_action='retry',
+                                     retry_after=300), 503
+            
+            return jsonify({
+                'error': 'Video temporarily unavailable. Please try again in a few minutes.',
+                'code': 'SERVICE_UNAVAILABLE',
+                'retry_after': 300
+            }), 503
+        
+        if not response.ok:
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 500, 
+                                 f"Upstream response not OK: {response.status_code}", response_time_ms)
+            
+            # Return user-friendly error page for browser requests
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html',
+                                     error_title='Video Streaming Error',
+                                     error_message='An error occurred while streaming the video.',
+                                     error_code='STREAMING_ERROR',
+                                     help_text='Please try again or regenerate your video.',
+                                     retry_action='retry'), 500
+            
+            return jsonify({
+                'error': 'Error streaming video. Please try again or regenerate your video.',
+                'code': 'STREAMING_ERROR'
+            }), 500
+        
+        # Prepare response headers for video streaming
+        response_headers = {}
+        
+        # Essential headers that are safe to forward
+        essential_headers = [
+            'Content-Type', 'Content-Length', 'Accept-Ranges', 
+            'Content-Range', 'Last-Modified', 'ETag'
+        ]
+        
+        # Qwen-specific headers to filter out (maintain white-label appearance)
+        qwen_specific_headers = [
+            'Server', 'X-Powered-By', 'X-Qwen-*', 'X-Request-Id',
+            'X-Trace-Id', 'X-Service-*', 'Via', 'X-Cache',
+            'X-Served-By', 'X-Timer', 'X-Fastly-*', 'CF-*',
+            'X-Amz-*', 'X-Alibaba-*', 'Ali-*'
+        ]
+        
+        # Copy essential headers while filtering out Qwen-specific ones
+        for header in essential_headers:
+            if header in response.headers:
+                response_headers[header] = response.headers[header]
+        
+        # Filter out any Qwen-specific headers that might leak service details
+        for header_name in response.headers:
+            # Skip if it's already in essential headers
+            if header_name in essential_headers:
+                continue
+                
+            # Check if header matches any Qwen-specific patterns
+            is_qwen_header = False
+            for pattern in qwen_specific_headers:
+                if pattern.endswith('*'):
+                    if header_name.startswith(pattern[:-1]):
+                        is_qwen_header = True
+                        break
+                elif header_name.lower() == pattern.lower():
+                    is_qwen_header = True
+                    break
+            
+            # Skip Qwen-specific headers
+            if is_qwen_header:
+                continue
+        
+        # Set default content type if not provided
+        if 'Content-Type' not in response_headers:
+            response_headers['Content-Type'] = 'video/mp4'
+        
+        # Add caching headers for better performance
+        response_headers['Cache-Control'] = 'public, max-age=3600'
+        
+        # Ensure Accept-Ranges is set for video seeking
+        if 'Accept-Ranges' not in response_headers:
+            response_headers['Accept-Ranges'] = 'bytes'
+        
+        # Create enhanced streaming response with byte tracking
+        def generate():
+            nonlocal bytes_transferred
+            try:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        bytes_transferred += len(chunk)
+                        yield chunk
+            except Exception as e:
+                # Log streaming error without exposing sensitive details
+                sanitized_error = f"Streaming interrupted: {type(e).__name__}"
+                app.logger.error(f"Error streaming video chunk for proxy {proxy_id}: {sanitized_error}")
+                # Connection was likely closed by client
+                return
+        
+        # Return streaming response with appropriate status code
+        status_code = response.status_code if response.status_code in [200, 206] else 200
+        
+        # Create the response
+        streaming_response = Response(
+            stream_with_context(generate()),
+            status=status_code,
+            headers=response_headers
+        )
+        
+        # Log successful access with performance metrics
+        response_time_ms = int((time.time() - start_time) * 1000)
+        log_video_proxy_access(proxy_id, client_ip, user_agent, status_code, 
+                             None, response_time_ms, bytes_transferred)
+        
+        return streaming_response
+            
+    except Exception as e:
+        response_time_ms = int((time.time() - start_time) * 1000)
+        sanitized_error = sanitize_error_message(str(e))
+        app.logger.error(f"Error in video proxy endpoint for {proxy_id}: {sanitized_error}")
+        log_video_proxy_access(proxy_id, client_ip, user_agent, 500, 
+                             f"Proxy endpoint error: {sanitized_error}", response_time_ms)
+        
+        # Return user-friendly error page for browser requests
+        if 'text/html' in request.headers.get('Accept', ''):
+            return render_template('video_error.html',
+                                 error_title='Video Proxy Error',
+                                 error_message='An error occurred in the video proxy service.',
+                                 error_code='PROXY_ERROR',
+                                 help_text='Please try again or regenerate your video.',
+                                 retry_action='retry'), 500
+        
+        return jsonify({
+            'error': 'Error streaming video. Please try again or regenerate your video.',
+            'code': 'PROXY_ERROR'
+        }), 500
 
 
 if __name__ == '__main__':
