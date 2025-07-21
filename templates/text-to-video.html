@@ -2798,7 +2798,7 @@
   </header>
 
   <div class="container">
-    <div id="frame" style="width: 728px; margin: 20px auto;"><iframe data-aa='2399668' src='//ad.a-ads.com/2399668?size=728x90' style='width:728px; height:90px; border:0px; padding:0; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2399668&source_type=ad_unit&partner=2399668">Advertise here</a></div>
+    <div id="frame"><iframe data-aa='2399668' src='//ad.a-ads.com/2399668?size=728x90' style='width:728px; height:90px; border:0px; padding:0; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2399668&source_type=ad_unit&partner=2399668">Advertise here</a></div>
     <div class="hero-container">
       <div class="hero-content">
         <h1 class="hero-title">AI Video Generation</h1>
@@ -2810,7 +2810,7 @@
       </div>
     </div>
 
-    <div id="frame" style="width: 728px; margin: 20px auto;"><iframe data-aa='2399668' src='//ad.a-ads.com/2399668?size=728x90' style='width:728px; height:90px; border:0px; padding:0; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2399668&source_type=ad_unit&partner=2399668">Advertise here</a></div>
+    <div id="frame"><iframe data-aa='2399668' src='//ad.a-ads.com/2399668?size=728x90' style='width:728px; height:90px; border:0px; padding:0; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2399668&source_type=ad_unit&partner=2399668">Advertise here</a></div>
 
     <div class="video-form-container">
       <div class="form-card">
@@ -3096,7 +3096,7 @@
       </div>
     </div>
 
-    <div id="frame" style="width: 728px; margin: 20px auto;"><iframe data-aa='2399668' src='//ad.a-ads.com/2399668?size=728x90' style='width:728px; height:90px; border:0px; padding:0; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2399668&source_type=ad_unit&partner=2399668">Advertise here</a></div>
+    <div id="frame"><iframe data-aa='2399668' src='//ad.a-ads.com/2399668?size=728x90' style='width:728px; height:90px; border:0px; padding:0; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2399668&source_type=ad_unit&partner=2399668">Advertise here</a></div>
 
     <!-- Testimonials Section -->
     <div class="testimonials-section">
@@ -3208,11 +3208,64 @@
       const mobileMenuBtn = document.querySelector(".mobile-menu-btn");
       const navLinks = document.querySelector(".nav-links");
 
-      if (mobileMenuBtn) {
+      if (mobileMenuBtn && navLinks) {
         mobileMenuBtn.addEventListener("click", function () {
           navLinks.classList.toggle("active");
+          // Close any open dropdowns when the main menu is toggled
+          document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+            menu.classList.remove('active');
+          });
         });
       }
+
+      // Dropdown functionality for mobile
+      const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
+      dropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+          // Only handle dropdown toggle click in mobile view
+          if (window.innerWidth <= 768) {
+            e.preventDefault(); // Prevent default link behavior
+            e.stopPropagation(); // Stop event from bubbling up to document
+
+            const dropdownMenu = this.nextElementSibling;
+
+            // Close other dropdowns if open
+            document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+              if (menu !== dropdownMenu) {
+                menu.classList.remove('active');
+              }
+            });
+
+            // Toggle current dropdown
+            dropdownMenu.classList.toggle('active');
+          }
+        });
+      });
+
+      // Close mobile menu and dropdowns when a nav-link (not a dropdown-toggle) is clicked
+      document.querySelectorAll('.nav-links .nav-link:not(.dropdown-toggle)').forEach(link => {
+        link.addEventListener('click', function() {
+          if (window.innerWidth <= 768) {
+            navLinks.classList.remove('active');
+            document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+              menu.classList.remove('active');
+            });
+          }
+        });
+      });
+
+      // Close dropdowns when clicking outside on mobile
+      document.addEventListener('click', function(e) {
+        if (window.innerWidth <= 768) {
+          dropdownToggles.forEach(toggle => {
+            const dropdownMenu = toggle.nextElementSibling;
+            if (!toggle.contains(e.target) && !dropdownMenu.contains(e.target)) {
+              dropdownMenu.classList.remove('active');
+            }
+          });
+        }
+      });
+    });
 
       // Create particles for form card
       createParticles("form-particles", 15);
@@ -3261,7 +3314,7 @@
           loadPreviousGenerations(false);
         });
       }
-    });
+    // });
 
     window.onload = function () {
       turnstileWidgetId = turnstile.render("#turnstile-widget", {
