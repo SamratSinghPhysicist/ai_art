@@ -427,19 +427,22 @@ class QwenApiKey:
 
     def save(self):
         """Save API key to database"""
+        current_time = datetime.datetime.now(timezone.utc)
         api_key_data = {
             'auth_token': self.auth_token,
             'chat_id': self.chat_id,
             'fid': self.fid,
             'children_ids': self.children_ids,
             'x_request_id': self.x_request_id,
-            'status': self.status
+            'status': self.status,
+            'updated_at': current_time
         }
 
         if self._id:
             db['qwen_api_keys'].update_one({'_id': self._id}, {'$set': api_key_data})
             return self._id
         else:
+            api_key_data['created_at'] = current_time
             result = db['qwen_api_keys'].insert_one(api_key_data)
             self._id = result.inserted_id
             return result.inserted_id
@@ -472,9 +475,10 @@ class QwenApiKey:
     def find_available_key():
         """Atomically finds an available key and marks it as 'generating'."""
         if db is None: return None
+        from datetime import datetime, timezone
         return db['qwen_api_keys'].find_one_and_update(
             {'status': 'available'},
-            {'$set': {'status': 'generating', 'updated_at': datetime.datetime.now(timezone.utc)}},
+            {'$set': {'status': 'generating', 'updated_at': datetime.now(timezone.utc)}},
             return_document=True
         )
 

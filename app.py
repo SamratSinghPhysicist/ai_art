@@ -455,7 +455,16 @@ def admin_qwen_keys():
             children_ids=children_ids,
             x_request_id=x_request_id
         )
-        key.save()
+        
+        # Debug: Log the status before saving
+        app.logger.info(f"Creating new Qwen API key with status: {key.status}")
+        
+        key_id = key.save()
+        
+        # Debug: Verify the key was saved with correct status
+        saved_key = db['qwen_api_keys'].find_one({'_id': key_id})
+        app.logger.info(f"Saved Qwen API key with status: {saved_key.get('status') if saved_key else 'NOT FOUND'}")
+        
         flash('Qwen API key added successfully!', 'success')
         return redirect(url_for('admin_qwen_keys', secret=secret_key))
 

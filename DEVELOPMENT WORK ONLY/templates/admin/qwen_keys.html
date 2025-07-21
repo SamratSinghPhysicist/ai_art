@@ -48,6 +48,24 @@
         .btn-delete:hover {
             background-color: #d9534f;
         }
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .status-available {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-generating {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .status-unknown {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
     </style>
 </head>
 <body>
@@ -93,17 +111,35 @@
                                 <th>FID</th>
                                 <th>Children IDs</th>
                                 <th>X-Request ID</th>
+                                <th>Status</th>
+                                <th>Created At</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for key in keys %}
                             <tr>
-                                <td>{{ key.auth_token }}</td>
+                                <td>{{ key.auth_token[:20] }}...</td>
                                 <td>{{ key.chat_id }}</td>
                                 <td>{{ key.fid }}</td>
-                                <td>{{ key.children_ids|join(', ') }}</td>
+                                <td>
+                                    {% if key.children_ids %}
+                                        {% if key.children_ids is string %}
+                                            {{ key.children_ids }}
+                                        {% else %}
+                                            {{ key.children_ids|join(', ') }}
+                                        {% endif %}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
                                 <td>{{ key.x_request_id }}</td>
+                                <td>
+                                    <span class="status-badge status-{{ key.status or 'unknown' }}">
+                                        {{ key.status or 'No Status' }}
+                                    </span>
+                                </td>
+                                <td>{{ key.created_at.strftime('%Y-%m-%d %H:%M') if key.created_at else 'N/A' }}</td>
                                 <td>
                                     <form action="{{ url_for('admin_delete_qwen_key', key_id=key._id, secret=request.args.get('secret')) }}" method="post">
                                         <button type="submit" class="btn-delete">Delete</button>
