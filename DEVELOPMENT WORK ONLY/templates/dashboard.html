@@ -1,160 +1,225 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - AI Art | Your Personal AI Art Space</title>
-    <meta name="description" content="Access your personal dashboard for AI art creation. Generate new AI art and explore your creation options.">
-    <meta name="robots" content="noindex, follow">
-    <link rel="canonical" href="https://aiart-zroo.onrender.com/dashboard">
-    <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <!-- Google Adsense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - AI Art | Your Personal AI Art Space</title>
+  <meta name="description"
+    content="Access your personal dashboard for AI art creation. Generate new AI art and explore your creation options." />
+  <meta name="robots" content="noindex, follow" />
+  <link rel="canonical" href="https://aiart-zroo.onrender.com/dashboard" />
+  <link rel="stylesheet" href="/static/css/styles.css" />
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Google Adsense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
     crossorigin="anonymous"></script>
 
-    <!-- EthereumAds -->
-    <script src="https://ethereumads.com/adviewer.js"></script>
-    <script>
-        EthereumAds.initAdSlot({
-            acceptedCurrencies: ["ALL"],
-            mediaType: "image_300x250",
-            fallback: "default",
-            slot: "default",
-            address: "0x14993E664015781B9330A4E0ca5b09844d7C3bBe",
-            platform: "",
-            affiliate: "",
-            keywords:"",
-            adult: false,
-            version: "1.00"
-        });
-    </script>
-    <!-- /EthereumAds -->
+  <!-- EthereumAds -->
+  <script src="https://ethereumads.com/adviewer.js"></script>
+  <script>
+    EthereumAds.initAdSlot({
+      acceptedCurrencies: ["ALL"],
+      mediaType: "image_300x250",
+      fallback: "default",
+      slot: "default",
+      address: "0x14993E664015781B9330A4E0ca5b09844d7C3bBe",
+      platform: "",
+      affiliate: "",
+      keywords: "",
+      adult: false,
+      version: "1.00",
+    });
+  </script>
+  <!-- /EthereumAds -->
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-PXCTK9MK85"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-PXCTK9MK85"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() {
+      dataLayer.push(arguments);
+    }
+    gtag("js", new Date());
 
-      gtag('config', 'G-PXCTK9MK85');
-    </script>
+    gtag("config", "G-PXCTK9MK85");
+  </script>
 </head>
+
 <body>
-    <header class="header">
-        <div class="container">
-            <nav class="nav">
-                <a href="/" class="nav-logo">AI Art</a>
-                <button class="mobile-menu-btn">☰</button>
-                <div class="nav-links">
-                    <a href="/" class="nav-link">Home</a>
-                    
-                    <!-- Added AI Tools dropdown -->
-                    <div class="dropdown">
-                        <button type="button" class="dropdown-toggle nav-link">AI Tools <span class="dropdown-arrow">▼</span></button>
-                        <div class="dropdown-menu">
-                            <a href="/text-to-image" class="dropdown-item">Text to Image</a>
-                            <a href="/image-to-image" class="dropdown-item">Image to Image</a>
-                            <a href="/image-to-video" class="dropdown-item">Image to Video</a>
-                        </div>
-                    </div>
-                    
-                    <a href="/api-docs" class="nav-link">API</a>
-                    <a href="/dashboard" class="nav-link">Dashboard</a>
-                    <a href="/logout" class="nav-link">Logout</a>
-                </div>
-            </nav>
-        </div>
-    </header>
+  <header class="header">
+    <div class="container">
+      <nav class="nav">
+        <a href="/" class="nav-logo">AI Art</a>
+        <button class="mobile-menu-btn">☰</button>
+        <div class="nav-links">
+          <a href="/" class="nav-link">Home</a>
 
-    <main class="main-content">
-        <div class="container my-4">
-            <div class="card p-4 sm:p-6 shadow-lg">
-                <h1 class="text-3xl font-bold text-primary mb-6">Welcome, {{ user.name }}!</h1>
-                
-                <div id="frame" style="width: 100%;"><iframe data-aa='2400971' src='//acceptable.a-ads.com/2400971' style='border:0px; padding:0; width:100%; height:100%; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2400971&source_type=ad_unit&partner=2400971">Advertise here</a></div>
-
-                <div id="frame"><iframe data-aa='2399668' src='//ad.a-ads.com/2399668?size=728x90' style='width:728px; height:90px; border:0px; padding:0; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2399668&source_type=ad_unit&partner=2399668">Advertise here</a></div>
-
-                <div id="EthereumAds-default" style="margin: 20px auto; text-align: center;"></div>
-
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-2xl font-semibold">User Dashboard</h2>
-                </div>
-
-                
-                <div class="card p-4 shadow-md rounded-lg">
-                    <h3 class="text-xl font-semibold mb-3">Account Settings</h3>
-                    <div class="mb-4">
-                        <p class="text-gray-700"><strong>Name:</strong> {{ user.name }}</p>
-                        <p class="text-gray-700"><strong>Email:</strong> {{ user.email }}</p>
-                        <p class="text-gray-700"><strong>Email Verified:</strong> {{ 'Yes' if user.email_verified else 'No' }}</p>
-                    </div>
-                    {% if not user.email_verified %}
-                        <a href="/verify-email" class="btn btn-secondary">Verify Email</a>
-                    {% endif %}
-                </div>
-
-                <div class="card p-4 shadow-md rounded-lg mb-8">
-                    <h3 class="text-xl font-semibold mb-3">API Access</h3>
-                    <p class="text-gray-700 mb-4">Integrate AI art generation into your applications</p>
-                    <a href="/api-docs" class="btn btn-secondary">View API Documentation</a>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                    <div class="card p-4 shadow-md rounded-lg">
-                        <h3 class="text-xl font-semibold mb-3">Text to Image</h3>
-                        <p class="text-gray-700 mb-4">Generate AI artworks from text descriptions</p>
-                        <a href="/text-to-image" class="btn btn-primary">Create Now</a>
-                    </div>
-                    <div class="card p-4 shadow-md rounded-lg">
-                        <h3 class="text-xl font-semibold mb-3">Image to Image</h3>
-                        <p class="text-gray-700 mb-4">Transform your existing images with AI</p>
-                        <a href="/image-to-image" class="btn btn-primary">Transform Now</a>
-                    </div>
-                </div>
-
-                <div id="frame" style="width: 100%;"><iframe data-aa='2400971' src='//acceptable.a-ads.com/2400971' style='border:0px; padding:0; width:100%; height:100%; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2400971&source_type=ad_unit&partner=2400971">Advertise here</a></div>
-                
-                
-            </section>
-        </main>
-
-{% endblock %}
-        <div class="container">
-            <div class="footer-logo">
-                <span class="footer-logo-text">AI Art</span>
+          <!-- Added AI Tools dropdown -->
+          <div class="dropdown">
+            <button type="button" class="dropdown-toggle nav-link">
+              AI Tools <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="dropdown-menu">
+              <a href="/text-to-image" class="dropdown-item">Text to Image</a>
+              <a href="/image-to-image" class="dropdown-item">Image to Image</a>
+              <a href="/text-to-video" class="dropdown-item">Text to Video</a>
+              <a href="/image-to-video" class="dropdown-item">Image to Video</a>
             </div>
-            
-            <div class="footer-links">
-                <a href="/" class="footer-link">Home</a>
-                <a href="/text-to-image" class="footer-link">Text to Image</a>
-                <a href="/image-to-image" class="footer-link">Image to Image</a>
-                <a href="/text-to-video" class="footer-link">Text to Video</a>
-                <a href="/image-to-video" class="footer-link">Image to Video</a>
-                <a href="/api-docs" class="footer-link">API</a>
-            </div>
-            
-            <p class="footer-description">
-                AI Art allows you to create and transform images using cutting-edge artificial intelligence. 
-                Powered by state-of-the-art diffusion models, our platform offers a simple and intuitive way to 
-                generate artwork, modify photos, and more.
-            </p>
-            
-            <p class="footer-copyright">
-                &copy; 2025 AI Art. All rights reserved.
-            </p>
-            <div id="frame" style="width: 100%; margin-top: 1rem;"><iframe data-aa='2400971' src='//acceptable.a-ads.com/2400971' style='border:0px; padding:0; width:100%; height:100%; overflow:hidden; background-color: transparent;'></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link" href="https://aads.com/campaigns/new/?source_id=2400971&source_type=ad_unit&partner=2400971">Advertise here</a></div>
+          </div>
+
+          <a href="/api-docs" class="nav-link">API</a>
+          <a href="/dashboard" class="nav-link">Dashboard</a>
+          <a href="/logout" class="nav-link">Logout</a>
         </div>
-    </footer>
-    
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
-     crossorigin="anonymous"></script>
-    <script src="/static/js/app.js"></script>
-    <script src="/static/js/mobile-nav.js"></script>
-    {% include 'donate_button.html' %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <div class="container my-4">
+      <div class="card p-4 sm:p-6 shadow-lg">
+        <h1 class="text-3xl font-bold text-primary mb-6">
+          Welcome, {{ user.name }}!
+        </h1>
+
+        <div id="frame" style="width: 100%">
+          <iframe data-aa="2400971" src="//acceptable.a-ads.com/2400971" style="
+                border: 0px;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background-color: transparent;
+              "></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link"
+            href="https://aads.com/campaigns/new/?source_id=2400971&source_type=ad_unit&partner=2400971">Advertise
+            here</a>
+        </div>
+
+        <div id="frame">
+          <iframe data-aa="2399668" src="//ad.a-ads.com/2399668?size=728x90" style="
+                width: 728px;
+                height: 90px;
+                border: 0px;
+                padding: 0;
+                overflow: hidden;
+                background-color: transparent;
+              "></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link"
+            href="https://aads.com/campaigns/new/?source_id=2399668&source_type=ad_unit&partner=2399668">Advertise
+            here</a>
+        </div>
+
+        <div id="EthereumAds-default" style="margin: 20px auto; text-align: center"></div>
+
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-semibold">User Dashboard</h2>
+        </div>
+
+        <div class="card p-4 shadow-md rounded-lg">
+          <h3 class="text-xl font-semibold mb-3">Account Settings</h3>
+          <div class="mb-4">
+            <p class="text-gray-700">
+              <strong>Name:</strong> {{ user.name }}
+            </p>
+            <p class="text-gray-700">
+              <strong>Email:</strong> {{ user.email }}
+            </p>
+            <p class="text-gray-700">
+              <strong>Email Verified:</strong> {{ 'Yes' if user.email_verified
+              else 'No' }}
+            </p>
+          </div>
+          {% if not user.email_verified %}
+          <a href="/verify-email" class="btn btn-secondary">Verify Email</a>
+          {% endif %}
+        </div>
+
+        <div class="card p-4 shadow-md rounded-lg mb-8">
+          <h3 class="text-xl font-semibold mb-3">API Access</h3>
+          <p class="text-gray-700 mb-4">
+            Integrate AI art generation into your applications
+          </p>
+          <a href="/api-docs" class="btn btn-secondary">View API Documentation</a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div class="card p-4 shadow-md rounded-lg">
+            <h3 class="text-xl font-semibold mb-3">Text to Image</h3>
+            <p class="text-gray-700 mb-4">
+              Generate AI artworks from text descriptions
+            </p>
+            <a href="/text-to-image" class="btn btn-primary">Create Now</a>
+          </div>
+          <div class="card p-4 shadow-md rounded-lg">
+            <h3 class="text-xl font-semibold mb-3">Image to Image</h3>
+            <p class="text-gray-700 mb-4">
+              Transform your existing images with AI
+            </p>
+            <a href="/image-to-image" class="btn btn-primary">Transform Now</a>
+          </div>
+        </div>
+
+        <div id="frame" style="width: 100%">
+          <iframe data-aa="2400971" src="//acceptable.a-ads.com/2400971" style="
+                border: 0px;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background-color: transparent;
+              "></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link"
+            href="https://aads.com/campaigns/new/?source_id=2400971&source_type=ad_unit&partner=2400971">Advertise
+            here</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-logo">
+        <span class="footer-logo-text">AI Art</span>
+      </div>
+
+      <div class="footer-links">
+        <a href="/" class="footer-link">Home</a>
+        <a href="/text-to-image" class="footer-link">Text to Image</a>
+        <a href="/image-to-image" class="footer-link">Image to Image</a>
+        <a href="/text-to-video" class="footer-link">Text to Video</a>
+        <a href="/image-to-video" class="footer-link">Image to Video</a>
+        <a href="/api-docs" class="footer-link">API</a>
+      </div>
+
+      <p class="footer-description">
+        AI Art allows you to create and transform images using cutting-edge
+        artificial intelligence. Powered by state-of-the-art diffusion models,
+        our platform offers a simple and intuitive way to generate artwork,
+        modify photos, and more.
+      </p>
+
+      <p class="footer-copyright">&copy; 2025 AI Art. All rights reserved.</p>
+      <div id="frame" style="width: 100%; margin-top: 1rem">
+        <iframe data-aa="2400971" src="//acceptable.a-ads.com/2400971" style="
+              border: 0px;
+              padding: 0;
+              width: 100%;
+              height: 100%;
+              overflow: hidden;
+              background-color: transparent;
+            "></iframe><a style="display: block; text-align: right; font-size: 12px" id="frame-link"
+          href="https://aads.com/campaigns/new/?source_id=2400971&source_type=ad_unit&partner=2400971">Advertise
+          here</a>
+      </div>
+    </div>
+  </footer>
+
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7179365574545627"
+    crossorigin="anonymous"></script>
+  <script src="/static/js/app.js"></script>
+  <script src="/static/js/mobile-nav.js"></script>
+  {% include 'donate_button.html' %}
 </body>
+
 </html>
