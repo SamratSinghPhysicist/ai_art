@@ -3824,7 +3824,7 @@
           }
 
           // Stop polling after max attempts
-          if (pollCount >= maxPolls) {
+          if (pollCount >= maxPolls + 10) {
             clearInterval(interval);
             loadingSpinner.style.display = "none";
             stopTimer();
