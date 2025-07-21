@@ -472,6 +472,207 @@ def admin_delete_qwen_key(key_id):
     flash('Qwen API key deleted successfully!', 'success')
     return redirect(url_for('admin_qwen_keys', secret=secret_key))
 
+# Text to Video API Endpoints
+@app.route('/api/text-to-video/generate', methods=['POST'])
+@limiter.limit("10 per hour")
+def api_text_to_video_generate():
+    """API endpoint for text-to-video generation"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        prompt = data.get('prompt', '').strip()
+        if not prompt:
+            return jsonify({'error': 'Prompt is required'}), 400
+        
+        if len(prompt) > 500:
+            return jsonify({'error': 'Prompt must be 500 characters or less'}), 400
+        
+        # Get client IP for tracking
+        client_ip = get_client_ip()
+        
+        # Get a random Qwen API key
+        qwen_keys = QwenApiKey.get_all()
+        if not qwen_keys:
+            return jsonify({'error': 'Video generation service temporarily unavailable'}), 503
+        
+        import random
+        selected_key = random.choice(qwen_keys)
+        
+        # Debug logging
+        app.logger.info(f"Selected key type: {type(selected_key)}")
+        app.logger.info(f"Selected key keys: {selected_key.keys() if isinstance(selected_key, dict) else 'Not a dict'}")
+        
+        # Handle both dictionary and object access patterns
+        try:
+            if isinstance(selected_key, dict):
+                key_dict = {
+                    'auth_token': selected_key.get('auth_token'),
+                    'chat_id': selected_key.get('chat_id'),
+                    'fid': selected_key.get('fid'),
+                    'children_ids': selected_key.get('children_ids'),
+                    'x_request_id': selected_key.get('x_request_id')
+                }
+            else:
+                # Handle object access
+                key_dict = {
+                    'auth_token': getattr(selected_key, 'auth_token', None),
+                    'chat_id': getattr(selected_key, 'chat_id', None),
+                    'fid': getattr(selected_key, 'fid', None),
+                    'children_ids': getattr(selected_key, 'children_ids', None),
+                    'x_request_id': getattr(selected_key, 'x_request_id', None)
+                }
+            
+            # Validate that we have all required keys
+            required_keys = ['auth_token', 'chat_id', 'fid', 'children_ids', 'x_request_id']
+            missing_keys = [key for key in required_keys if not key_dict.get(key)]
+            if missing_keys:
+                app.logger.error(f"Missing required Qwen API key fields: {missing_keys}")
+                return jsonify({'error': 'Video generation service configuration error'}), 503
+                
+        except Exception as e:
+            app.logger.error(f"Error processing Qwen API key: {e}")
+            return jsonify({'error': 'Video generation service configuration error'}), 503
+        
+        # Generate unique task ID
+        task_id = str(uuid.uuid4())
+        
+        # Create video task record
+        video_task = VideoTask.create(prompt)
+        if not video_task:
+            return jsonify({'error': 'Failed to create video task'}), 500
+        
+        task_id = video_task['task_id']
+        
+        # Capture host URL before starting background thread
+        host_url = request.host_url
+        
+        # Start video generation in background thread
+        def generate_video_async():
+            try:
+                result = generate_qwen_video(prompt, key_dict)
+                
+                if 'error' in result:
+                    VideoTask.update(task_id, 'failed', error_message=result['error'])
+                    app.logger.error(f"Video generation failed for task {task_id}: {result['error']}")
+                else:
+                    video_url = result.get('video_url')
+                    if video_url:
+                        # Create URL mapping for privacy
+                        mapping = VideoUrlMapping()
+                        proxy_id = mapping.create_mapping(video_url, task_id)
+                        
+                        # Create full proxy URL using captured host_url
+                        proxy_url = f"{host_url}proxy/video/{proxy_id}"
+                        
+                        VideoTask.update(task_id, 'completed', result_url=video_url, proxy_url=proxy_url)
+                        app.logger.info(f"Video generation completed for task {task_id}")
+                    else:
+                        VideoTask.update(task_id, 'failed', error_message='No video URL in response')
+                        app.logger.error(f"Video generation failed for task {task_id}: No video URL")
+                        
+            except Exception as e:
+                VideoTask.update(task_id, 'failed', error_message=str(e))
+                app.logger.error(f"Video generation error for task {task_id}: {e}")
+        
+        # Start background thread
+        thread = threading.Thread(target=generate_video_async)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'task_id': task_id,
+            'status': 'processing',
+            'message': 'Video generation started. Use the status endpoint to check progress.',
+            'status_url': f'/api/text-to-video/status/{task_id}'
+        }), 202
+        
+    except Exception as e:
+        app.logger.error(f"API text-to-video generation error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/text-to-video/status/<task_id>', methods=['GET'])
+def api_text_to_video_status(task_id):
+    """API endpoint to check text-to-video generation status"""
+    try:
+        video_task = VideoTask.get_by_id(task_id)
+        if not video_task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        response_data = {
+            'task_id': task_id,
+            'status': video_task.get('status', 'unknown'),
+            'created_at': video_task.get('created_at').isoformat() if video_task.get('created_at') else None
+        }
+        
+        if video_task.get('status') == 'completed' and video_task.get('proxy_url'):
+            response_data['video_url'] = video_task.get('proxy_url')
+            response_data['message'] = 'Video generation completed successfully'
+        elif video_task.get('status') == 'failed':
+            response_data['error_message'] = video_task.get('error_message', 'Video generation failed')
+        elif video_task.get('status') in ['processing', 'pending']:
+            response_data['message'] = 'Video generation in progress'
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        app.logger.error(f"API text-to-video status error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# Video Proxy Endpoint
+@app.route('/proxy/video/<proxy_id>')
+def proxy_video(proxy_id):
+    """Proxy endpoint to serve videos through privacy-protected URLs"""
+    try:
+        # Get the original Qwen URL from the proxy mapping
+        mapping = VideoUrlMapping()
+        qwen_url = mapping.get_qwen_url(proxy_id)
+        
+        if not qwen_url:
+            return jsonify({'error': 'Video not found or expired'}), 404
+        
+        # Stream the video from Qwen URL to the client
+        try:
+            # Use the global qwen_session for connection pooling
+            response = qwen_session.get(qwen_url, stream=True, timeout=30)
+            response.raise_for_status()
+            
+            # Create a streaming response
+            def generate():
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        yield chunk
+            
+            # Get content type from the original response
+            content_type = response.headers.get('content-type', 'video/mp4')
+            content_length = response.headers.get('content-length')
+            
+            # Create Flask response with proper headers
+            flask_response = Response(
+                stream_with_context(generate()),
+                content_type=content_type,
+                headers={
+                    'Accept-Ranges': 'bytes',
+                    'Cache-Control': 'public, max-age=3600',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            )
+            
+            if content_length:
+                flask_response.headers['Content-Length'] = content_length
+            
+            return flask_response
+            
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Error proxying video {proxy_id}: {e}")
+            return jsonify({'error': 'Video temporarily unavailable'}), 503
+            
+    except Exception as e:
+        app.logger.error(f"Error in video proxy for {proxy_id}: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 # Video URL Mapping Admin Endpoints
 @app.route('/admin/api/video-mapping-stats', methods=['GET'])
 @admin_required
