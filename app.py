@@ -3,7 +3,7 @@ import os
 import uuid
 from image_generator import main_image_function
 from prompt_translate import translate_to_english
-from models import User, db, request_logs_collection, QwenApiKey
+from models import User, db, request_logs_collection, QwenApiKey, UserGenerationHistory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
 import logging
@@ -28,15 +28,24 @@ import hashlib
 import time
 import secrets
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import os
 import requests
 from turnstile_utils import verify_turnstile
+from qwen_generator import generate_qwen_video
+from models import VideoTask, VideoUrlMapping
+import threading
+from flask import Response, stream_with_context
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
+
+
+
 
 # Load admin secret key for IP blocking management
 ADMIN_SECRET_KEY = os.getenv('ADMIN_SECRET_KEY')
@@ -87,6 +96,37 @@ limiter = Limiter(
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
     strategy="moving-window" # Moving window for better abuse prevention
 )
+
+# Connection pooling for Qwen service requests
+def create_qwen_session():
+    """Create a requests session with connection pooling and retry strategy for Qwen service"""
+    session = requests.Session()
+    
+    # Configure retry strategy
+    retry_strategy = Retry(
+        total=3,
+        status_forcelist=[429, 500, 502, 503, 504],
+        method_whitelist=["HEAD", "GET", "OPTIONS"],
+        backoff_factor=1
+    )
+    
+    # Configure HTTP adapter with connection pooling
+    adapter = HTTPAdapter(
+        pool_connections=10,  # Number of connection pools to cache
+        pool_maxsize=20,      # Maximum number of connections to save in the pool
+        max_retries=retry_strategy
+    )
+    
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+    
+    # Set default timeout
+    session.timeout = 30
+    
+    return session
+
+# Global session for Qwen requests with connection pooling
+qwen_session = create_qwen_session()
 
 # Imagen 4 specific rate limits
 IMAGEN4_MINUTE_LIMIT = 3
@@ -153,33 +193,39 @@ def token_required(f):
             # Handle anonymous user limits
             if data.get('anonymous'):
                 user_id = data['user_id']
-                current_ip = get_client_ip() # Get the current IP
-                current_endpoint = request.endpoint # Get the current endpoint
-
-                # Check if a custom rate limit exists for this IP and endpoint
-                custom_limit = get_custom_rate_limit(current_ip, current_endpoint)
                 
-                if custom_limit:
-                    # If a custom limit exists, we rely on flask_limiter to enforce it.
-                    # So, we bypass this in-memory anonymous limit check.
-                    pass 
-                else:
-                    # If no custom limit, apply the default anonymous user limit
-                    if 'anonymous_requests' not in app.config:
-                        app.config['anonymous_requests'] = {}
+                # Define endpoints that should NOT count towards the free limit (e.g., status polling)
+                rate_limit_exempt_endpoints = ['get_qwen_video_status', 'api_img2video_result', 'img2video_result']
+
+                # Only apply the anonymous user limit for non-exempt endpoints
+                if request.endpoint not in rate_limit_exempt_endpoints:
+                    current_ip = get_client_ip() # Get the current IP
+                    current_endpoint = request.endpoint # Get the current endpoint
+
+                    # Check if a custom rate limit exists for this IP and endpoint
+                    custom_limit = get_custom_rate_limit(current_ip, current_endpoint)
                     
-                    now = datetime.utcnow()
-                    if user_id not in app.config['anonymous_requests']:
-                        app.config['anonymous_requests'][user_id] = []
-                    
-                    # Clean up old requests
-                    app.config['anonymous_requests'][user_id] = [t for t in app.config['anonymous_requests'][user_id] if now - t < timedelta(days=1)]
-                    
-                    # Enforce the default anonymous limit (e.g., 25 requests per day)
-                    if len(app.config['anonymous_requests'][user_id]) >= 25: # Revert to a reasonable default if no custom limit
-                        return jsonify({'error': 'Free generation limit reached. Please log in to continue or try again tomorrow'}), 429
-                                                
-                    app.config['anonymous_requests'][user_id].append(now)
+                    if custom_limit:
+                        # If a custom limit exists, we rely on flask_limiter to enforce it.
+                        # So, we bypass this in-memory anonymous limit check.
+                        pass 
+                    else:
+                        # If no custom limit, apply the default anonymous user limit
+                        if 'anonymous_requests' not in app.config:
+                            app.config['anonymous_requests'] = {}
+                        
+                        now = datetime.utcnow()
+                        if user_id not in app.config['anonymous_requests']:
+                            app.config['anonymous_requests'][user_id] = []
+                        
+                        # Clean up old requests
+                        app.config['anonymous_requests'][user_id] = [t for t in app.config['anonymous_requests'][user_id] if now - t < timedelta(days=1)]
+                        
+                        # Enforce the default anonymous limit (e.g., 25 requests per day)
+                        if len(app.config['anonymous_requests'][user_id]) >= 25: # Revert to a reasonable default if no custom limit
+                            return jsonify({'error': 'Free generation limit reached. Please log in to continue or try again tomorrow'}), 429
+                                                    
+                        app.config['anonymous_requests'][user_id].append(now)
 
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token has expired.'}), 401
@@ -426,6 +472,594 @@ def admin_delete_qwen_key(key_id):
     flash('Qwen API key deleted successfully!', 'success')
     return redirect(url_for('admin_qwen_keys', secret=secret_key))
 
+# Text to Video API Endpoints
+@app.route('/api/text-to-video/generate', methods=['POST'])
+@limiter.limit("10 per hour")
+def api_text_to_video_generate():
+    """API endpoint for text-to-video generation"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
+        
+        prompt = data.get('prompt', '').strip()
+        if not prompt:
+            return jsonify({'error': 'Prompt is required'}), 400
+        
+        if len(prompt) > 500:
+            return jsonify({'error': 'Prompt must be 500 characters or less'}), 400
+        
+        # Get client IP for tracking
+        client_ip = get_client_ip()
+        
+        # Get a random Qwen API key
+        qwen_keys = QwenApiKey.get_all()
+        if not qwen_keys:
+            return jsonify({'error': 'Video generation service temporarily unavailable'}), 503
+        
+        import random
+        selected_key = random.choice(qwen_keys)
+        
+        # Debug logging
+        app.logger.info(f"Selected key type: {type(selected_key)}")
+        app.logger.info(f"Selected key keys: {selected_key.keys() if isinstance(selected_key, dict) else 'Not a dict'}")
+        
+        # Handle both dictionary and object access patterns
+        try:
+            if isinstance(selected_key, dict):
+                key_dict = {
+                    'auth_token': selected_key.get('auth_token'),
+                    'chat_id': selected_key.get('chat_id'),
+                    'fid': selected_key.get('fid'),
+                    'children_ids': selected_key.get('children_ids'),
+                    'x_request_id': selected_key.get('x_request_id')
+                }
+            else:
+                # Handle object access
+                key_dict = {
+                    'auth_token': getattr(selected_key, 'auth_token', None),
+                    'chat_id': getattr(selected_key, 'chat_id', None),
+                    'fid': getattr(selected_key, 'fid', None),
+                    'children_ids': getattr(selected_key, 'children_ids', None),
+                    'x_request_id': getattr(selected_key, 'x_request_id', None)
+                }
+            
+            # Validate that we have all required keys
+            required_keys = ['auth_token', 'chat_id', 'fid', 'children_ids', 'x_request_id']
+            missing_keys = [key for key in required_keys if not key_dict.get(key)]
+            if missing_keys:
+                app.logger.error(f"Missing required Qwen API key fields: {missing_keys}")
+                return jsonify({'error': 'Video generation service configuration error'}), 503
+                
+        except Exception as e:
+            app.logger.error(f"Error processing Qwen API key: {e}")
+            return jsonify({'error': 'Video generation service configuration error'}), 503
+        
+        # Generate unique task ID
+        task_id = str(uuid.uuid4())
+        
+        # Create video task record
+        video_task = VideoTask.create(prompt)
+        if not video_task:
+            return jsonify({'error': 'Failed to create video task'}), 500
+        
+        task_id = video_task['task_id']
+        
+        # Capture host URL before starting background thread
+        host_url = request.host_url
+        
+        # Start video generation in background thread
+        def generate_video_async():
+            try:
+                result = generate_qwen_video(prompt, key_dict)
+                
+                if 'error' in result:
+                    VideoTask.update(task_id, 'failed', error_message=result['error'])
+                    app.logger.error(f"Video generation failed for task {task_id}: {result['error']}")
+                else:
+                    video_url = result.get('video_url')
+                    if video_url:
+                        # Create URL mapping for privacy
+                        mapping = VideoUrlMapping()
+                        proxy_id = mapping.create_mapping(video_url, task_id)
+                        
+                        # Create full proxy URL using captured host_url
+                        proxy_url = f"{host_url}proxy/video/{proxy_id}"
+                        
+                        VideoTask.update(task_id, 'completed', result_url=video_url, proxy_url=proxy_url)
+                        app.logger.info(f"Video generation completed for task {task_id}")
+                    else:
+                        VideoTask.update(task_id, 'failed', error_message='No video URL in response')
+                        app.logger.error(f"Video generation failed for task {task_id}: No video URL")
+                        
+            except Exception as e:
+                VideoTask.update(task_id, 'failed', error_message=str(e))
+                app.logger.error(f"Video generation error for task {task_id}: {e}")
+        
+        # Start background thread
+        thread = threading.Thread(target=generate_video_async)
+        thread.daemon = True
+        thread.start()
+        
+        return jsonify({
+            'success': True,
+            'task_id': task_id,
+            'status': 'processing',
+            'message': 'Video generation started. Use the status endpoint to check progress.',
+            'status_url': f'/api/text-to-video/status/{task_id}'
+        }), 202
+        
+    except Exception as e:
+        app.logger.error(f"API text-to-video generation error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/text-to-video/status/<task_id>', methods=['GET'])
+def api_text_to_video_status(task_id):
+    """API endpoint to check text-to-video generation status"""
+    try:
+        video_task = VideoTask.get_by_id(task_id)
+        if not video_task:
+            return jsonify({'error': 'Task not found'}), 404
+        
+        response_data = {
+            'task_id': task_id,
+            'status': video_task.get('status', 'unknown'),
+            'created_at': video_task.get('created_at').isoformat() if video_task.get('created_at') else None
+        }
+        
+        if video_task.get('status') == 'completed' and video_task.get('proxy_url'):
+            response_data['video_url'] = video_task.get('proxy_url')
+            response_data['message'] = 'Video generation completed successfully'
+        elif video_task.get('status') == 'failed':
+            response_data['error_message'] = video_task.get('error_message', 'Video generation failed')
+        elif video_task.get('status') in ['processing', 'pending']:
+            response_data['message'] = 'Video generation in progress'
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        app.logger.error(f"API text-to-video status error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# Video Proxy Endpoint
+@app.route('/proxy/video/<proxy_id>')
+def proxy_video(proxy_id):
+    """Proxy endpoint to serve videos through privacy-protected URLs"""
+    try:
+        # Get the original Qwen URL from the proxy mapping
+        mapping = VideoUrlMapping()
+        qwen_url = mapping.get_qwen_url(proxy_id)
+        
+        if not qwen_url:
+            return jsonify({'error': 'Video not found or expired'}), 404
+        
+        # Stream the video from Qwen URL to the client
+        try:
+            # Use the global qwen_session for connection pooling
+            response = qwen_session.get(qwen_url, stream=True, timeout=30)
+            response.raise_for_status()
+            
+            # Create a streaming response
+            def generate():
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        yield chunk
+            
+            # Get content type from the original response
+            content_type = response.headers.get('content-type', 'video/mp4')
+            content_length = response.headers.get('content-length')
+            
+            # Create Flask response with proper headers
+            flask_response = Response(
+                stream_with_context(generate()),
+                content_type=content_type,
+                headers={
+                    'Accept-Ranges': 'bytes',
+                    'Cache-Control': 'public, max-age=3600',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            )
+            
+            if content_length:
+                flask_response.headers['Content-Length'] = content_length
+            
+            return flask_response
+            
+        except requests.exceptions.RequestException as e:
+            app.logger.error(f"Error proxying video {proxy_id}: {e}")
+            return jsonify({'error': 'Video temporarily unavailable'}), 503
+            
+    except Exception as e:
+        app.logger.error(f"Error in video proxy for {proxy_id}: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+# Video URL Mapping Admin Endpoints
+@app.route('/admin/api/video-mapping-stats', methods=['GET'])
+@admin_required
+def get_video_mapping_stats():
+    """API endpoint to get video URL mapping storage statistics"""
+    try:
+        mapping = VideoUrlMapping()
+        stats = mapping.get_storage_usage_stats()
+        cleanup_status = VideoUrlMapping.get_cleanup_status()
+        
+        # Combine stats and cleanup status
+        response = {**stats, **cleanup_status}
+        return jsonify(response)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/video-mapping-cleanup', methods=['POST'])
+@admin_required
+def manual_video_mapping_cleanup():
+    """API endpoint to manually trigger cleanup of expired video URL mappings"""
+    try:
+        mapping = VideoUrlMapping()
+        deleted_count = mapping.cleanup_expired_mappings()
+        
+        return jsonify({
+            'success': True,
+            'deleted_count': deleted_count,
+            'message': f'Cleaned up {deleted_count} expired video URL mappings'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/admin/video-mappings')
+def admin_video_mappings():
+    """Admin page for video URL mapping management"""
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+    return render_template('admin/video_mappings.html')
+
+@app.route('/admin/video-proxy-monitoring')
+def admin_video_proxy_monitoring():
+    """Admin page for video proxy performance monitoring"""
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+    return render_template('admin/video_proxy_monitoring.html')
+
+@app.route('/admin/api/video-proxy-performance', methods=['GET'])
+@admin_required
+def get_video_proxy_performance():
+    """API endpoint to get video proxy performance statistics"""
+    try:
+        hours = int(request.args.get('hours', 24))
+        stats = get_proxy_performance_stats(hours)
+        return jsonify(stats)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/video-proxy-logs', methods=['GET'])
+@admin_required
+def get_video_proxy_logs():
+    """API endpoint to get recent video proxy access logs"""
+    try:
+        if db is None:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        # Get query parameters
+        limit = int(request.args.get('limit', 100))
+        hours = int(request.args.get('hours', 24))
+        status_code = request.args.get('status_code')
+        
+        # Build query
+        query = {
+            'timestamp': {
+                '$gte': datetime.now(timezone.utc) - timedelta(hours=hours)
+            }
+        }
+        
+        if status_code:
+            query['status_code'] = int(status_code)
+        
+        # Get logs
+        logs = list(db['video_proxy_logs'].find(
+            query,
+            {'_id': 0}  # Exclude MongoDB _id field
+        ).sort('timestamp', -1).limit(limit))
+        
+        # Convert datetime objects to ISO strings for JSON serialization
+        for log in logs:
+            if 'timestamp' in log:
+                log['timestamp'] = log['timestamp'].isoformat()
+        
+        return jsonify({
+            'logs': logs,
+            'total_count': len(logs),
+            'query_hours': hours,
+            'query_limit': limit
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/api/video-proxy-error-summary', methods=['GET'])
+@admin_required
+def get_video_proxy_error_summary():
+    """API endpoint to get summary of video proxy errors"""
+    try:
+        if db is None:
+            return jsonify({'error': 'Database not available'}), 500
+        
+        hours = int(request.args.get('hours', 24))
+        start_time = datetime.now(timezone.utc) - timedelta(hours=hours)
+        
+        # Aggregate error statistics
+        pipeline = [
+            {'$match': {
+                'timestamp': {'$gte': start_time},
+                'status_code': {'$gte': 400}
+            }},
+            {'$group': {
+                '_id': {
+                    'status_code': '$status_code',
+                    'error_message': '$error_message'
+                },
+                'count': {'$sum': 1},
+                'latest_occurrence': {'$max': '$timestamp'}
+            }},
+            {'$sort': {'count': -1}},
+            {'$limit': 20}
+        ]
+        
+        error_summary = list(db['video_proxy_logs'].aggregate(pipeline))
+        
+        # Convert datetime objects to ISO strings
+        for error in error_summary:
+            if 'latest_occurrence' in error:
+                error['latest_occurrence'] = error['latest_occurrence'].isoformat()
+        
+        # Get total error count
+        total_errors = db['video_proxy_logs'].count_documents({
+            'timestamp': {'$gte': start_time},
+            'status_code': {'$gte': 400}
+        })
+        
+        return jsonify({
+            'error_summary': error_summary,
+            'total_errors': total_errors,
+            'hours_analyzed': hours
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/admin/user-generations')
+def admin_user_generations():
+    """Admin page for user generation history management"""
+    secret_key = request.args.get('secret')
+    if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
+        return "Unauthorized", 401
+    return render_template('admin/user_generations.html')
+
+@app.route('/admin/api/user-generations', methods=['GET'])
+@admin_required
+def admin_get_user_generations():
+    """API endpoint to get user generation history for admin"""
+    try:
+        # Get query parameters
+        page = int(request.args.get('page', 1))
+        limit = min(int(request.args.get('limit', 20)), 100)  # Max 100 items
+        generation_type = request.args.get('type')
+        status_filter = request.args.get('status')
+        
+        skip = (page - 1) * limit
+        
+        history = UserGenerationHistory()
+        
+        # Build query
+        query = {'is_active': True}
+        if generation_type:
+            query['generation_type'] = generation_type
+        
+        # Get generations with pagination
+        cursor = history.collection.find(query).sort('created_at', -1).skip(skip).limit(limit)
+        generations = []
+        
+        for doc in cursor:
+            doc['_id'] = str(doc['_id'])
+            if 'created_at' in doc:
+                doc['created_at'] = doc['created_at'].isoformat()
+            
+            # Apply status filter if specified
+            if status_filter:
+                if status_filter == 'completed' and not doc.get('proxy_url'):
+                    continue
+                elif status_filter == 'processing' and doc.get('proxy_url'):
+                    continue
+                elif status_filter == 'failed':
+                    # For now, we don't have explicit failed status in history
+                    continue
+            
+            generations.append(doc)
+        
+        # Get total count
+        total_count = history.collection.count_documents(query)
+        
+        # Calculate stats
+        stats = calculate_generation_stats(history)
+        
+        return jsonify({
+            'success': True,
+            'generations': generations,
+            'total_count': total_count,
+            'page': page,
+            'limit': limit,
+            'stats': stats
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error retrieving admin user generations: {e}")
+        return jsonify({'error': 'Failed to retrieve generation history'}), 500
+
+def calculate_generation_stats(history):
+    """Calculate statistics for admin dashboard"""
+    try:
+        from datetime import datetime, timezone, timedelta
+        
+        now = datetime.now(timezone.utc)
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        yesterday_start = today_start - timedelta(days=1)
+        
+        # Total generations
+        total = history.collection.count_documents({'is_active': True})
+        
+        # Today's generations
+        today = history.collection.count_documents({
+            'is_active': True,
+            'created_at': {'$gte': today_start}
+        })
+        
+        # Active users in last 24h (unique user_id and session_id)
+        pipeline = [
+            {'$match': {
+                'is_active': True,
+                'created_at': {'$gte': yesterday_start}
+            }},
+            {'$group': {
+                '_id': {
+                    'user_id': '$user_id',
+                    'session_id': '$session_id'
+                }
+            }},
+            {'$count': 'active_users'}
+        ]
+        
+        active_users_result = list(history.collection.aggregate(pipeline))
+        active_users = active_users_result[0]['active_users'] if active_users_result else 0
+        
+        # Success rate (generations with proxy_url)
+        completed = history.collection.count_documents({
+            'is_active': True,
+            'proxy_url': {'$exists': True, '$ne': None}
+        })
+        
+        success_rate = round((completed / total * 100), 1) if total > 0 else 0
+        
+        return {
+            'total': total,
+            'today': today,
+            'active_users': active_users,
+            'success_rate': success_rate
+        }
+        
+    except Exception as e:
+        app.logger.error(f"Error calculating generation stats: {e}")
+        return {
+            'total': 0,
+            'today': 0,
+            'active_users': 0,
+            'success_rate': 0
+        }
+
+@app.route('/admin/api/user-generations/export', methods=['GET'])
+@admin_required
+def admin_export_user_generations():
+    """Export user generation history as CSV"""
+    try:
+        import csv
+        from io import StringIO
+        
+        history = UserGenerationHistory()
+        
+        # Get all generations
+        cursor = history.collection.find({'is_active': True}).sort('created_at', -1)
+        
+        # Create CSV
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write header
+        writer.writerow([
+            'ID', 'User Type', 'Generation Type', 'Prompt', 
+            'Status', 'Created At', 'Has Video'
+        ])
+        
+        # Write data
+        for doc in cursor:
+            writer.writerow([
+                str(doc['_id']),
+                'User' if doc.get('user_id') else 'Anonymous',
+                doc.get('generation_type', ''),
+                doc.get('prompt', ''),
+                'Completed' if doc.get('proxy_url') else 'Processing',
+                doc.get('created_at', '').isoformat() if doc.get('created_at') else '',
+                'Yes' if doc.get('proxy_url') else 'No'
+            ])
+        
+        # Create response
+        output.seek(0)
+        response = Response(
+            output.getvalue(),
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=user_generations.csv'}
+        )
+        
+        return response
+        
+    except Exception as e:
+        app.logger.error(f"Error exporting user generations: {e}")
+        return jsonify({'error': 'Failed to export data'}), 500
+
+@app.route('/admin/api/video-proxy-health', methods=['GET'])
+@admin_required
+def get_video_proxy_health():
+    """API endpoint to check video proxy system health"""
+    try:
+        health_status = check_video_proxy_health()
+        
+        # Determine overall health status
+        overall_status = 'healthy'
+        if not health_status['database_connected'] or not health_status['mapping_service_available']:
+            overall_status = 'unhealthy'
+        elif health_status['error_rate_last_hour'] > 10:  # More than 10% error rate
+            overall_status = 'degraded'
+        elif health_status['avg_response_time_last_hour'] > 5000:  # More than 5 seconds
+            overall_status = 'degraded'
+        
+        health_status['overall_status'] = overall_status
+        health_status['timestamp'] = datetime.now(timezone.utc).isoformat()
+        
+        # Return appropriate HTTP status code
+        if overall_status == 'healthy':
+            return jsonify(health_status), 200
+        elif overall_status == 'degraded':
+            return jsonify(health_status), 200  # Still operational but degraded
+        else:
+            return jsonify(health_status), 503  # Service unavailable
+        
+    except Exception as e:
+        return jsonify({
+            'overall_status': 'unhealthy',
+            'error': str(e),
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 500
+
+@app.route('/health/video-proxy', methods=['GET'])
+def video_proxy_health_check():
+    """Public health check endpoint for video proxy functionality"""
+    try:
+        health_status = check_video_proxy_health()
+        
+        # Return simplified health status for public endpoint
+        public_health = {
+            'status': 'healthy' if health_status['database_connected'] and 
+                     health_status['mapping_service_available'] and
+                     health_status['error_rate_last_hour'] < 20 else 'unhealthy',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+        
+        return jsonify(public_health), 200 if public_health['status'] == 'healthy' else 503
+        
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }), 503
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.find_by_id(user_id)
@@ -617,7 +1251,7 @@ def check_auth_status():
     else:
         return jsonify({'authenticated': False})
 
-@app.route('/get-api-token', methods=['GET'])
+@app.route('/get-api-token', methods=['GET', 'POST'])
 def get_api_token():
     """Generate a JWT for the authenticated or anonymous user."""
     try:
@@ -627,10 +1261,30 @@ def get_api_token():
             user_id = current_user.get_id()
             is_anonymous = False
         else:
-            # For anonymous users, use a session-based ID
-            if 'anonymous_id' not in session:
-                session['anonymous_id'] = str(uuid.uuid4())
-            user_id = session['anonymous_id']
+            # For anonymous users, try to get client-provided anonymous ID first
+            client_anonymous_id = None
+            
+            if request.method == 'POST':
+                data = request.get_json()
+                client_anonymous_id = data.get('anonymous_id') if data else None
+            else:
+                client_anonymous_id = request.args.get('anonymous_id')
+            
+            # Validate the client-provided ID (should be a valid UUID format)
+            if client_anonymous_id:
+                try:
+                    # Validate UUID format
+                    uuid.UUID(client_anonymous_id)
+                    user_id = client_anonymous_id
+                except ValueError:
+                    # Invalid UUID format, generate a new one
+                    user_id = str(uuid.uuid4())
+            else:
+                # No client ID provided, check session or generate new
+                if 'anonymous_id' not in session:
+                    session['anonymous_id'] = str(uuid.uuid4())
+                user_id = session['anonymous_id']
+            
             is_anonymous = True
 
         payload = {
@@ -642,7 +1296,7 @@ def get_api_token():
         
         token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
         
-        return jsonify({'token': token})
+        return jsonify({'token': token, 'anonymous_id': user_id if is_anonymous else None})
     except Exception as e:
         app.logger.error(f"Error generating API token: {str(e)}")
         return jsonify({'error': 'Could not generate API token.'}), 500
@@ -1553,6 +2207,7 @@ def img2video_generate():
 
 
 @app.route('/ui/img2video/result/<generation_id>', methods=['GET'])
+@limiter.exempt
 def img2video_result(generation_id):
 
     """API endpoint to check the status of a video generation or retrieve the result"""
@@ -1802,6 +2457,7 @@ def api_img2video_generate():
             return jsonify({'error': f"An unexpected error occurred: {error_str}"}), 500
 
 @app.route('/api/img2video/result/<generation_id>', methods=['GET'])
+@limiter.exempt
 def api_img2video_result(generation_id):
     """API endpoint to check the status of a video generation or retrieve the result"""
     try:
@@ -1916,7 +2572,942 @@ def api_img2video_result(generation_id):
             session.pop('active_video_generation_id')
         return jsonify({'error': str(e), 'status': 'error'}), 500
 
+@app.route('/text-to-video')
+def qwen_video_page():
+    """Render the Qwen video generation page"""
+    return render_template('text-to-video.html',
+                          user=current_user,
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
+
+
+def process_qwen_video_task(app, task_id):
+    """
+    This function runs in a background thread to generate a video.
+    It will wait for an available key before processing.
+    """
+    with app.app_context():
+        logger = app.logger
+        logger.info(f"Thread for VideoTask {task_id}: Starting.")
+        
+        assigned_key = None
+        try:
+            # Loop until a key is available
+            while assigned_key is None:
+                assigned_key = QwenApiKey.find_available_key()
+                if assigned_key is None:
+                    logger.info(f"Thread for {task_id}: No available Qwen keys. Waiting...")
+                    time.sleep(30) # Wait for 30 seconds before retrying
+
+            logger.info(f"Thread for {task_id}: Key {assigned_key['_id']} acquired. Processing.")
+            
+            VideoTask.update(task_id, status='processing', assigned_key_id=str(assigned_key['_id']))
+            
+            task_doc = VideoTask.get_by_id(task_id)
+            if not task_doc:
+                raise ValueError("VideoTask document not found.")
+
+            result = generate_qwen_video(prompt=task_doc['prompt'], api_key=assigned_key)
+
+            if 'error' in result:
+                 raise Exception(result['error'])
+
+            logger.info(f"Thread for {task_id}: Video generation successful. URL: {result['video_url']}")
+            
+            # Create proxy mapping for the video URL
+            proxy_url = None
+            try:
+                url_mapping = VideoUrlMapping()
+                proxy_id = url_mapping.create_mapping(result['video_url'], task_id)
+                proxy_url = f"/video/{proxy_id}"
+                logger.info(f"Thread for {task_id}: Created proxy URL: {proxy_url}")
+                
+                # Update task with both original URL and proxy URL
+                VideoTask.update(task_id, status='completed', result_url=result['video_url'], proxy_url=proxy_url)
+            except Exception as proxy_error:
+                logger.error(f"Thread for {task_id}: Failed to create proxy mapping: {proxy_error}")
+                # Still mark as completed but without proxy URL
+                VideoTask.update(task_id, status='completed', result_url=result['video_url'])
+
+            # Update user generation history with result URLs
+            try:
+                history = UserGenerationHistory()
+                history.update_generation_urls(
+                    task_id=task_id,
+                    result_url=result['video_url'],
+                    proxy_url=proxy_url
+                )
+                logger.info(f"Thread for {task_id}: Updated generation history with URLs")
+            except Exception as history_error:
+                logger.warning(f"Thread for {task_id}: Failed to update generation history: {history_error}")
+
+        except Exception as e:
+            logger.error(f"Thread for {task_id} failed: {e}", exc_info=True)
+            VideoTask.update(task_id, status='failed', error_message=str(e))
+            
+        finally:
+            if assigned_key:
+                QwenApiKey.mark_key_available(assigned_key['_id'])
+                logger.info(f"Thread for {task_id}: Key {assigned_key['_id']} released.")
+
+@app.route('/generate-text-to-video-ui', methods=['POST'])
+@token_required
+def generate_qwen_video_route():
+    """
+    API endpoint to queue a video generation task using a background thread.
+    """
+    data = request.get_json()
+    prompt = data.get('prompt')
+    turnstile_token = data.get('cf_turnstile_response')
+    
+    # Verify Turnstile token
+    client_ip = request.headers.get("CF-Connecting-IP")
+    if not verify_turnstile(turnstile_token, client_ip):
+        return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
+
+    if not prompt:
+        return jsonify({'error': 'Prompt is required'}), 400
+
+    task = VideoTask.create(prompt=prompt)
+    if not task:
+        return jsonify({'error': 'Failed to create video task in database.'}), 500
+
+    # Save generation to user history
+    try:
+        history = UserGenerationHistory()
+        user_id = None
+        session_id = None
+        
+        # Get user identification from token
+        token_data = getattr(g, 'token_data', {})
+        if token_data.get('anonymous'):
+            session_id = token_data.get('user_id')  # For anonymous users, user_id is actually session_id
+        else:
+            user_id = token_data.get('user_id')
+        
+        history.save_generation(
+            user_id=user_id,
+            session_id=session_id,
+            generation_type='text-to-video',
+            prompt=prompt,
+            task_id=task['task_id']
+        )
+    except Exception as e:
+        app.logger.warning(f"Failed to save generation to history: {e}")
+
+    # Start the video generation in a background thread
+    thread = threading.Thread(target=process_qwen_video_task, args=(app, task['task_id']))
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({
+        'success': True,
+        'message': 'Your video request has been queued. You can check the status using the task ID.',
+        'task_id': task['task_id']
+    }), 202
+
+@app.route('/api/user-generations', methods=['GET'])
+@token_required
+def get_user_generations():
+    """API endpoint to get user's generation history"""
+    try:
+        # Get query parameters
+        generation_type = request.args.get('type', 'text-to-video')
+        limit = min(int(request.args.get('limit', 20)), 50)  # Max 50 items
+        skip = int(request.args.get('skip', 0))
+        
+        # Get user identification from token
+        token_data = getattr(g, 'token_data', {})
+        user_id = None
+        session_id = None
+        
+        if token_data.get('anonymous'):
+            session_id = token_data.get('user_id')  # For anonymous users
+        else:
+            user_id = token_data.get('user_id')
+        
+        if not user_id and not session_id:
+            return jsonify({'error': 'User identification not found'}), 400
+        
+        # Get user's generation history
+        history = UserGenerationHistory()
+        generations = history.get_user_generations(
+            user_id=user_id,
+            session_id=session_id,
+            generation_type=generation_type,
+            limit=limit,
+            skip=skip
+        )
+        
+        # Get total count for pagination
+        total_count = history.count_user_generations(
+            user_id=user_id,
+            session_id=session_id,
+            generation_type=generation_type
+        )
+        
+        return jsonify({
+            'success': True,
+            'generations': generations,
+            'total_count': total_count,
+            'limit': limit,
+            'skip': skip,
+            'has_more': (skip + limit) < total_count
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error retrieving user generations: {e}")
+        return jsonify({'error': 'Failed to retrieve generation history'}), 500
+
+@app.route('/api/user-generations/<string:generation_id>', methods=['GET'])
+@token_required
+def get_user_generation_by_id(generation_id):
+    """API endpoint to get a specific generation by ID"""
+    try:
+        history = UserGenerationHistory()
+        generation = history.get_generation_by_id(generation_id)
+        
+        if not generation:
+            return jsonify({'error': 'Generation not found'}), 404
+        
+        # Verify ownership - check if the generation belongs to the current user
+        token_data = getattr(g, 'token_data', {})
+        user_id = None
+        session_id = None
+        
+        if token_data.get('anonymous'):
+            session_id = token_data.get('user_id')
+        else:
+            user_id = token_data.get('user_id')
+        
+        # Check ownership
+        if (generation.get('user_id') != user_id and 
+            generation.get('session_id') != session_id):
+            return jsonify({'error': 'Access denied'}), 403
+        
+        return jsonify({
+            'success': True,
+            'generation': generation
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error retrieving generation by ID: {e}")
+        return jsonify({'error': 'Failed to retrieve generation'}), 500
+
+@app.route('/generate-text-to-video-ui/status/<string:task_id>', methods=['GET'])
+@limiter.exempt
+def get_qwen_video_status(task_id):
+    """
+    API endpoint to check the status of a Qwen video generation task.
+    """
+    task = VideoTask.get_by_id(task_id)
+
+    if not task:
+        return jsonify({'error': 'Task not found'}), 404
+
+    # Return proxy URL if available, otherwise fall back to result_url
+    video_url = task.get('proxy_url') or task.get('result_url')
+    
+    response = {
+        'task_id': task['task_id'],
+        'status': task['status'],
+        'prompt': task['prompt'],
+        'created_at': task['created_at'].isoformat() if task.get('created_at') else None,
+        'updated_at': task['updated_at'].isoformat() if task.get('updated_at') else None,
+        'result_url': video_url,
+        'error_message': task.get('error_message')
+    }
+    
+    return jsonify(response)
+
+
+def log_video_proxy_access(proxy_id, client_ip, user_agent, status_code, error_message=None, response_time_ms=None, bytes_transferred=None):
+    """
+    Enhanced logging for video proxy access with performance monitoring.
+    Logs detailed information without exposing sensitive data.
+    """
+    try:
+        if db is None:
+            return
+        
+        log_entry = {
+            'proxy_id': proxy_id,
+            'client_ip': client_ip,
+            'user_agent': user_agent,
+            'status_code': status_code,
+            'timestamp': datetime.now(timezone.utc),
+            'endpoint': 'video_proxy'
+        }
+        
+        # Add performance metrics if provided
+        if response_time_ms is not None:
+            log_entry['response_time_ms'] = response_time_ms
+        
+        if bytes_transferred is not None:
+            log_entry['bytes_transferred'] = bytes_transferred
+        
+        # Add error information without exposing sensitive details
+        if error_message:
+            # Sanitize error message to avoid exposing Qwen service details
+            sanitized_error = sanitize_error_message(error_message)
+            log_entry['error_message'] = sanitized_error
+        
+        # Add request context for monitoring
+        log_entry['referer'] = request.headers.get('Referer', 'Direct')
+        log_entry['range_request'] = bool(request.headers.get('Range'))
+        
+        # Store in video_proxy_logs collection
+        db['video_proxy_logs'].insert_one(log_entry)
+        
+        # Update performance metrics
+        update_proxy_performance_metrics(status_code, response_time_ms, error_message is not None)
+        
+    except Exception as e:
+        app.logger.error(f"Error logging video proxy access: {e}")
+
+
+def sanitize_error_message(error_message):
+    """
+    Sanitize error messages to remove sensitive information while preserving useful debugging info.
+    Removes Qwen-specific details and URLs while keeping error types and codes.
+    """
+    if not error_message:
+        return error_message
+    
+    # List of sensitive patterns to remove or replace
+    sensitive_patterns = [
+        (r'https?://[^/]*qwen[^/]*[^\s]*', '[UPSTREAM_URL]'),
+        (r'https?://[^/]*alibaba[^/]*[^\s]*', '[UPSTREAM_URL]'),
+        (r'qwen[a-zA-Z0-9\-\.]*', '[UPSTREAM_SERVICE]'),
+        (r'alibaba[a-zA-Z0-9\-\.]*', '[UPSTREAM_SERVICE]'),
+        (r'X-Request-Id: [^\s]+', 'X-Request-Id: [REDACTED]'),
+        (r'X-Trace-Id: [^\s]+', 'X-Trace-Id: [REDACTED]'),
+        (r'auth_token[^,\s]*', 'auth_token=[REDACTED]'),
+        (r'api[_-]?key[^,\s]*', 'api_key=[REDACTED]')
+    ]
+    
+    sanitized = error_message
+    for pattern, replacement in sensitive_patterns:
+        import re
+        sanitized = re.sub(pattern, replacement, sanitized, flags=re.IGNORECASE)
+    
+    return sanitized
+
+
+def update_proxy_performance_metrics(status_code, response_time_ms, has_error):
+    """
+    Update performance metrics for monitoring proxy endpoint health.
+    Tracks success rates, response times, and error patterns.
+    """
+    try:
+        if db is None:
+            return
+        
+        current_time = datetime.now(timezone.utc)
+        
+        # Create or update performance metrics document
+        metrics_doc = {
+            'timestamp': current_time,
+            'status_code': status_code,
+            'response_time_ms': response_time_ms,
+            'has_error': has_error,
+            'success': status_code < 400
+        }
+        
+        # Store individual metric
+        db['video_proxy_metrics'].insert_one(metrics_doc)
+        
+        # Update aggregated metrics (hourly summary)
+        hour_key = current_time.replace(minute=0, second=0, microsecond=0)
+        
+        # Upsert hourly aggregated metrics
+        db['video_proxy_hourly_metrics'].update_one(
+            {'hour': hour_key},
+            {
+                '$inc': {
+                    'total_requests': 1,
+                    'success_count': 1 if status_code < 400 else 0,
+                    'error_count': 1 if status_code >= 400 else 0,
+                    f'status_{status_code}_count': 1
+                },
+                '$push': {
+                    'response_times': response_time_ms
+                } if response_time_ms is not None else {},
+                '$setOnInsert': {
+                    'hour': hour_key
+                }
+            },
+            upsert=True
+        )
+        
+    except Exception as e:
+        app.logger.error(f"Error updating proxy performance metrics: {e}")
+
+
+def check_video_proxy_health():
+    """
+    Comprehensive health check for video proxy functionality.
+    Returns detailed health status including database connectivity,
+    mapping service availability, and performance metrics.
+    """
+    health_status = {
+        'database_connected': False,
+        'mapping_service_available': False,
+        'cleanup_thread_running': False,
+        'total_active_mappings': 0,
+        'error_rate_last_hour': 0,
+        'avg_response_time_last_hour': 0,
+        'last_successful_request': None,
+        'qwen_session_healthy': False,
+        'recent_errors': []
+    }
+    
+    try:
+        # Check database connectivity
+        if db is not None:
+            # Test database connection with a simple operation
+            db.command('ismaster')
+            health_status['database_connected'] = True
+            
+            # Check mapping service availability
+            try:
+                mapping = VideoUrlMapping()
+                stats = mapping.get_storage_usage_stats()
+                health_status['mapping_service_available'] = True
+                health_status['total_active_mappings'] = stats.get('active_mappings', 0)
+                
+                # Check cleanup thread status
+                cleanup_status = VideoUrlMapping.get_cleanup_status()
+                health_status['cleanup_thread_running'] = cleanup_status.get('cleanup_running', False)
+                
+            except Exception as e:
+                health_status['mapping_service_available'] = False
+                health_status['mapping_service_error'] = str(e)
+            
+            # Get performance metrics for the last hour
+            try:
+                one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+                
+                # Calculate error rate
+                total_requests = db['video_proxy_logs'].count_documents({
+                    'timestamp': {'$gte': one_hour_ago}
+                })
+                
+                error_requests = db['video_proxy_logs'].count_documents({
+                    'timestamp': {'$gte': one_hour_ago},
+                    'status_code': {'$gte': 400}
+                })
+                
+                if total_requests > 0:
+                    health_status['error_rate_last_hour'] = (error_requests / total_requests) * 100
+                
+                # Calculate average response time
+                response_times = list(db['video_proxy_logs'].find({
+                    'timestamp': {'$gte': one_hour_ago},
+                    'response_time_ms': {'$exists': True, '$ne': None}
+                }, {'response_time_ms': 1}))
+                
+                if response_times:
+                    avg_response_time = sum(log['response_time_ms'] for log in response_times) / len(response_times)
+                    health_status['avg_response_time_last_hour'] = round(avg_response_time, 2)
+                
+                # Get last successful request timestamp
+                last_success = db['video_proxy_logs'].find_one({
+                    'status_code': {'$lt': 400}
+                }, sort=[('timestamp', -1)])
+                
+                if last_success:
+                    health_status['last_successful_request'] = last_success['timestamp'].isoformat()
+                
+                # Get recent errors (last 10)
+                recent_errors = list(db['video_proxy_logs'].find({
+                    'timestamp': {'$gte': one_hour_ago},
+                    'status_code': {'$gte': 400}
+                }, {
+                    'timestamp': 1,
+                    'status_code': 1,
+                    'error_message': 1,
+                    'proxy_id': 1
+                }).sort('timestamp', -1).limit(10))
+                
+                # Format recent errors for response
+                health_status['recent_errors'] = [
+                    {
+                        'timestamp': error['timestamp'].isoformat(),
+                        'status_code': error['status_code'],
+                        'error_message': error.get('error_message', 'Unknown error'),
+                        'proxy_id': error.get('proxy_id', 'Unknown')[:8] + '...' if error.get('proxy_id') else 'Unknown'
+                    }
+                    for error in recent_errors
+                ]
+                
+            except Exception as e:
+                health_status['metrics_error'] = str(e)
+        
+        # Check Qwen session health
+        try:
+            # Test if the global qwen_session is properly configured
+            if qwen_session and hasattr(qwen_session, 'adapters'):
+                health_status['qwen_session_healthy'] = True
+            else:
+                health_status['qwen_session_healthy'] = False
+                health_status['qwen_session_error'] = 'Session not properly initialized'
+        except Exception as e:
+            health_status['qwen_session_healthy'] = False
+            health_status['qwen_session_error'] = str(e)
+        
+        return health_status
+        
+    except Exception as e:
+        health_status['health_check_error'] = str(e)
+        return health_status
+
+
+def get_proxy_performance_stats(hours=24):
+    """
+    Get performance statistics for the video proxy endpoint.
+    Returns success rates, average response times, and error patterns.
+    """
+    try:
+        if db is None:
+            return {'error': 'Database not available'}
+        
+        # Calculate time range
+        end_time = datetime.now(timezone.utc)
+        start_time = end_time - timedelta(hours=hours)
+        
+        # Aggregate metrics from hourly summaries
+        pipeline = [
+            {'$match': {'hour': {'$gte': start_time, '$lte': end_time}}},
+            {'$group': {
+                '_id': None,
+                'total_requests': {'$sum': '$total_requests'},
+                'success_count': {'$sum': '$success_count'},
+                'error_count': {'$sum': '$error_count'},
+                'all_response_times': {'$push': '$response_times'}
+            }}
+        ]
+        
+        result = list(db['video_proxy_hourly_metrics'].aggregate(pipeline))
+        
+        if not result:
+            return {
+                'total_requests': 0,
+                'success_rate': 0,
+                'error_rate': 0,
+                'avg_response_time_ms': 0,
+                'hours_analyzed': hours
+            }
+        
+        stats = result[0]
+        total_requests = stats.get('total_requests', 0)
+        success_count = stats.get('success_count', 0)
+        error_count = stats.get('error_count', 0)
+        
+        # Calculate response time statistics
+        all_response_times = []
+        for response_time_list in stats.get('all_response_times', []):
+            if response_time_list:
+                all_response_times.extend(response_time_list)
+        
+        avg_response_time = sum(all_response_times) / len(all_response_times) if all_response_times else 0
+        
+        # Get error breakdown by status code
+        error_breakdown = {}
+        error_pipeline = [
+            {'$match': {'hour': {'$gte': start_time, '$lte': end_time}}},
+            {'$project': {
+                'status_codes': {
+                    '$objectToArray': {
+                        '$filter': {
+                            'input': {'$objectToArray': '$$ROOT'},
+                            'cond': {'$regexMatch': {'input': '$$this.k', 'regex': '^status_\\d+_count$'}}
+                        }
+                    }
+                }
+            }},
+            {'$unwind': '$status_codes'},
+            {'$group': {
+                '_id': '$status_codes.k',
+                'count': {'$sum': '$status_codes.v'}
+            }}
+        ]
+        
+        error_results = list(db['video_proxy_hourly_metrics'].aggregate(error_pipeline))
+        for error_result in error_results:
+            status_code = error_result['_id'].replace('status_', '').replace('_count', '')
+            error_breakdown[f'status_{status_code}'] = error_result['count']
+        
+        return {
+            'total_requests': total_requests,
+            'success_count': success_count,
+            'error_count': error_count,
+            'success_rate': (success_count / total_requests * 100) if total_requests > 0 else 0,
+            'error_rate': (error_count / total_requests * 100) if total_requests > 0 else 0,
+            'avg_response_time_ms': round(avg_response_time, 2),
+            'error_breakdown': error_breakdown,
+            'hours_analyzed': hours
+        }
+        
+    except Exception as e:
+        app.logger.error(f"Error getting proxy performance stats: {e}")
+        return {'error': str(e)}
+
+@app.route('/video/<proxy_id>', methods=['GET'])
+@limiter.limit("100 per minute")  # Rate limiting for video proxy endpoint
+def video_proxy(proxy_id):
+    """
+    Enhanced video proxy endpoint with comprehensive error handling and monitoring.
+    Streams video content from Qwen to the user while hiding original URLs.
+    Includes performance monitoring, retry logic, and detailed logging.
+    """
+    client_ip = get_client_ip()
+    user_agent = request.headers.get('User-Agent', 'Unknown')
+    start_time = time.time()
+    bytes_transferred = 0
+    
+    try:
+        # Initialize the VideoUrlMapping service
+        url_mapping = VideoUrlMapping()
+        
+        # Get the original Qwen URL from the proxy ID
+        qwen_url = url_mapping.get_qwen_url(proxy_id)
+        
+        if not qwen_url:
+            # Calculate response time
+            response_time_ms = int((time.time() - start_time) * 1000)
+            
+            # Log access attempt for security monitoring
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 404, 
+                                 "Proxy ID not found or expired", response_time_ms)
+            
+            # Return user-friendly error page for browser requests
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html', 
+                                     error_title='Video Not Found',
+                                     error_message='The video you requested could not be found.',
+                                     error_code='VIDEO_NOT_FOUND',
+                                     help_text='The video may have expired. Please regenerate your video to get a new link.',
+                                     retry_action='regenerate'), 404
+            
+            # Return JSON for API requests
+            return jsonify({
+                'error': 'Video not found',
+                'code': 'VIDEO_NOT_FOUND',
+                'help_text': 'The video may have expired. Please regenerate your video to get a new link.'
+            }), 404
+        
+        # Handle range requests for video seeking
+        range_header = request.headers.get('Range')
+        headers = {}
+        
+        if range_header:
+            # Parse range header (e.g., "bytes=0-1023")
+            headers['Range'] = range_header
+        
+        # Enhanced retry logic for transient Qwen service errors
+        max_retries = 3
+        retry_delay = 1  # Start with 1 second delay
+        last_exception = None
+        response = None
+        
+        for attempt in range(max_retries + 1):
+            try:
+                # Use connection pooling session for Qwen service requests
+                response = qwen_session.get(qwen_url, headers=headers, stream=True, timeout=30)
+                break  # Success, exit retry loop
+                
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                last_exception = e
+                
+                if attempt < max_retries:
+                    # Log retry attempt
+                    app.logger.warning(f"Video proxy retry {attempt + 1}/{max_retries} for proxy {proxy_id}: {type(e).__name__}")
+                    
+                    # Exponential backoff with jitter
+                    import random
+                    jitter = random.uniform(0.1, 0.5)
+                    sleep_time = retry_delay * (2 ** attempt) + jitter
+                    time.sleep(sleep_time)
+                    continue
+                else:
+                    # All retries exhausted, handle the exception
+                    response_time_ms = int((time.time() - start_time) * 1000)
+                    
+                    if isinstance(e, requests.exceptions.Timeout):
+                        log_video_proxy_access(proxy_id, client_ip, user_agent, 503, 
+                                             "Request timeout to upstream service", response_time_ms)
+                        
+                        if 'text/html' in request.headers.get('Accept', ''):
+                            return render_template('video_error.html',
+                                                 error_title='Request Timeout',
+                                                 error_message='The video request timed out.',
+                                                 error_code='SERVICE_TIMEOUT',
+                                                 help_text='Please try again in a few minutes.',
+                                                 retry_action='retry',
+                                                 retry_after=300), 503
+                        
+                        return jsonify({
+                            'error': 'Video temporarily unavailable. Please try again in a few minutes.',
+                            'code': 'SERVICE_TIMEOUT',
+                            'retry_after': 300
+                        }), 503
+                    
+                    else:  # ConnectionError
+                        log_video_proxy_access(proxy_id, client_ip, user_agent, 503, 
+                                             "Connection error to upstream service", response_time_ms)
+                        
+                        if 'text/html' in request.headers.get('Accept', ''):
+                            return render_template('video_error.html',
+                                                 error_title='Connection Error',
+                                                 error_message='Unable to connect to the video service.',
+                                                 error_code='SERVICE_UNAVAILABLE',
+                                                 help_text='Please try again in a few minutes.',
+                                                 retry_action='retry',
+                                                 retry_after=300), 503
+                        
+                        return jsonify({
+                            'error': 'Video temporarily unavailable. Please try again in a few minutes.',
+                            'code': 'SERVICE_UNAVAILABLE',
+                            'retry_after': 300
+                        }), 503
+            
+            except Exception as e:
+                # For non-retryable exceptions, fail immediately
+                response_time_ms = int((time.time() - start_time) * 1000)
+                sanitized_error = sanitize_error_message(str(e))
+                app.logger.error(f"Non-retryable error in video proxy for {proxy_id}: {sanitized_error}")
+                log_video_proxy_access(proxy_id, client_ip, user_agent, 500, 
+                                     f"Non-retryable error: {sanitized_error}", response_time_ms)
+                
+                if 'text/html' in request.headers.get('Accept', ''):
+                    return render_template('video_error.html',
+                                         error_title='Streaming Error',
+                                         error_message='An error occurred while accessing the video.',
+                                         error_code='STREAMING_ERROR',
+                                         help_text='Please try again or regenerate your video.',
+                                         retry_action='retry'), 500
+                
+                return jsonify({
+                    'error': 'Error streaming video. Please try again or regenerate your video.',
+                    'code': 'STREAMING_ERROR'
+                }), 500
+        
+        # If we get here without a successful response, something went wrong
+        if response is None:
+            response_time_ms = int((time.time() - start_time) * 1000)
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 500, 
+                                 "Failed to get response after retries", response_time_ms)
+            
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html',
+                                     error_title='Service Unavailable',
+                                     error_message='Unable to access the video after multiple attempts.',
+                                     error_code='SERVICE_UNAVAILABLE',
+                                     help_text='Please try again later.',
+                                     retry_action='retry'), 503
+            
+            return jsonify({
+                'error': 'Video temporarily unavailable. Please try again in a few minutes.',
+                'code': 'SERVICE_UNAVAILABLE',
+                'retry_after': 300
+            }), 503
+        
+        # Handle different response status codes from Qwen
+        response_time_ms = int((time.time() - start_time) * 1000)
+        
+        if response.status_code == 404:
+                log_video_proxy_access(proxy_id, client_ip, user_agent, 410, 
+                                     "Upstream service returned 404", response_time_ms)
+                
+                # Return user-friendly error page for browser requests
+                if 'text/html' in request.headers.get('Accept', ''):
+                    return render_template('video_error.html',
+                                         error_title='Video Expired',
+                                         error_message='This video is no longer available.',
+                                         error_code='VIDEO_EXPIRED',
+                                         help_text='Please regenerate your video to get a new link.',
+                                         retry_action='regenerate'), 410
+                
+                return jsonify({
+                    'error': 'Video no longer available. Please regenerate your video to get a new link.',
+                    'code': 'VIDEO_EXPIRED',
+                    'help_text': 'Please regenerate your video to get a new link'
+                }), 410
+            
+        if response.status_code == 403:
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 410, 
+                                 "Upstream service returned 403", response_time_ms)
+            
+            # Return user-friendly error page for browser requests
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html',
+                                     error_title='Video Access Denied',
+                                     error_message='Access to this video has been denied.',
+                                     error_code='VIDEO_EXPIRED',
+                                     help_text='Please regenerate your video to get a new link.',
+                                     retry_action='regenerate'), 410
+            
+            return jsonify({
+                'error': 'Video no longer available. Please regenerate your video to get a new link.',
+                'code': 'VIDEO_EXPIRED', 
+                'help_text': 'Please regenerate your video to get a new link'
+            }), 410
+        
+        if response.status_code >= 500:
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 503, 
+                                 f"Upstream service error: {response.status_code}", response_time_ms)
+            
+            # Return user-friendly error page for browser requests
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html',
+                                     error_title='Service Temporarily Unavailable',
+                                     error_message='The video service is temporarily unavailable.',
+                                     error_code='SERVICE_UNAVAILABLE',
+                                     help_text='Please try again in a few minutes.',
+                                     retry_action='retry',
+                                     retry_after=300), 503
+            
+            return jsonify({
+                'error': 'Video temporarily unavailable. Please try again in a few minutes.',
+                'code': 'SERVICE_UNAVAILABLE',
+                'retry_after': 300
+            }), 503
+        
+        if not response.ok:
+            log_video_proxy_access(proxy_id, client_ip, user_agent, 500, 
+                                 f"Upstream response not OK: {response.status_code}", response_time_ms)
+            
+            # Return user-friendly error page for browser requests
+            if 'text/html' in request.headers.get('Accept', ''):
+                return render_template('video_error.html',
+                                     error_title='Video Streaming Error',
+                                     error_message='An error occurred while streaming the video.',
+                                     error_code='STREAMING_ERROR',
+                                     help_text='Please try again or regenerate your video.',
+                                     retry_action='retry'), 500
+            
+            return jsonify({
+                'error': 'Error streaming video. Please try again or regenerate your video.',
+                'code': 'STREAMING_ERROR'
+            }), 500
+        
+        # Prepare response headers for video streaming
+        response_headers = {}
+        
+        # Essential headers that are safe to forward
+        essential_headers = [
+            'Content-Type', 'Content-Length', 'Accept-Ranges', 
+            'Content-Range', 'Last-Modified', 'ETag'
+        ]
+        
+        # Qwen-specific headers to filter out (maintain white-label appearance)
+        qwen_specific_headers = [
+            'Server', 'X-Powered-By', 'X-Qwen-*', 'X-Request-Id',
+            'X-Trace-Id', 'X-Service-*', 'Via', 'X-Cache',
+            'X-Served-By', 'X-Timer', 'X-Fastly-*', 'CF-*',
+            'X-Amz-*', 'X-Alibaba-*', 'Ali-*'
+        ]
+        
+        # Copy essential headers while filtering out Qwen-specific ones
+        for header in essential_headers:
+            if header in response.headers:
+                response_headers[header] = response.headers[header]
+        
+        # Filter out any Qwen-specific headers that might leak service details
+        for header_name in response.headers:
+            # Skip if it's already in essential headers
+            if header_name in essential_headers:
+                continue
+                
+            # Check if header matches any Qwen-specific patterns
+            is_qwen_header = False
+            for pattern in qwen_specific_headers:
+                if pattern.endswith('*'):
+                    if header_name.startswith(pattern[:-1]):
+                        is_qwen_header = True
+                        break
+                elif header_name.lower() == pattern.lower():
+                    is_qwen_header = True
+                    break
+            
+            # Skip Qwen-specific headers
+            if is_qwen_header:
+                continue
+        
+        # Set default content type if not provided
+        if 'Content-Type' not in response_headers:
+            response_headers['Content-Type'] = 'video/mp4'
+        
+        # Add caching headers for better performance
+        response_headers['Cache-Control'] = 'public, max-age=3600'
+        
+        # Ensure Accept-Ranges is set for video seeking
+        if 'Accept-Ranges' not in response_headers:
+            response_headers['Accept-Ranges'] = 'bytes'
+        
+        # Create enhanced streaming response with byte tracking
+        def generate():
+            nonlocal bytes_transferred
+            try:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        bytes_transferred += len(chunk)
+                        yield chunk
+            except Exception as e:
+                # Log streaming error without exposing sensitive details
+                sanitized_error = f"Streaming interrupted: {type(e).__name__}"
+                app.logger.error(f"Error streaming video chunk for proxy {proxy_id}: {sanitized_error}")
+                # Connection was likely closed by client
+                return
+        
+        # Return streaming response with appropriate status code
+        status_code = response.status_code if response.status_code in [200, 206] else 200
+        
+        # Create the response
+        streaming_response = Response(
+            stream_with_context(generate()),
+            status=status_code,
+            headers=response_headers
+        )
+        
+        # Log successful access with performance metrics
+        response_time_ms = int((time.time() - start_time) * 1000)
+        log_video_proxy_access(proxy_id, client_ip, user_agent, status_code, 
+                             None, response_time_ms, bytes_transferred)
+        
+        return streaming_response
+            
+    except Exception as e:
+        response_time_ms = int((time.time() - start_time) * 1000)
+        sanitized_error = sanitize_error_message(str(e))
+        app.logger.error(f"Error in video proxy endpoint for {proxy_id}: {sanitized_error}")
+        log_video_proxy_access(proxy_id, client_ip, user_agent, 500, 
+                             f"Proxy endpoint error: {sanitized_error}", response_time_ms)
+        
+        # Return user-friendly error page for browser requests
+        if 'text/html' in request.headers.get('Accept', ''):
+            return render_template('video_error.html',
+                                 error_title='Video Proxy Error',
+                                 error_message='An error occurred in the video proxy service.',
+                                 error_code='PROXY_ERROR',
+                                 help_text='Please try again or regenerate your video.',
+                                 retry_action='retry'), 500
+        
+        return jsonify({
+            'error': 'Error streaming video. Please try again or regenerate your video.',
+            'code': 'PROXY_ERROR'
+        }), 500
+
+
 if __name__ == '__main__':
+    # Reset any keys that were stuck in 'generating' state on server restart
+    with app.app_context():
+        reset_count = QwenApiKey.reset_all_generating_to_available()
+        app.logger.info(f"Startup Check: Reset {reset_count} stuck Qwen API keys to 'available'.")
+
     if ADMIN_SECRET_KEY:
         print("="*60)
         print("Admin Dashboard URL:")

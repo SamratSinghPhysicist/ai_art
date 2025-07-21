@@ -408,15 +408,21 @@ class StabilityApiKey:
             return 0
 
 
+import uuid
+from datetime import timezone, timedelta
+import threading
+import time
+
 class QwenApiKey:
     """Model for managing Qwen API keys"""
 
-    def __init__(self, auth_token, chat_id, fid, children_ids, x_request_id, _id=None):
+    def __init__(self, auth_token, chat_id, fid, children_ids, x_request_id, status='available', _id=None):
         self.auth_token = auth_token
         self.chat_id = chat_id
         self.fid = fid
         self.children_ids = children_ids
         self.x_request_id = x_request_id
+        self.status = status
         self._id = _id
 
     def save(self):
@@ -427,6 +433,7 @@ class QwenApiKey:
             'fid': self.fid,
             'children_ids': self.children_ids,
             'x_request_id': self.x_request_id,
+            'status': self.status
         }
 
         if self._id:
@@ -460,3 +467,452 @@ class QwenApiKey:
         except Exception as e:
             print(f"Error deleting Qwen API key: {e}")
             return False
+
+    @staticmethod
+    def find_available_key():
+        """Atomically finds an available key and marks it as 'generating'."""
+        if db is None: return None
+        return db['qwen_api_keys'].find_one_and_update(
+            {'status': 'available'},
+            {'$set': {'status': 'generating', 'updated_at': datetime.datetime.now(timezone.utc)}},
+            return_document=True
+        )
+
+    @staticmethod
+    def mark_key_available(key_id):
+        """Marks a key as available by its ID."""
+        if db is None: return
+        db['qwen_api_keys'].update_one(
+            {'_id': ObjectId(key_id)},
+            {'$set': {'status': 'available', 'updated_at': datetime.datetime.now(timezone.utc)}}
+        )
+    
+    @staticmethod
+    def get_key_status(key_id):
+        """Gets the status of a specific key."""
+        if db is None: return None
+        key = db['qwen_api_keys'].find_one({'_id': ObjectId(key_id)})
+        return key.get('status') if key else None
+
+    @staticmethod
+    def reset_all_generating_to_available():
+        """Resets all keys with 'generating' status back to 'available'."""
+        if db is None: return 0
+        result = db['qwen_api_keys'].update_many(
+            {'status': 'generating'},
+            {'$set': {'status': 'available'}}
+        )
+        return result.modified_count
+
+class VideoTask:
+    @staticmethod
+    def create(prompt):
+        """Creates a new video task in the queue."""
+        if db is None: return None
+        
+        task_id = str(uuid.uuid4())
+        task_document = {
+            "task_id": task_id,
+            "prompt": prompt,
+            "status": "pending", # pending, processing, completed, failed
+            "result_url": None,
+            "error_message": None,
+            "assigned_key_id": None,
+            "created_at": datetime.datetime.now(timezone.utc),
+            "updated_at": datetime.datetime.now(timezone.utc),
+        }
+        db['video_tasks'].insert_one(task_document)
+        return db['video_tasks'].find_one({"task_id": task_id})
+
+    @staticmethod
+    def get_by_id(task_id):
+        """Retrieves a task by its task_id."""
+        if db is None: return None
+        return db['video_tasks'].find_one({"task_id": task_id})
+
+    @staticmethod
+    def update(task_id, status, result_url=None, assigned_key_id=None, error_message=None, proxy_url=None):
+        """Updates a task's status and other fields."""
+        if db is None: return
+        
+        update_fields = {
+            "status": status,
+            "updated_at": datetime.datetime.now(timezone.utc)
+        }
+        if result_url is not None:
+            update_fields["result_url"] = result_url
+        if assigned_key_id is not None:
+            update_fields["assigned_key_id"] = assigned_key_id
+        if error_message is not None:
+            update_fields["error_message"] = error_message
+        if proxy_url is not None:
+            update_fields["proxy_url"] = proxy_url
+            
+        db['video_tasks'].update_one(
+            {"task_id": task_id},
+            {"$set": update_fields}
+        )
+
+
+class UserGenerationHistory:
+    """Model for managing user generation history"""
+    
+    def __init__(self):
+        if db is None:
+            raise Exception("Database connection not available")
+        self.collection = db['user_generation_history']
+        
+        # Create indexes for efficient queries
+        try:
+            self.collection.create_index([('user_id', 1), ('created_at', -1)], name='user_id_created_at')
+            self.collection.create_index('session_id', name='session_id_index')
+            self.collection.create_index('generation_type', name='generation_type_index')
+            self.collection.create_index('created_at', name='created_at_index')
+        except Exception as e:
+            print(f"Warning: Could not create user_generation_history indexes: {e}")
+    
+    def save_generation(self, user_id=None, session_id=None, generation_type='text-to-video', 
+                       prompt=None, result_url=None, proxy_url=None, task_id=None, 
+                       generation_params=None):
+        """Save a user's generation to history"""
+        try:
+            generation_data = {
+                'user_id': user_id,  # None for anonymous users
+                'session_id': session_id,  # For anonymous users
+                'generation_type': generation_type,
+                'prompt': prompt,
+                'result_url': result_url,
+                'proxy_url': proxy_url,
+                'task_id': task_id,
+                'generation_params': generation_params or {},
+                'created_at': datetime.datetime.now(timezone.utc),
+                'is_active': True  # For soft deletion if needed
+            }
+            
+            result = self.collection.insert_one(generation_data)
+            return str(result.inserted_id)
+        except Exception as e:
+            print(f"Error saving generation to history: {e}")
+            return None
+    
+    def get_user_generations(self, user_id=None, session_id=None, generation_type=None, 
+                           limit=50, skip=0):
+        """Get user's generation history"""
+        try:
+            # Build query based on user type
+            query = {'is_active': True}
+            
+            if user_id:
+                query['user_id'] = user_id
+            elif session_id:
+                query['session_id'] = session_id
+            else:
+                return []  # No user identification provided
+            
+            if generation_type:
+                query['generation_type'] = generation_type
+            
+            # Get generations sorted by creation date (newest first)
+            cursor = self.collection.find(query).sort('created_at', -1).skip(skip).limit(limit)
+            
+            generations = []
+            for doc in cursor:
+                doc['_id'] = str(doc['_id'])
+                # Convert datetime to ISO string for JSON serialization
+                if 'created_at' in doc:
+                    doc['created_at'] = doc['created_at'].isoformat()
+                generations.append(doc)
+            
+            return generations
+        except Exception as e:
+            print(f"Error retrieving user generations: {e}")
+            return []
+    
+    def get_generation_by_id(self, generation_id):
+        """Get a specific generation by ID"""
+        try:
+            from bson.objectid import ObjectId
+            doc = self.collection.find_one({'_id': ObjectId(generation_id), 'is_active': True})
+            if doc:
+                doc['_id'] = str(doc['_id'])
+                if 'created_at' in doc:
+                    doc['created_at'] = doc['created_at'].isoformat()
+            return doc
+        except Exception as e:
+            print(f"Error retrieving generation by ID: {e}")
+            return None
+    
+    def update_generation_urls(self, task_id, result_url=None, proxy_url=None):
+        """Update generation with result URLs after completion"""
+        try:
+            update_data = {'updated_at': datetime.datetime.now(timezone.utc)}
+            if result_url:
+                update_data['result_url'] = result_url
+            if proxy_url:
+                update_data['proxy_url'] = proxy_url
+            
+            result = self.collection.update_one(
+                {'task_id': task_id, 'is_active': True},
+                {'$set': update_data}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            print(f"Error updating generation URLs: {e}")
+            return False
+    
+    def count_user_generations(self, user_id=None, session_id=None, generation_type=None, 
+                             hours_back=None):
+        """Count user's generations, optionally within a time window"""
+        try:
+            query = {'is_active': True}
+            
+            if user_id:
+                query['user_id'] = user_id
+            elif session_id:
+                query['session_id'] = session_id
+            else:
+                return 0
+            
+            if generation_type:
+                query['generation_type'] = generation_type
+            
+            if hours_back:
+                cutoff_time = datetime.datetime.now(timezone.utc) - timedelta(hours=hours_back)
+                query['created_at'] = {'$gte': cutoff_time}
+            
+            return self.collection.count_documents(query)
+        except Exception as e:
+            print(f"Error counting user generations: {e}")
+            return 0
+    
+    def cleanup_old_generations(self, days_old=30):
+        """Clean up old generations (soft delete)"""
+        try:
+            cutoff_date = datetime.datetime.now(timezone.utc) - timedelta(days=days_old)
+            result = self.collection.update_many(
+                {'created_at': {'$lt': cutoff_date}, 'is_active': True},
+                {'$set': {'is_active': False, 'deleted_at': datetime.datetime.now(timezone.utc)}}
+            )
+            return result.modified_count
+        except Exception as e:
+            print(f"Error cleaning up old generations: {e}")
+            return 0
+
+
+class VideoUrlMapping:
+    """Model for managing video URL proxy mappings"""
+    
+    # Class-level variables for cleanup configuration
+    _cleanup_thread = None
+    _cleanup_running = False
+    _cleanup_interval = int(os.getenv('VIDEO_MAPPING_CLEANUP_INTERVAL_HOURS', '6')) * 3600  # Default 6 hours in seconds
+    _default_expiration_hours = int(os.getenv('VIDEO_MAPPING_EXPIRATION_HOURS', '24'))  # Default 24 hours
+    
+    def __init__(self):
+        if db is None:
+            raise Exception("Database connection not available")
+        self.collection = db['video_url_mappings']
+        
+        # Create indexes for efficient queries
+        try:
+            self.collection.create_index('proxy_id', unique=True, name='proxy_id_unique')
+            self.collection.create_index('expires_at', name='expires_at_index')
+            self.collection.create_index('task_id', name='task_id_index')
+            self.collection.create_index('created_at', name='created_at_index')  # For monitoring
+        except Exception as e:
+            print(f"Warning: Could not create video_url_mappings indexes: {e}")
+        
+        # Start cleanup thread if not already running
+        self._start_cleanup_thread()
+    
+    def create_mapping(self, qwen_url, task_id, expires_hours=None):
+        """Create a new proxy URL mapping and return the proxy ID"""
+        if not qwen_url or not task_id:
+            raise ValueError("qwen_url and task_id are required")
+        
+        # Use configured default expiration if not specified
+        if expires_hours is None:
+            expires_hours = self._default_expiration_hours
+        
+        proxy_id = str(uuid.uuid4())
+        expires_at = datetime.datetime.now(timezone.utc) + timedelta(hours=expires_hours)
+        
+        mapping = {
+            'proxy_id': proxy_id,
+            'qwen_url': qwen_url,
+            'task_id': task_id,
+            'created_at': datetime.datetime.now(timezone.utc),
+            'expires_at': expires_at,
+            'access_count': 0
+        }
+        
+        try:
+            self.collection.insert_one(mapping)
+            return proxy_id
+        except Exception as e:
+            print(f"Error creating video URL mapping: {e}")
+            raise
+    
+    def get_qwen_url(self, proxy_id):
+        """Retrieve the original Qwen URL from proxy ID"""
+        if not proxy_id:
+            return None
+        
+        try:
+            # Find the mapping and check if it's not expired
+            mapping = self.collection.find_one({
+                'proxy_id': proxy_id,
+                'expires_at': {'$gt': datetime.datetime.now(timezone.utc)}
+            })
+            
+            if mapping:
+                # Increment access count
+                self.collection.update_one(
+                    {'proxy_id': proxy_id},
+                    {'$inc': {'access_count': 1}}
+                )
+                return mapping['qwen_url']
+            
+            return None
+        except Exception as e:
+            print(f"Error retrieving Qwen URL for proxy {proxy_id}: {e}")
+            return None
+    
+    def cleanup_expired_mappings(self):
+        """Remove expired mappings and return count of removed items"""
+        try:
+            result = self.collection.delete_many({
+                'expires_at': {'$lt': datetime.datetime.now(timezone.utc)}
+            })
+            return result.deleted_count
+        except Exception as e:
+            print(f"Error cleaning up expired mappings: {e}")
+            return 0
+    
+    def get_mapping_by_proxy_id(self, proxy_id):
+        """Get full mapping document by proxy ID (for testing/debugging)"""
+        if not proxy_id:
+            return None
+        
+        try:
+            return self.collection.find_one({'proxy_id': proxy_id})
+        except Exception as e:
+            print(f"Error retrieving mapping for proxy {proxy_id}: {e}")
+            return None
+    
+    def count_active_mappings(self):
+        """Count non-expired mappings"""
+        try:
+            return self.collection.count_documents({
+                'expires_at': {'$gt': datetime.datetime.now(timezone.utc)}
+            })
+        except Exception as e:
+            print(f"Error counting active mappings: {e}")
+            return 0
+    
+    def get_storage_usage_stats(self):
+        """Get storage usage statistics for monitoring"""
+        try:
+            now = datetime.datetime.now(timezone.utc)
+            
+            # Count total mappings
+            total_mappings = self.collection.count_documents({})
+            
+            # Count active (non-expired) mappings
+            active_mappings = self.collection.count_documents({
+                'expires_at': {'$gt': now}
+            })
+            
+            # Count expired mappings
+            expired_mappings = self.collection.count_documents({
+                'expires_at': {'$lte': now}
+            })
+            
+            # Get oldest and newest mappings
+            oldest_mapping = self.collection.find_one({}, sort=[('created_at', 1)])
+            newest_mapping = self.collection.find_one({}, sort=[('created_at', -1)])
+            
+            # Calculate total access count
+            pipeline = [
+                {'$group': {'_id': None, 'total_access_count': {'$sum': '$access_count'}}}
+            ]
+            access_result = list(self.collection.aggregate(pipeline))
+            total_access_count = access_result[0]['total_access_count'] if access_result else 0
+            
+            return {
+                'total_mappings': total_mappings,
+                'active_mappings': active_mappings,
+                'expired_mappings': expired_mappings,
+                'total_access_count': total_access_count,
+                'oldest_mapping_date': oldest_mapping['created_at'] if oldest_mapping else None,
+                'newest_mapping_date': newest_mapping['created_at'] if newest_mapping else None,
+                'cleanup_interval_hours': self._cleanup_interval / 3600,
+                'default_expiration_hours': self._default_expiration_hours
+            }
+        except Exception as e:
+            print(f"Error getting storage usage stats: {e}")
+            return {
+                'error': str(e),
+                'total_mappings': 0,
+                'active_mappings': 0,
+                'expired_mappings': 0,
+                'total_access_count': 0
+            }
+    
+    @classmethod
+    def _start_cleanup_thread(cls):
+        """Start the background cleanup thread if not already running"""
+        if cls._cleanup_running or cls._cleanup_thread is not None:
+            return
+        
+        def cleanup_worker():
+            """Background worker that periodically cleans up expired mappings"""
+            cls._cleanup_running = True
+            print(f"Video URL mapping cleanup thread started (interval: {cls._cleanup_interval/3600:.1f} hours)")
+            
+            while cls._cleanup_running:
+                try:
+                    # Create a new instance for cleanup operations
+                    if db is not None:
+                        mapping_instance = VideoUrlMapping()
+                        deleted_count = mapping_instance.cleanup_expired_mappings()
+                        
+                        if deleted_count > 0:
+                            print(f"Cleaned up {deleted_count} expired video URL mappings")
+                        
+                        # Log storage stats periodically
+                        stats = mapping_instance.get_storage_usage_stats()
+                        if stats.get('total_mappings', 0) > 0:
+                            print(f"Video URL mapping stats - Total: {stats['total_mappings']}, "
+                                  f"Active: {stats['active_mappings']}, "
+                                  f"Expired: {stats['expired_mappings']}, "
+                                  f"Total accesses: {stats['total_access_count']}")
+                    
+                except Exception as e:
+                    print(f"Error in video URL mapping cleanup thread: {e}")
+                
+                # Sleep for the configured interval
+                time.sleep(cls._cleanup_interval)
+        
+        # Start the cleanup thread as a daemon thread
+        cls._cleanup_thread = threading.Thread(target=cleanup_worker, daemon=True)
+        cls._cleanup_thread.start()
+    
+    @classmethod
+    def stop_cleanup_thread(cls):
+        """Stop the background cleanup thread"""
+        cls._cleanup_running = False
+        if cls._cleanup_thread:
+            cls._cleanup_thread.join(timeout=5)
+            cls._cleanup_thread = None
+            print("Video URL mapping cleanup thread stopped")
+    
+    @classmethod
+    def get_cleanup_status(cls):
+        """Get the status of the cleanup thread"""
+        return {
+            'cleanup_running': cls._cleanup_running,
+            'cleanup_interval_hours': cls._cleanup_interval / 3600,
+            'default_expiration_hours': cls._default_expiration_hours,
+            'thread_alive': cls._cleanup_thread.is_alive() if cls._cleanup_thread else False
+        }
