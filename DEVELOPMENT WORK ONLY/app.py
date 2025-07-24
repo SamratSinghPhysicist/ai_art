@@ -75,7 +75,11 @@ def log_and_block_check():
         'generate_image', 
         'img2video_generate',
         'api_img2img_transform',
-        'api_img2video_result'
+        'api_img2video_result',
+        'generate_qwen_video_route',
+        'api_text_to_video_generate'
+
+
     ]
     if request.endpoint in endpoints_to_log_and_check:
         log_request(ip, request.endpoint)
@@ -92,7 +96,7 @@ def get_rate_limit():
 limiter = Limiter(
     get_rate_limit, 
     app=app,
-    default_limits=["1440 per day", "60 per hour"], # Stricter default limits
+    default_limits=["1440000 per day", "60000 per hour"], # Stricter default limits
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
     strategy="moving-window" # Moving window for better abuse prevention
 )
@@ -338,7 +342,7 @@ def set_custom_rate_limit():
 
     if custom_rate_limits_collection is not None:
         if endpoint == 'all':
-            endpoints = ['generate_image', 'api_generate_image', 'img2img_transform', 'api_img2img_transform', 'img2video_generate', 'api_img2video_generate']
+            endpoints = ['generate_image', 'api_generate_image', 'img2img_transform', 'api_img2img_transform', 'img2video_generate', 'api_img2video_generate', 'generate_qwen_video_route', 'api_text_to_video_generate']
             for ep in endpoints:
                 custom_rate_limits_collection.update_one(
                     {'ip': ip, 'endpoint': ep},
