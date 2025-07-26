@@ -2117,11 +2117,6 @@ def validate_token():
         print(f"Validate token error: {e}")
         return jsonify({'valid': False, 'error': str(e)})
 
-@app.route('/google4732be05fe4d2482.html')
-def google_verification():
-    """Serve the Google verification file"""
-    return render_template('google4732be05fe4d2482.html')
-
 @app.route('/ads.txt')
 def serve_ads_txt():
     """Serve the ads.txt file"""
