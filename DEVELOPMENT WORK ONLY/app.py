@@ -87,9 +87,45 @@ def log_and_block_check():
 def get_rate_limit():
     ip = get_client_ip()
     endpoint = request.endpoint
+    
+    # Check for custom rate limit first
     custom_limit = get_custom_rate_limit(ip, endpoint)
+    
     if custom_limit:
-        return custom_limit.get('limit_string', get_remote_address)
+        limit_string = custom_limit.get('limit_string')
+        app.logger.info(f"Custom rate limit found for IP {ip}, endpoint {endpoint}: {limit_string}")
+        
+        # Handle unlimited or very high limits
+        if limit_string:
+            # Check for unlimited keyword
+            if 'unlimited' in limit_string.lower():
+                app.logger.info(f"Applying unlimited rate limit for IP {ip}")
+                return "1000000 per hour"
+            
+            # Check for extremely large numbers (more than 15 digits)
+            if any(len(part.split('/')[0]) > 15 for part in limit_string.split(';') if '/' in part):
+                app.logger.info(f"Applying high rate limit for IP {ip} (extremely large numbers detected)")
+                return "1000000 per hour"
+            
+            # Check for high daily limits
+            try:
+                if '/day' in limit_string:
+                    # Extract the number before '/day'
+                    parts = limit_string.split(';')
+                    for part in parts:
+                        if '/day' in part:
+                            number = int(part.split('/')[0])
+                            if number > 100000:
+                                app.logger.info(f"Applying high rate limit for IP {ip} (high daily limit: {number})")
+                                return "1000000 per hour"
+            except (ValueError, IndexError):
+                app.logger.warning(f"Could not parse rate limit string for IP {ip}: {limit_string}")
+                return "1000000 per hour"  # Default to high limit if parsing fails
+        
+        return limit_string
+    else:
+        app.logger.debug(f"No custom rate limit for IP {ip}, endpoint {endpoint}, using default")
+    
     return get_remote_address
 
 # Initialize Limiter with stricter limits
@@ -98,7 +134,8 @@ limiter = Limiter(
     app=app,
     default_limits=["1440000 per day", "60000 per hour"], # Stricter default limits
     storage_uri="memory://",  # Use memory for storage, consider Redis for production
-    strategy="moving-window" # Moving window for better abuse prevention
+    strategy="moving-window", # Moving window for better abuse prevention
+    headers_enabled=True  # Enable rate limit headers for debugging
 )
 
 # Connection pooling for Qwen service requests
@@ -725,6 +762,86 @@ def admin_video_mappings():
     if not ADMIN_SECRET_KEY or secret_key != ADMIN_SECRET_KEY:
         return "Unauthorized", 401
     return render_template('admin/video_mappings.html')
+
+@app.route('/debug/rate-limit-info')
+def debug_rate_limit_info():
+    """Debug endpoint to check current rate limit configuration"""
+    ip = get_client_ip()
+    endpoint = request.endpoint
+    
+    # Get custom rate limit
+    custom_limit = get_custom_rate_limit(ip, endpoint)
+    
+    # Get current limiter state
+    limiter_info = {
+        'client_ip': ip,
+        'endpoint': endpoint,
+        'custom_limit': custom_limit,
+        'default_limits': ["1440000 per day", "60000 per hour"],  # Our configured defaults
+        'storage_uri': getattr(limiter, 'storage_uri', 'memory://'),
+        'strategy': getattr(limiter, 'strategy', 'moving-window')
+    }
+    
+    # Try to get current rate limit status
+    try:
+        # Get the rate limit function result for this request
+        rate_limit_key = get_rate_limit()
+        
+        # Convert function to string representation if needed
+        if callable(rate_limit_key):
+            limiter_info['rate_limit_key_function_result'] = f"Function: {rate_limit_key.__name__}"
+        else:
+            limiter_info['rate_limit_key_function_result'] = rate_limit_key
+        
+        # Check if this endpoint has specific limits
+        if hasattr(request, 'endpoint') and request.endpoint:
+            limiter_info['endpoint_specific_limits'] = 'Check route decorators'
+    except Exception as e:
+        limiter_info['rate_limit_function_error'] = str(e)
+    
+    return jsonify(limiter_info)
+
+@app.route('/debug/test-rate-limit')
+@limiter.limit("5 per minute")  # Simple test limit
+def debug_test_rate_limit():
+    """Simple endpoint to test rate limiting"""
+    ip = get_client_ip()
+    return jsonify({
+        'message': 'Rate limit test successful',
+        'your_ip': ip,
+        'timestamp': datetime.now().isoformat()
+    })
+
+@app.route('/debug/ip-info')
+def debug_ip_info():
+    """Debug endpoint to show all IP-related information"""
+    ip_info = {
+        'detected_ip': get_client_ip(),
+        'request_remote_addr': request.remote_addr,
+        'headers': {}
+    }
+    
+    # Check all relevant headers
+    headers_to_check = [
+        'X-Forwarded-For',
+        'X-Real-IP', 
+        'CF-Connecting-IP',
+        'X-Forwarded-Proto',
+        'Host',
+        'User-Agent'
+    ]
+    
+    for header in headers_to_check:
+        if header in request.headers:
+            ip_info['headers'][header] = request.headers[header]
+    
+    # Check if there's a custom rate limit for this IP
+    custom_limit = get_custom_rate_limit(ip_info['detected_ip'], 'api_generate_image')
+    ip_info['has_custom_rate_limit'] = custom_limit is not None
+    if custom_limit:
+        ip_info['custom_rate_limit'] = custom_limit
+    
+    return jsonify(ip_info)
 
 @app.route('/admin/video-proxy-monitoring')
 def admin_video_proxy_monitoring():
