@@ -2117,6 +2117,11 @@ def validate_token():
         print(f"Validate token error: {e}")
         return jsonify({'valid': False, 'error': str(e)})
 
+@app.route('/ads.txt')
+def serve_ads_txt():
+    """Serve the ads.txt file"""
+    return send_from_directory('static', 'ads.txt')
+
 @app.route('/robots.txt')
 def serve_robots_txt():
     """Serve the robots.txt file"""
