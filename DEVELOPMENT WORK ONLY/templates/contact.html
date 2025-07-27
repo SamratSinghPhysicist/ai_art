@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contact Us - AI Art | Get in Touch</title>
+    <meta
+      name="description"
+      content="Get in touch with the AI Art team. Contact us for support, feedback, or any questions about our free AI image generator."
+    />
+    <meta
+      name="keywords"
+      content="contact AI Art, support, feedback, AI image generator help"
+    />
+    <meta name="robots" content="index, follow" />
+
+    <link rel="canonical" href="https://aiart-zroo.onrender.com/contact" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://aiart-zroo.onrender.com/contact" />
+    <meta property="og:title" content="Contact Us - AI Art" />
+    <meta
+      property="og:description"
+      content="Get in touch with the AI Art team for support, feedback, or questions."
+    />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary" />
+    <meta
+      property="twitter:url"
+      content="https://aiart-zroo.onrender.com/contact"
+    />
+    <meta property="twitter:title" content="Contact Us - AI Art" />
+    <meta
+      property="twitter:description"
+      content="Get in touch with the AI Art team for support, feedback, or questions."
+    />
+
+    <link rel="stylesheet" href="/static/css/styles.css" />
+    <link rel="icon" href="/static/favicon.svg" type="image/svg+xml" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-auth-compat.js"></script>
+
+    <!-- Initialize Firebase -->
+    <script>
+      // Firebase configuration
+      const firebaseConfig = {
+        apiKey: "{{ firebase_api_key }}",
+        authDomain: "{{ firebase_auth_domain }}",
+        projectId: "{{ firebase_project_id }}",
+        appId: "{{ firebase_app_id }}",
+      };
+
+      // Initialize Firebase
+      if (typeof firebase !== "undefined") {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+      }
+    </script>
+
+    <!-- Global Auth Handler -->
+    <script src="/static/js/auth-global.js"></script>
+    <script src="/static/js/auth-fix.js"></script>
+
+    <style>
+      :root {
+        --primary: #6d28d9;
+        --primary-dark: #5b21b6;
+        --primary-light: #8b5cf6;
+        --secondary: #10b981;
+        --secondary-dark: #059669;
+        --text: #1f2937;
+        --text-light: #6b7280;
+        --background: #f9fafb;
+        --card-bg: #ffffff;
+        --border: #e5e7eb;
+        --error: #ef4444;
+        --success: #10b981;
+      }
+
+      /* Dark mode variables */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --primary: #8b5cf6;
+          --primary-dark: #7c3aed;
+          --primary-light: #a78bfa;
+          --secondary: #10b981;
+          --secondary-dark: #059669;
+          --text: #f9fafb;
+          --text-light: #9ca3af;
+          --background: #1f2937;
+          --card-bg: #111827;
+          --border: #374151;
+        }
+      }
+
+      body {
+        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans",
+          "Helvetica Neue", sans-serif;
+        background-color: var(--background);
+        color: var(--text);
+        line-height: 1.5;
+        margin: 0;
+        padding: 0;
+        overflow-x: hidden;
+      }
+
+      /* Contact Page Specific Styles */
+      .contact-hero {
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--primary-light) 100%
+        );
+        padding: 4rem 0 6rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .contact-hero::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")
+          repeat;
+        animation: float 20s ease-in-out infinite;
+      }
+
+      @keyframes float {
+        0%,
+        100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-20px);
+        }
+      }
+
+      .contact-hero-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+        color: white;
+      }
+
+      .contact-hero h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        animation: slideInUp 0.8s ease-out;
+      }
+
+      .contact-hero p {
+        font-size: 1.25rem;
+        opacity: 0.9;
+        max-width: 600px;
+        margin: 0 auto;
+        animation: slideInUp 0.8s ease-out 0.2s both;
+      }
+
+      @keyframes slideInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .contact-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 1rem;
+        position: relative;
+        z-index: 3;
+        margin-top: -3rem;
+      }
+
+      .contact-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        margin-bottom: 4rem;
+      }
+
+      @media (max-width: 768px) {
+        .contact-grid {
+          grid-template-columns: 1fr;
+          gap: 2rem;
+        }
+
+        .contact-hero h1 {
+          font-size: 2.5rem;
+        }
+      }
+
+      .contact-card {
+        background: var(--card-bg);
+        border-radius: 1.5rem;
+        padding: 2.5rem;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1),
+          0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+        animation: fadeInScale 0.6s ease-out;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      .contact-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+      }
+
+      .contact-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(
+          90deg,
+          var(--primary),
+          var(--primary-light)
+        );
+      }
+
+      @keyframes fadeInScale {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .contact-info {
+        animation-delay: 0.2s;
+      }
+
+      .contact-form-card {
+        animation-delay: 0.4s;
+      }
+
+      .contact-info h2 {
+        font-size: 2rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        color: var(--text);
+      }
+
+      .contact-info p {
+        color: var(--text-light);
+        margin-bottom: 2rem;
+        line-height: 1.6;
+      }
+
+      .contact-method {
+        display: flex;
+        align-items: center;
+        padding: 1.5rem;
+        background: var(--background);
+        border-radius: 1rem;
+        margin-bottom: 1rem;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+      }
+
+      .contact-method:hover {
+        background: var(--primary-light);
+        color: white;
+        transform: translateX(5px);
+        border-color: var(--primary);
+      }
+
+      .contact-icon {
+        width: 50px;
+        height: 50px;
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-light)
+        );
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        transition: transform 0.3s ease;
+      }
+
+      .contact-method:hover .contact-icon {
+        transform: scale(1.1) rotate(5deg);
+      }
+
+      .contact-icon svg {
+        width: 24px;
+        height: 24px;
+        color: white;
+      }
+
+      .contact-details h3 {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+      }
+
+      .contact-details p {
+        margin: 0;
+        opacity: 0.8;
+      }
+
+      .email-link {
+        color: inherit;
+        text-decoration: none;
+        transition: color 0.3s ease;
+      }
+
+      .email-link:hover {
+        color: var(--primary);
+      }
+
+      .contact-method:hover .email-link {
+        color: white;
+      }
+
+      /* Animated Background Elements */
+      .floating-shapes {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        pointer-events: none;
+      }
+
+      .floating-shape {
+        position: absolute;
+        background: linear-gradient(
+          135deg,
+          var(--primary-light),
+          var(--primary)
+        );
+        border-radius: 50%;
+        opacity: 0.1;
+        animation: floatShape 15s ease-in-out infinite;
+      }
+
+      .floating-shape:nth-child(1) {
+        width: 80px;
+        height: 80px;
+        top: 20%;
+        left: 10%;
+        animation-delay: 0s;
+      }
+
+      .floating-shape:nth-child(2) {
+        width: 120px;
+        height: 120px;
+        top: 60%;
+        right: 15%;
+        animation-delay: 5s;
+      }
+
+      .floating-shape:nth-child(3) {
+        width: 60px;
+        height: 60px;
+        bottom: 20%;
+        left: 20%;
+        animation-delay: 10s;
+      }
+
+      @keyframes floatShape {
+        0%,
+        100% {
+          transform: translateY(0px) rotate(0deg);
+        }
+        33% {
+          transform: translateY(-30px) rotate(120deg);
+        }
+        66% {
+          transform: translateY(20px) rotate(240deg);
+        }
+      }
+
+      /* Response Message Styles */
+      .response-message {
+        padding: 1rem;
+        border-radius: 0.5rem;
+        margin-bottom: 1rem;
+        text-align: center;
+        font-weight: 500;
+        animation: slideInDown 0.5s ease-out;
+      }
+
+      .response-message.success {
+        background-color: #d1fae5;
+        color: #065f46;
+        border: 1px solid #a7f3d0;
+      }
+
+      .response-message.info {
+        background-color: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #93c5fd;
+      }
+
+      @keyframes slideInDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* FAQ Section */
+      .faq-section {
+        margin-top: 4rem;
+      }
+
+      .faq-card {
+        background: var(--card-bg);
+        border-radius: 1rem;
+        padding: 2rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--border);
+      }
+
+      .faq-title {
+        font-size: 2rem;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 2rem;
+        background: linear-gradient(
+          135deg,
+          var(--primary),
+          var(--primary-light)
+        );
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .faq-item {
+        border-bottom: 1px solid var(--border);
+        padding: 1.5rem 0;
+      }
+
+      .faq-item:last-child {
+        border-bottom: none;
+      }
+
+      .faq-question {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+      }
+
+      .faq-answer {
+        color: var(--text-light);
+        line-height: 1.6;
+      }
+
+      /* Pulse animation for email */
+      .pulse-animation {
+        animation: pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-decoration"></div>
+
+    <header class="header">
+      <div class="container">
+        <nav class="nav">
+          <a href="/" class="nav-logo">AI Art</a>
+          <button class="mobile-menu-btn">☰</button>
+          <div class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+
+            <!-- AI Tools dropdown -->
+            <div class="dropdown">
+              <button type="button" class="dropdown-toggle nav-link">
+                AI Tools <span class="dropdown-arrow">▼</span>
+              </button>
+              <div class="dropdown-menu">
+                <a href="/text-to-image" class="dropdown-item">Text to Image</a>
+                <a href="/image-to-image" class="dropdown-item"
+                  >Image to Image</a
+                >
+                <a href="/text-to-video" class="dropdown-item">Text to Video</a>
+                <a href="/image-to-video" class="dropdown-item"
+                  >Image to Video</a
+                >
+              </div>
+            </div>
+
+            <a href="/api-docs" class="nav-link">API</a>
+            <a href="/contact" class="nav-link">Contact</a>
+            {% if current_user.is_authenticated %}
+            <a href="/dashboard" class="nav-link">Dashboard</a>
+            <a href="/logout" class="nav-link">Logout</a>
+            {% else %}
+            <a href="/login" class="nav-link open-auth-modal" data-mode="login"
+              >Login</a
+            >
+            <a
+              href="/signup"
+              class="nav-link open-auth-modal"
+              data-mode="signup"
+              >Sign Up</a
+            >
+            {% endif %}
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="contact-hero">
+      <div class="floating-shapes">
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+        <div class="floating-shape"></div>
+      </div>
+      <div class="container">
+        <div class="contact-hero-content">
+          <h1>Get in Touch</h1>
+          <p>
+            We'd love to hear from you! Whether you have questions, feedback, or
+            need support with our AI art generator, we're here to help.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Contact Content -->
+    <div class="contact-container">
+      <div class="contact-grid">
+        <!-- Contact Information -->
+        <div class="contact-card contact-info">
+          <h2>Contact Information</h2>
+          <p>
+            Ready to create amazing AI art? Have questions about our tools?
+            We're here to help you unleash your creativity!
+          </p>
+
+          <div class="contact-method pulse-animation">
+            <div class="contact-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                ></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+            </div>
+            <div class="contact-details">
+              <h3>Email Us</h3>
+              <p>
+                <a href="mailto:aiart4free@gmail.com" class="email-link"
+                  >aiart4free@gmail.com</a
+                >
+              </p>
+            </div>
+          </div>
+
+          <div class="contact-method">
+            <div class="contact-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12,6 12,12 16,14"></polyline>
+              </svg>
+            </div>
+            <div class="contact-details">
+              <h3>Response Time</h3>
+              <p>We typically respond within 24 hours</p>
+            </div>
+          </div>
+
+          <div class="contact-method">
+            <div class="contact-icon">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+            <div class="contact-details">
+              <h3>Available</h3>
+              <p>24/7 Online Support</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact Form Alternative -->
+        <div class="contact-card contact-form-card">
+          <h2>Send us a Message</h2>
+          <p>
+            The easiest way to reach us is by sending an email directly to our
+            support team.
+          </p>
+
+          <div class="response-message info">
+            <p>
+              <strong>📧 Email us directly:</strong>
+              <a
+                href="mailto:aiart4free@gmail.com"
+                style="color: #1e40af; text-decoration: none; font-weight: 600"
+                >aiart4free@gmail.com</a
+              >
+            </p>
+          </div>
+
+          <div
+            style="
+              background: var(--background);
+              padding: 2rem;
+              border-radius: 1rem;
+              margin-top: 2rem;
+            "
+          >
+            <h3 style="margin-bottom: 1rem; color: var(--text)">
+              What to include in your email:
+            </h3>
+            <ul
+              style="
+                color: var(--text-light);
+                line-height: 1.8;
+                padding-left: 1.5rem;
+              "
+            >
+              <li>📝 Detailed description of your question or issue</li>
+              <li>🖼️ Screenshots if you're experiencing technical problems</li>
+              <li>🔧 Information about the AI tool you're using</li>
+              <li>💡 Any suggestions or feedback you'd like to share</li>
+            </ul>
+          </div>
+
+          <div
+            style="
+              margin-top: 2rem;
+              padding: 1.5rem;
+              background: linear-gradient(
+                135deg,
+                var(--primary-light),
+                var(--primary)
+              );
+              border-radius: 1rem;
+              color: white;
+              text-align: center;
+            "
+          >
+            <h3 style="margin-bottom: 0.5rem">Quick Email Link</h3>
+            <a
+              href="mailto:aiart4free@gmail.com?subject=AI Art Support Request&body=Hi AI Art Team,%0D%0A%0D%0AI have a question about:%0D%0A%0D%0A[Please describe your question or issue here]%0D%0A%0D%0AThank you!"
+              style="
+                display: inline-block;
+                background: white;
+                color: var(--primary);
+                padding: 0.75rem 2rem;
+                border-radius: 0.5rem;
+                text-decoration: none;
+                font-weight: 600;
+                margin-top: 1rem;
+                transition: transform 0.3s ease;
+              "
+              onmouseover="this.style.transform='scale(1.05)'"
+              onmouseout="this.style.transform='scale(1)'"
+            >
+              📧 Open Email Client
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Section -->
+      <section class="faq-section">
+        <div class="faq-card">
+          <h2 class="faq-title">Frequently Asked Questions</h2>
+
+          <div class="faq-item">
+            <div class="faq-question">
+              How quickly will I receive a response?
+            </div>
+            <div class="faq-answer">
+              We aim to respond to all emails within 24 hours. For urgent
+              technical issues, we often respond much faster.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question">What types of questions can I ask?</div>
+            <div class="faq-answer">
+              You can ask about anything related to our AI art tools - technical
+              support, feature requests, billing questions, or general feedback
+              about your experience.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question">Do you provide technical support?</div>
+            <div class="faq-answer">
+              Yes! We provide full technical support for all our AI art
+              generation tools. Include screenshots and detailed descriptions to
+              help us assist you better.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question">Can I suggest new features?</div>
+            <div class="faq-answer">
+              Absolutely! We love hearing feature suggestions from our users.
+              Your feedback helps us improve and add new capabilities to our AI
+              art generator.
+            </div>
+          </div>
+
+          <div class="faq-item">
+            <div class="faq-question">Is there a phone number I can call?</div>
+            <div class="faq-answer">
+              Currently, we only provide support via email. This allows us to
+              better track your questions and provide detailed, helpful
+              responses with screenshots and links when needed.
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Include the same footer and scripts as other pages -->
+    <script src="/static/js/main.js"></script>
+    <script>
+      // Add some interactive animations
+      document.addEventListener("DOMContentLoaded", function () {
+        // Animate contact methods on scroll
+        const observerOptions = {
+          threshold: 0.1,
+          rootMargin: "0px 0px -50px 0px",
+        };
+
+        const observer = new IntersectionObserver(function (entries) {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.style.animation = "slideInUp 0.6s ease-out forwards";
+            }
+          });
+        }, observerOptions);
+
+        // Observe contact methods
+        document.querySelectorAll(".contact-method").forEach((method) => {
+          observer.observe(method);
+        });
+
+        // Add click animation to email links
+        document.querySelectorAll('a[href^="mailto:"]').forEach((link) => {
+          link.addEventListener("click", function () {
+            this.style.transform = "scale(0.95)";
+            setTimeout(() => {
+              this.style.transform = "scale(1)";
+            }, 150);
+          });
+        });
+
+        // Add hover effect to FAQ items
+        document.querySelectorAll(".faq-item").forEach((item) => {
+          item.addEventListener("mouseenter", function () {
+            this.style.transform = "translateX(10px)";
+            this.style.background = "var(--background)";
+            this.style.borderRadius = "0.5rem";
+            this.style.padding = "1.5rem";
+            this.style.transition = "all 0.3s ease";
+          });
+
+          item.addEventListener("mouseleave", function () {
+            this.style.transform = "translateX(0)";
+            this.style.background = "transparent";
+            this.style.padding = "1.5rem 0";
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

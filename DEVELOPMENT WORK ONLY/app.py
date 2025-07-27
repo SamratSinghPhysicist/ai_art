@@ -1234,6 +1234,16 @@ def image_to_video_page():
                           firebase_project_id=firebase_config.get('projectId'),
                           firebase_app_id=firebase_config.get('appId'))
 
+@app.route('/contact')
+def contact():
+    """Render the contact page"""
+    return render_template('contact.html',
+                          user=current_user,
+                          firebase_api_key=firebase_config.get('apiKey'),
+                          firebase_auth_domain=firebase_config.get('authDomain'),
+                          firebase_project_id=firebase_config.get('projectId'),
+                          firebase_app_id=firebase_config.get('appId'))
+
 @app.route('/sitemap-page')
 def sitemap_page():
     """Render the human-readable sitemap page"""
