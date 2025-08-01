@@ -341,7 +341,26 @@ class RequestQueueManager:
             
             if error_message:
                 request.status = RequestStatus.FAILED
-                request.error_message = error_message
+                
+                # Create user-friendly error message if it's a technical error
+                if not any(emoji in error_message for emoji in ['🎨', '✨', '🌟', '🚀', '💡']):
+                    # This looks like a technical error, make it user-friendly
+                    from user_friendly_errors import get_error_handler, ErrorType
+                    error_handler = get_error_handler()
+                    
+                    # Determine error type based on message content
+                    if 'timeout' in error_message.lower():
+                        friendly_response = error_handler.create_timeout_response()
+                    elif 'api' in error_message.lower() or 'service' in error_message.lower():
+                        friendly_response = error_handler.create_api_error_response(original_error=error_message)
+                    else:
+                        friendly_response = error_handler.create_generation_failed_response()
+                    
+                    request.error_message = friendly_response.message
+                else:
+                    # Already user-friendly
+                    request.error_message = error_message
+                
                 self._metrics.failed_requests += 1
             else:
                 request.status = RequestStatus.COMPLETED

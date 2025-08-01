@@ -201,19 +201,26 @@ def adaptive_rate_limit(f):
         )
         
         if not allowed:
-            # Generate user-friendly message
+            # Generate user-friendly message using new error handling system
             message_info = get_rate_limit_message(allowed, info)
             
-            # Return rate limit response with user-friendly message
+            # Return comprehensive user-friendly response
             response_data = {
-                'error': 'Rate limit exceeded',
+                'success': False,
+                'error_type': 'rate_limit',
+                'title': message_info.get('title', 'Rate Limit Reached'),
                 'message': message_info['message'],
-                'type': message_info['type'],
+                'action_message': message_info.get('action_message', 'Please wait and try again'),
                 'wait_time': message_info.get('wait_time', 60),
+                'retry_after': message_info.get('wait_time', 60),
                 'tier': info.get('tier', 'anonymous'),
                 'server_load': info.get('server_load', 0.0),
+                'show_donation_prompt': message_info.get('donation_link') is not None,
+                'donation_message': message_info.get('donation_message', ''),
+                'donation_link': message_info.get('donation_link', '/donate'),
                 'upgrade_available': message_info.get('upgrade_available', False),
-                'donation_link': message_info.get('donation_link')
+                'upgrade_message': message_info.get('upgrade_message', ''),
+                'alternatives': message_info.get('alternatives', [])
             }
             
             # Add rate limit headers for debugging
@@ -1582,13 +1589,23 @@ def generate_image():
 
     client_ip = request.headers.get("CF-Connecting-IP")
     if not verify_turnstile(turnstile_token, client_ip):
-        return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
+        from user_friendly_errors import create_validation_error
+        response_dict, status_code = create_validation_error(
+            field="security verification",
+            issue="Please complete the security verification and try again"
+        )
+        return jsonify(response_dict), 403
 
     # Honeypot field check (should be empty)
     honeypot = request.form.get('website_url', '')
     if honeypot:
         app.logger.warning(f"Honeypot triggered from IP: {get_remote_address()}")
-        return jsonify({'error': 'Invalid request detected.'}), 400
+        from user_friendly_errors import create_validation_error
+        response_dict, status_code = create_validation_error(
+            field="request validation",
+            issue="Invalid request detected. Please try again"
+        )
+        return jsonify(response_dict), 400
 
     # Get the image description from the form
     image_description = request.form.get('video_description')
@@ -1602,7 +1619,12 @@ def generate_image():
     test_mode = request.form.get('test_mode') == 'true'
 
     if not image_description:
-        return jsonify({'error': 'Image description is required'}), 400
+        from user_friendly_errors import create_validation_error
+        response_dict, status_code = create_validation_error(
+            field="prompt",
+            issue="Please provide a description for your image"
+        )
+        return jsonify(response_dict), status_code
 
     # Get advanced options
     negative_prompt = request.form.get('negative_prompt', '')
@@ -1651,14 +1673,37 @@ def generate_image():
         if len(ip_data['minute_timestamps']) >= IMAGEN4_MINUTE_LIMIT:
             time_left = (ip_data['minute_timestamps'][0] + IMAGEN4_MINUTE_WINDOW) - now
             retry_after = int(time_left.total_seconds()) + 1 # Add 1 second buffer
-            return jsonify({
-                'error': f"""Rate limit exceeded for Imagen 4. You can generate up to {IMAGEN4_MINUTE_LIMIT} images per minute and at most {IMAGEN4_DAY_LIMIT} images per day using Imagen 4.
-                 Please try again in {retry_after} seconds. 
-                 For more usage, please visit https://api.infip.pro/docs (for Imagen 4 API), or https://chat.infip.pro/ (for UI).
-                 Or, switch to Stable Diffusion 3.5 Ultra to enjoy unlimited image generation.""",
-                'rate_limit_type': 'minute',
-                'retry_after': retry_after
-            }), 429
+            
+            # Use user-friendly error handling
+            from user_friendly_errors import get_error_handler, ErrorType
+            error_handler = get_error_handler()
+            
+            response = error_handler.create_rate_limit_response(
+                user_tier='anonymous',  # Imagen 4 is available to all users
+                wait_time=retry_after,
+                server_load=0.0
+            )
+            
+            # Customize message for Imagen 4 specific limits
+            response.message = (
+                f"🎨 You're creating amazing art with Imagen 4! "
+                f"You can generate up to {IMAGEN4_MINUTE_LIMIT} images per minute. "
+                f"Please wait {retry_after} seconds and try again."
+            )
+            
+            response.alternatives = [
+                "Switch to Stable Diffusion 3.5 Ultra for unlimited generation",
+                "Visit https://api.infip.pro/docs for direct API access",
+                "Try https://chat.infip.pro/ for the UI interface",
+                "Use this time to refine your prompt",
+                "Browse the gallery for inspiration"
+            ]
+            
+            response_dict = response.to_dict()
+            response_dict['rate_limit_type'] = 'minute'
+            response_dict['retry_after'] = retry_after
+            
+            return jsonify(response_dict), 429
 
         # Check daily limit
         if ip_data['day_count'] >= IMAGEN4_DAY_LIMIT:
@@ -1666,11 +1711,38 @@ def generate_image():
             next_day = (now + IMAGEN4_DAY_WINDOW).replace(hour=0, minute=0, second=0, microsecond=0)
             time_left = next_day - now
             retry_after = int(time_left.total_seconds()) + 1 # Add 1 second buffer
-            return jsonify({
-                'error': f'Daily rate limit exceeded for Imagen 4. You can generate up to {IMAGEN4_DAY_LIMIT} images per day using Imagen 4 in AiArt. For more usage, please visit https://api.infip.pro/docs (for Imagen 4 API), or https://chat.infip.pro/ (for UI), or, switch to Stable Diffusion 3.5 Ultra.',
-                'rate_limit_type': 'daily',
-                'retry_after': retry_after
-            }), 429
+            
+            # Use user-friendly error handling
+            from user_friendly_errors import get_error_handler, ErrorType
+            error_handler = get_error_handler()
+            
+            response = error_handler.create_rate_limit_response(
+                user_tier='anonymous',
+                wait_time=retry_after,
+                server_load=0.0
+            )
+            
+            # Customize message for Imagen 4 daily limits
+            hours_left = retry_after // 3600
+            response.message = (
+                f"🌟 You've been very creative today with Imagen 4! "
+                f"You've reached your daily limit of {IMAGEN4_DAY_LIMIT} images. "
+                f"Your limit resets in about {hours_left} hours."
+            )
+            
+            response.alternatives = [
+                "Switch to Stable Diffusion 3.5 Ultra for unlimited generation",
+                "Visit https://api.infip.pro/docs for higher limits with direct API",
+                "Try https://chat.infip.pro/ for the UI interface",
+                "Plan your next creations for tomorrow",
+                "Share your today's creations on social media"
+            ]
+            
+            response_dict = response.to_dict()
+            response_dict['rate_limit_type'] = 'daily'
+            response_dict['retry_after'] = retry_after
+            
+            return jsonify(response_dict), 429
 
         # If limits not exceeded, record the request
         ip_data['minute_timestamps'].append(now)
@@ -1717,17 +1789,37 @@ def generate_image():
                     })
                 else:
                     print("GhostAPI response missing image URL in data.")
-                    return jsonify({'error': 'GhostAPI response missing image URL'}), 500
+                    from user_friendly_errors import create_generation_failed_error
+                    response_dict, status_code = create_generation_failed_error(
+                        service_name="Imagen 4",
+                        retry_count=0
+                    )
+                    return jsonify(response_dict), status_code
             else:
                  print(f"GhostAPI response indicates failure or no data: {ghost_api_result}")
-                 return jsonify({'error': ghost_api_result.get('detail', 'GhostAPI returned no image data')}), 500
+                 from user_friendly_errors import create_generation_failed_error
+                 response_dict, status_code = create_generation_failed_error(
+                     service_name="Imagen 4",
+                     retry_count=0
+                 )
+                 return jsonify(response_dict), status_code
 
         except requests.exceptions.RequestException as e:
             print(f"Error calling GhostAPI: {e}")
-            return jsonify({'error': f'Error communicating with Imagen 4 API: {e}'}), 500
+            from user_friendly_errors import create_api_error
+            response_dict, status_code = create_api_error(
+                original_error=str(e),
+                service_name="Imagen 4"
+            )
+            return jsonify(response_dict), status_code
         except Exception as e:
             print(f"Unexpected error processing GhostAPI response: {e}")
-            return jsonify({'error': f'Unexpected error processing Imagen 4 response: {e}'}), 500
+            from user_friendly_errors import create_generation_failed_error
+            response_dict, status_code = create_generation_failed_error(
+                service_name="Imagen 4",
+                retry_count=0
+            )
+            return jsonify(response_dict), status_code
 
     else:
         # --- Stable Diffusion 3.5 Ultra Generation Logic (Existing) ---

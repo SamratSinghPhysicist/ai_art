@@ -331,7 +331,7 @@ class AdaptiveRateLimiter:
             }
     
     def get_user_friendly_message(self, allowed: bool, info: Dict) -> Dict:
-        """Generate user-friendly rate limit messages"""
+        """Generate user-friendly rate limit messages using the new error handling system"""
         if allowed:
             if info['reason'] == 'grace_period':
                 return {
@@ -346,51 +346,43 @@ class AdaptiveRateLimiter:
                     'action': 'continue'
                 }
         
-        # Rate limit exceeded
+        # Rate limit exceeded - use new error handling system
+        from user_friendly_errors import get_error_handler, ErrorType
+        
         tier = info.get('tier', 'anonymous')
         server_load = info.get('server_load', 0.0)
         wait_times = info.get('wait_times', {})
+        limits_hit = info.get('limits_hit', [])
         
         # Determine shortest wait time
         min_wait = min(wait_times.values()) if wait_times else 60
         
-        # Base message varies by server load
-        if server_load > 0.8:
-            base_message = "🚀 Server is busy processing many requests! "
-        elif server_load > 0.5:
-            base_message = "⏳ Server is under moderate load. "
-        else:
-            base_message = "⏱️ You've reached your rate limit. "
+        # Create user-friendly error response
+        error_handler = get_error_handler()
+        error_response = error_handler.create_rate_limit_response(
+            user_tier=tier,
+            wait_time=min_wait,
+            server_load=server_load,
+            limits_hit=limits_hit
+        )
         
-        # Add wait time information
-        if min_wait < 60:
-            wait_msg = f"Please wait {min_wait} seconds and try again."
-        elif min_wait < 3600:
-            wait_msg = f"Please wait {min_wait // 60} minutes and try again."
-        else:
-            wait_msg = f"Please wait {min_wait // 3600} hours and try again."
-        
-        # Add upgrade suggestions based on tier
-        upgrade_msg = ""
-        if tier == 'anonymous':
-            upgrade_msg = " 💡 Register for an account to get higher limits!"
-        elif tier == 'registered':
-            upgrade_msg = " ❤️ Consider donating to support the service and get premium limits!"
-        
-        # Add donation prompt for high load situations
-        donation_msg = ""
-        if server_load > 0.7:
-            donation_msg = " 🙏 Your donation helps us upgrade servers for faster processing!"
+        # Convert to the expected format for backward compatibility
+        response_dict = error_response.to_dict()
         
         return {
             'type': 'rate_limit',
-            'message': base_message + wait_msg + upgrade_msg + donation_msg,
+            'message': response_dict['message'],
             'action': 'wait',
             'wait_time': min_wait,
             'tier': tier,
             'server_load': server_load,
-            'upgrade_available': tier != 'donor',
-            'donation_link': '/donate' if server_load > 0.7 or tier != 'donor' else None
+            'upgrade_available': response_dict['upgrade_available'],
+            'donation_link': response_dict['donation_link'] if response_dict['show_donation_prompt'] else None,
+            'title': response_dict['title'],
+            'action_message': response_dict['action_message'],
+            'donation_message': response_dict['donation_message'],
+            'upgrade_message': response_dict['upgrade_message'],
+            'alternatives': response_dict['alternatives']
         }
     
     def cleanup_old_buckets(self, max_age_hours: int = 24):

@@ -191,12 +191,29 @@ def queue_aware_endpoint(endpoint_name: str, processor_func: Optional[Callable] 
                     processor = get_request_processor()
                     processor.register_endpoint_processor(endpoint_name, processor_func)
                 
-                # Return queue information
+                # Create user-friendly queue message
+                from user_friendly_errors import create_server_busy_error
+                
+                busy_response, _ = create_server_busy_error(
+                    server_load=server_load,
+                    queue_length=queue_info.get('queue_position', 0),
+                    estimated_wait=queue_info.get('estimated_wait_time', 300)
+                )
+                
+                # Return queue information with user-friendly messaging
                 response_data = {
                     'queued': True,
                     'request_id': request_id,
                     'status': 'queued',
-                    'message': queue_info['message'],
+                    'message': busy_response['message'],
+                    'title': busy_response['title'],
+                    'action_message': busy_response['action_message'],
+                    'show_donation_prompt': busy_response['show_donation_prompt'],
+                    'donation_message': busy_response['donation_message'],
+                    'donation_link': busy_response['donation_link'],
+                    'upgrade_available': busy_response['upgrade_available'],
+                    'upgrade_message': busy_response['upgrade_message'],
+                    'alternatives': busy_response['alternatives'],
                     'queue_info': queue_info,
                     'server_load': server_load,
                     'status_url': f'/api/queue/status/{request_id}',
@@ -210,19 +227,31 @@ def queue_aware_endpoint(endpoint_name: str, processor_func: Optional[Callable] 
                 try:
                     return f(*args, **kwargs)
                 except Exception as e:
-                    # If immediate processing fails, provide retry suggestion
+                    # If immediate processing fails, provide user-friendly error response
+                    from user_friendly_errors import create_generation_failed_error
+                    
+                    # Determine service name from endpoint
+                    service_name = "AI service"
+                    if "image" in endpoint_name:
+                        service_name = "AI image generator"
+                    elif "video" in endpoint_name:
+                        service_name = "AI video generator"
+                    
+                    error_response, status_code = create_generation_failed_error(
+                        service_name=service_name,
+                        retry_count=0
+                    )
+                    
+                    # Add server load and retry suggestion for compatibility
                     queue_manager = get_queue_manager()
                     backoff_calc = queue_manager._backoff_calculator
                     retry_suggestion = backoff_calc.get_retry_suggestion(0, server_load)
                     
-                    error_response = {
-                        'error': 'Request processing failed',
-                        'message': str(e),
-                        'retry_suggestion': retry_suggestion,
-                        'server_load': server_load
-                    }
+                    error_response['retry_suggestion'] = retry_suggestion
+                    error_response['server_load'] = server_load
+                    error_response['technical_error'] = str(e)
                     
-                    return jsonify(error_response), 500
+                    return jsonify(error_response), status_code
         
         return decorated_function
     return decorator

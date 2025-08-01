@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User-Friendly Error Handling Example</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/user-friendly-errors.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>AI Art Generator</h1>
+        
+        <!-- Form for image generation -->
+        <form id="generate-form">
+            <div class="form-group">
+                <label for="prompt">Describe your image:</label>
+                <textarea id="prompt" name="prompt" placeholder="A beautiful sunset over mountains..."></textarea>
+            </div>
+            <button type="submit" id="generate-btn">Generate Image</button>
+        </form>
+        
+        <!-- Error/Message display area -->
+        <div id="error-message" style="display: none;"></div>
+        
+        <!-- Result display area -->
+        <div id="result" style="display: none;">
+            <h2>Your Image is Ready!</h2>
+            <img id="result-image" alt="Generated image">
+        </div>
+    </div>
+
+    <!-- Include the user-friendly error handling JavaScript -->
+    <script src="{{ url_for('static', filename='js/user-friendly-errors.js') }}"></script>
+    
+    <script>
+        // Example of how to use the new error handling system
+        document.getElementById('generate-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const prompt = document.getElementById('prompt').value.trim();
+            if (!prompt) {
+                // Show validation error
+                showUserFriendlyError({
+                    error_type: 'validation_error',
+                    title: 'Input Needs Adjustment',
+                    message: '🎨 Let\'s make your prompt even better! Please provide a description for your image.',
+                    action_message: 'Please enter a description and try again',
+                    alternatives: [
+                        'Add more descriptive adjectives to your prompt',
+                        'Specify an art style (e.g., \'digital art\', \'oil painting\')',
+                        'Include mood or atmosphere descriptions',
+                        'Check our prompt guide for inspiration'
+                    ]
+                });
+                return;
+            }
+            
+            // Show loading state
+            showLoading('🎨 Creating your masterpiece...');
+            
+            try {
+                const response = await fetch('/api/generate-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+                
+                // Use the new error handling system
+                const data = await handleApiResponse(response);
+                
+                if (data) {
+                    // Success - display the result
+                    hideMessage();
+                    document.getElementById('result-image').src = data.image_path;
+                    document.getElementById('result').style.display = 'block';
+                }
+                
+            } catch (error) {
+                // Handle network errors
+                showUserFriendlyError({
+                    error_type: 'api_error',
+                    title: 'Communication Error',
+                    message: '🔧 We had trouble communicating with our servers. Please try again in a moment.',
+                    action_message: 'Check your internet connection and try again',
+                    show_donation_prompt: true,
+                    donation_message: '❤️ Your support helps us maintain reliable service!',
+                    alternatives: [
+                        'Check your internet connection',
+                        'Try refreshing the page',
+                        'Try again in a few minutes',
+                        'Contact support if this persists'
+                    ]
+                });
+            }
+        });
+        
+        // Example of handling different error types
+        function demonstrateErrorTypes() {
+            // Rate limit error
+            setTimeout(() => {
+                showUserFriendlyError({
+                    error_type: 'rate_limit',
+                    title: 'Rate Limit Reached',
+                    message: '⏰ You\'re creating at lightning speed! Please wait 2 minutes and try again. This helps us maintain quality service for everyone.',
+                    action_message: 'Please wait 2 minutes',
+                    wait_time: 120,
+                    show_donation_prompt: true,
+                    donation_message: '💝 Your donation helps us upgrade servers for faster processing!',
+                    upgrade_available: true,
+                    upgrade_message: '💡 Create a free account for higher limits and saved creations!',
+                    alternatives: [
+                        'Try a different art style or prompt while waiting',
+                        'Browse the gallery for inspiration',
+                        'Check out our tutorials and tips',
+                        'Share your previous creations on social media'
+                    ]
+                });
+            }, 2000);
+            
+            // Server busy error
+            setTimeout(() => {
+                showUserFriendlyError({
+                    error_type: 'server_busy',
+                    title: 'Server Busy',
+                    message: '🚀 Wow! Our AI art service is super popular right now! We have 25 requests in queue, but we\'re processing them as fast as possible! Try again in about 5 minutes.',
+                    action_message: 'Try again in about 5 minutes',
+                    wait_time: 300,
+                    show_donation_prompt: true,
+                    donation_message: '🙏 Your donation helps us upgrade servers for faster processing!',
+                    upgrade_available: true,
+                    upgrade_message: '⚡ Premium users get priority processing even during busy times!',
+                    alternatives: [
+                        'Bookmark this page and try again in a few minutes',
+                        'Follow us on social media for server status updates',
+                        'Try during off-peak hours (early morning or late evening)',
+                        'Use the time to refine your prompt for better results'
+                    ]
+                });
+            }, 5000);
+        }
+        
+        // Uncomment to see error examples
+        // demonstrateErrorTypes();
+    </script>
+</body>
+</html>
