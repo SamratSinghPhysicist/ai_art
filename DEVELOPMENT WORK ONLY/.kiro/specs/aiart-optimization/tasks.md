@@ -13,7 +13,14 @@
   - Add the resource monitor to admin page
   - _Requirements: 1.1, 1.4_
 
-- [ ] 2. Implement adaptive rate limiting system
+- [x] 2. Implement adaptive rate limiting system
+
+
+
+
+
+
+
 
 
 

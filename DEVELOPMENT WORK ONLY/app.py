@@ -28,6 +28,7 @@ import hashlib
 import time
 import secrets
 import jwt
+from adaptive_rate_limiter import should_allow_request as adaptive_should_allow_request, get_rate_limit_message
 from datetime import datetime, timedelta, timezone
 import os
 import requests
@@ -152,6 +153,71 @@ limiter = Limiter(
     strategy="moving-window", # Moving window for better abuse prevention
     headers_enabled=True  # Enable rate limit headers for debugging
 )
+
+# Adaptive Rate Limiting Decorator
+def adaptive_rate_limit(f):
+    """
+    Decorator that implements adaptive rate limiting using the new AdaptiveRateLimiter.
+    This provides user-friendly messages and adjusts limits based on server load.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Get user information
+        user_id = None
+        is_authenticated = False
+        is_donor = False
+        
+        if current_user and current_user.is_authenticated:
+            user_id = current_user.id
+            is_authenticated = True
+            # Check if user is a donor (you may need to implement this logic)
+            # is_donor = current_user.is_donor if hasattr(current_user, 'is_donor') else False
+        
+        # Get client IP
+        ip = get_client_ip()
+        
+        # Check if request should be allowed using adaptive rate limiter
+        allowed, info = adaptive_should_allow_request(
+            user_id=user_id,
+            ip=ip,
+            is_authenticated=is_authenticated,
+            is_donor=is_donor,
+            resource_monitor=resource_monitor
+        )
+        
+        if not allowed:
+            # Generate user-friendly message
+            message_info = get_rate_limit_message(allowed, info)
+            
+            # Return rate limit response with user-friendly message
+            response_data = {
+                'error': 'Rate limit exceeded',
+                'message': message_info['message'],
+                'type': message_info['type'],
+                'wait_time': message_info.get('wait_time', 60),
+                'tier': info.get('tier', 'anonymous'),
+                'server_load': info.get('server_load', 0.0),
+                'upgrade_available': message_info.get('upgrade_available', False),
+                'donation_link': message_info.get('donation_link')
+            }
+            
+            # Add rate limit headers for debugging
+            response = jsonify(response_data)
+            response.status_code = 429
+            response.headers['X-RateLimit-Limit'] = str(info.get('adjusted_limits', {}).get('per_minute', 3))
+            response.headers['X-RateLimit-Remaining'] = '0'
+            response.headers['X-RateLimit-Reset'] = str(int(time.time() + message_info.get('wait_time', 60)))
+            response.headers['Retry-After'] = str(message_info.get('wait_time', 60))
+            
+            return response
+        
+        # Log successful request for monitoring
+        app.logger.info(f"Adaptive rate limit check passed for user {user_id or 'anonymous'} from IP {ip}")
+        
+        # Request is allowed, proceed with the original function
+        return f(*args, **kwargs)
+    
+    return decorated_function
 
 # Connection pooling for Qwen service requests
 def create_qwen_session():
@@ -552,6 +618,7 @@ def admin_delete_qwen_key(key_id):
 # Text to Video API Endpoints
 @app.route('/api/text-to-video/generate', methods=['POST'])
 @limiter.limit("10 per hour")
+@adaptive_rate_limit
 def api_text_to_video_generate():
     """API endpoint for text-to-video generation"""
     try:
@@ -1241,6 +1308,7 @@ def text_to_image():
                           firebase_project_id=firebase_config.get('projectId'),
                           firebase_app_id=firebase_config.get('appId'))
 
+
 @app.route('/image-to-image')
 def image_to_image():
     """Render the image-to-image page"""
@@ -1487,6 +1555,7 @@ def dashboard():
 
 @app.route('/generate-txt2img-ui', methods=['POST'])
 @token_required
+@adaptive_rate_limit
 def generate_image():
     """Generate an image based on the description provided"""
 
@@ -1692,6 +1761,7 @@ def generate_image():
 
 @app.route('/api/generate', methods=['POST'])
 @limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
+@adaptive_rate_limit  # Apply adaptive rate limiting
 def api_generate_image():
     """API endpoint to generate an image"""
     # Get JSON data
@@ -1796,6 +1866,7 @@ def serve_processed_video(filename):
 
 @app.route('/img2img', methods=['POST'])
 @token_required
+@adaptive_rate_limit
 def img2img_transform():
 
     """Transform an image based on text prompt and uploaded image"""
@@ -1930,6 +2001,7 @@ def img2img_transform():
 
 @app.route('/api/img2img', methods=['POST'])
 @limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
+@adaptive_rate_limit  # Apply adaptive rate limiting
 def api_img2img_transform():
     """API endpoint to transform an image"""
     # Check if file was uploaded
@@ -2225,6 +2297,7 @@ def donate():
 
 @app.route('/img2video-ui', methods=['POST'])
 @token_required
+@adaptive_rate_limit
 def img2video_generate():
     """API endpoint to generate a video from an image"""
     # Turnstile verification
@@ -2483,7 +2556,8 @@ def img2video_result(generation_id):
 
 
 @app.route('/api/img2video', methods=['POST'])
-@limiter.limit("500/day")  # Apply rate limit: 500 requests per day per IP for UI users
+@limiter.limit("500/day")  # Apply rate limit: 500 requests per day per IP
+@adaptive_rate_limit
 def api_img2video_generate():
     """API endpoint to generate a video from an image"""
     temp_image_path = None # Initialize temp_image_path here for cleanup in outer except
@@ -2816,6 +2890,7 @@ def process_qwen_video_task(app, task_id):
 
 @app.route('/generate-text-to-video-ui', methods=['POST'])
 @token_required
+@adaptive_rate_limit
 def generate_qwen_video_route():
     """
     API endpoint to queue a video generation task using a background thread.
