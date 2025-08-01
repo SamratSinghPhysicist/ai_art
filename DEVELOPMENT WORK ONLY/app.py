@@ -44,6 +44,15 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# Initialize resource monitoring
+try:
+    from resource_monitor import initialize_resource_monitoring
+    resource_monitor = initialize_resource_monitoring()
+    app.logger.info("Resource monitoring initialized successfully")
+except Exception as e:
+    app.logger.error(f"Failed to initialize resource monitoring: {e}")
+    resource_monitor = None
+
 
 
 
@@ -83,6 +92,12 @@ def log_and_block_check():
     ]
     if request.endpoint in endpoints_to_log_and_check:
         log_request(ip, request.endpoint)
+        # Record request for resource monitoring
+        if resource_monitor:
+            try:
+                resource_monitor.record_request()
+            except Exception as e:
+                app.logger.error(f"Error recording request for resource monitoring: {e}")
 
 def get_rate_limit():
     ip = get_client_ip()
@@ -475,6 +490,18 @@ def get_potential_abusers():
             potential_abusers.append(ip)
             
     return jsonify(potential_abusers)
+
+@app.route('/admin/api/resource-status', methods=['GET'])
+@admin_required
+def get_resource_status():
+    """API endpoint to get current resource monitoring status."""
+    try:
+        from resource_monitor import get_system_status
+        status = get_system_status()
+        return jsonify(status)
+    except Exception as e:
+        app.logger.error(f"Error getting resource status: {e}")
+        return jsonify({"error": "Failed to get resource status"}), 500
 
 @app.route('/admin/qwen-keys', methods=['GET', 'POST'])
 def admin_qwen_keys():
