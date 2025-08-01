@@ -29,6 +29,7 @@ import time
 import secrets
 import jwt
 from adaptive_rate_limiter import should_allow_request as adaptive_should_allow_request, get_rate_limit_message
+from queue_flask_integration import queue_aware_endpoint
 from datetime import datetime, timedelta, timezone
 import os
 import requests
@@ -53,6 +54,20 @@ try:
 except Exception as e:
     app.logger.error(f"Failed to initialize resource monitoring: {e}")
     resource_monitor = None
+
+# Initialize request queue management
+try:
+    from queue_flask_integration import initialize_queue_integration
+    queue_manager, request_processor = initialize_queue_integration(
+        app, 
+        resource_monitor=resource_monitor,
+        num_workers=3
+    )
+    app.logger.info("Request queue management initialized successfully")
+except Exception as e:
+    app.logger.error(f"Failed to initialize request queue management: {e}")
+    queue_manager = None
+    request_processor = None
 
 
 
@@ -619,6 +634,7 @@ def admin_delete_qwen_key(key_id):
 @app.route('/api/text-to-video/generate', methods=['POST'])
 @limiter.limit("10 per hour")
 @adaptive_rate_limit
+@queue_aware_endpoint("api_text_to_video_generate", processor_func=None)
 def api_text_to_video_generate():
     """API endpoint for text-to-video generation"""
     try:
@@ -1556,6 +1572,7 @@ def dashboard():
 @app.route('/generate-txt2img-ui', methods=['POST'])
 @token_required
 @adaptive_rate_limit
+@queue_aware_endpoint("generate_image", processor_func=None)
 def generate_image():
     """Generate an image based on the description provided"""
 
@@ -1762,6 +1779,7 @@ def generate_image():
 @app.route('/api/generate', methods=['POST'])
 @limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
 @adaptive_rate_limit  # Apply adaptive rate limiting
+@queue_aware_endpoint("api_generate_image", processor_func=None)
 def api_generate_image():
     """API endpoint to generate an image"""
     # Get JSON data
@@ -1867,6 +1885,7 @@ def serve_processed_video(filename):
 @app.route('/img2img', methods=['POST'])
 @token_required
 @adaptive_rate_limit
+@queue_aware_endpoint("img2img_transform", processor_func=None)
 def img2img_transform():
 
     """Transform an image based on text prompt and uploaded image"""
@@ -2002,6 +2021,7 @@ def img2img_transform():
 @app.route('/api/img2img', methods=['POST'])
 @limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
 @adaptive_rate_limit  # Apply adaptive rate limiting
+@queue_aware_endpoint("api_img2img_transform", processor_func=None)
 def api_img2img_transform():
     """API endpoint to transform an image"""
     # Check if file was uploaded
@@ -2298,6 +2318,7 @@ def donate():
 @app.route('/img2video-ui', methods=['POST'])
 @token_required
 @adaptive_rate_limit
+@queue_aware_endpoint("img2video_generate", processor_func=None)
 def img2video_generate():
     """API endpoint to generate a video from an image"""
     # Turnstile verification
@@ -2558,6 +2579,7 @@ def img2video_result(generation_id):
 @app.route('/api/img2video', methods=['POST'])
 @limiter.limit("500/day")  # Apply rate limit: 500 requests per day per IP
 @adaptive_rate_limit
+@queue_aware_endpoint("api_img2video_generate", processor_func=None)
 def api_img2video_generate():
     """API endpoint to generate a video from an image"""
     temp_image_path = None # Initialize temp_image_path here for cleanup in outer except
@@ -2891,6 +2913,7 @@ def process_qwen_video_task(app, task_id):
 @app.route('/generate-text-to-video-ui', methods=['POST'])
 @token_required
 @adaptive_rate_limit
+@queue_aware_endpoint("generate_qwen_video_route", processor_func=None)
 def generate_qwen_video_route():
     """
     API endpoint to queue a video generation task using a background thread.
