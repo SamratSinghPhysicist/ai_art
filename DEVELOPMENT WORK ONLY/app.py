@@ -41,19 +41,28 @@ from flask import Response, stream_with_context
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
+# Import new API backend and router
+from api_backend import api_v1
+from backend_router import BackendRouter
+
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 
+# Register API v1 blueprint
+app.register_blueprint(api_v1)
+
 # Initialize resource monitoring
 try:
     from resource_monitor import initialize_resource_monitoring
     resource_monitor = initialize_resource_monitoring()
+    app.resource_monitor = resource_monitor  # Store in app context for API access
     app.logger.info("Resource monitoring initialized successfully")
 except Exception as e:
     app.logger.error(f"Failed to initialize resource monitoring: {e}")
     resource_monitor = None
+    app.resource_monitor = None
 
 # Initialize request queue management
 try:
@@ -63,11 +72,43 @@ try:
         resource_monitor=resource_monitor,
         num_workers=3
     )
+    app.queue_manager = queue_manager  # Store in app context for API access
     app.logger.info("Request queue management initialized successfully")
 except Exception as e:
     app.logger.error(f"Failed to initialize request queue management: {e}")
     queue_manager = None
     request_processor = None
+    app.queue_manager = None
+
+# Initialize Backend Router for multiple backend instances
+try:
+    backend_configs = [
+        {
+            'url': os.getenv('PRIMARY_BACKEND_URL', 'https://aiart-backend.railway.app'),
+            'name': 'primary',
+            'priority': 1
+        },
+        {
+            'url': os.getenv('FALLBACK_BACKEND_URL', 'https://aiart-backend-fallback.onrender.com'),
+            'name': 'fallback',
+            'priority': 2
+        }
+    ]
+    
+    # Filter out any backends without URLs
+    backend_configs = [config for config in backend_configs if config['url'] and config['url'] != 'None']
+    
+    if backend_configs:
+        backend_router = BackendRouter(backend_configs)
+        app.backend_router = backend_router
+        app.logger.info(f"Backend router initialized with {len(backend_configs)} backends")
+    else:
+        app.logger.warning("No backend URLs configured, backend router disabled")
+        app.backend_router = None
+        
+except Exception as e:
+    app.logger.error(f"Failed to initialize backend router: {e}")
+    app.backend_router = None
 
 
 
