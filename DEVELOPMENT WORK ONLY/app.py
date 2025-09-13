@@ -28,8 +28,6 @@ import hashlib
 import time
 import secrets
 import jwt
-from adaptive_rate_limiter import should_allow_request as adaptive_should_allow_request, get_rate_limit_message
-from queue_flask_integration import queue_aware_endpoint
 from datetime import datetime, timedelta, timezone
 import os
 import requests
@@ -41,74 +39,10 @@ from flask import Response, stream_with_context
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# Import new API backend and router
-from api_backend import api_v1
-from backend_router import BackendRouter
-
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-
-# Register API v1 blueprint
-app.register_blueprint(api_v1)
-
-# Initialize resource monitoring
-try:
-    from resource_monitor import initialize_resource_monitoring
-    resource_monitor = initialize_resource_monitoring()
-    app.resource_monitor = resource_monitor  # Store in app context for API access
-    app.logger.info("Resource monitoring initialized successfully")
-except Exception as e:
-    app.logger.error(f"Failed to initialize resource monitoring: {e}")
-    resource_monitor = None
-    app.resource_monitor = None
-
-# Initialize request queue management
-try:
-    from queue_flask_integration import initialize_queue_integration
-    queue_manager, request_processor = initialize_queue_integration(
-        app, 
-        resource_monitor=resource_monitor,
-        num_workers=3
-    )
-    app.queue_manager = queue_manager  # Store in app context for API access
-    app.logger.info("Request queue management initialized successfully")
-except Exception as e:
-    app.logger.error(f"Failed to initialize request queue management: {e}")
-    queue_manager = None
-    request_processor = None
-    app.queue_manager = None
-
-# Initialize Backend Router for multiple backend instances
-try:
-    backend_configs = [
-        {
-            'url': os.getenv('PRIMARY_BACKEND_URL', 'https://aiart-backend.railway.app'),
-            'name': 'primary',
-            'priority': 1
-        },
-        {
-            'url': os.getenv('FALLBACK_BACKEND_URL', 'https://aiart-backend-fallback.onrender.com'),
-            'name': 'fallback',
-            'priority': 2
-        }
-    ]
-    
-    # Filter out any backends without URLs
-    backend_configs = [config for config in backend_configs if config['url'] and config['url'] != 'None']
-    
-    if backend_configs:
-        backend_router = BackendRouter(backend_configs)
-        app.backend_router = backend_router
-        app.logger.info(f"Backend router initialized with {len(backend_configs)} backends")
-    else:
-        app.logger.warning("No backend URLs configured, backend router disabled")
-        app.backend_router = None
-        
-except Exception as e:
-    app.logger.error(f"Failed to initialize backend router: {e}")
-    app.backend_router = None
 
 
 
@@ -149,12 +83,6 @@ def log_and_block_check():
     ]
     if request.endpoint in endpoints_to_log_and_check:
         log_request(ip, request.endpoint)
-        # Record request for resource monitoring
-        if resource_monitor:
-            try:
-                resource_monitor.record_request()
-            except Exception as e:
-                app.logger.error(f"Error recording request for resource monitoring: {e}")
 
 def get_rate_limit():
     ip = get_client_ip()
@@ -209,78 +137,6 @@ limiter = Limiter(
     strategy="moving-window", # Moving window for better abuse prevention
     headers_enabled=True  # Enable rate limit headers for debugging
 )
-
-# Adaptive Rate Limiting Decorator
-def adaptive_rate_limit(f):
-    """
-    Decorator that implements adaptive rate limiting using the new AdaptiveRateLimiter.
-    This provides user-friendly messages and adjusts limits based on server load.
-    """
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Get user information
-        user_id = None
-        is_authenticated = False
-        is_donor = False
-        
-        if current_user and current_user.is_authenticated:
-            user_id = current_user.id
-            is_authenticated = True
-            # Check if user is a donor (you may need to implement this logic)
-            # is_donor = current_user.is_donor if hasattr(current_user, 'is_donor') else False
-        
-        # Get client IP
-        ip = get_client_ip()
-        
-        # Check if request should be allowed using adaptive rate limiter
-        allowed, info = adaptive_should_allow_request(
-            user_id=user_id,
-            ip=ip,
-            is_authenticated=is_authenticated,
-            is_donor=is_donor,
-            resource_monitor=resource_monitor
-        )
-        
-        if not allowed:
-            # Generate user-friendly message using new error handling system
-            message_info = get_rate_limit_message(allowed, info)
-            
-            # Return comprehensive user-friendly response
-            response_data = {
-                'success': False,
-                'error_type': 'rate_limit',
-                'title': message_info.get('title', 'Rate Limit Reached'),
-                'message': message_info['message'],
-                'action_message': message_info.get('action_message', 'Please wait and try again'),
-                'wait_time': message_info.get('wait_time', 60),
-                'retry_after': message_info.get('wait_time', 60),
-                'tier': info.get('tier', 'anonymous'),
-                'server_load': info.get('server_load', 0.0),
-                'show_donation_prompt': message_info.get('donation_link') is not None,
-                'donation_message': message_info.get('donation_message', ''),
-                'donation_link': message_info.get('donation_link', '/donate'),
-                'upgrade_available': message_info.get('upgrade_available', False),
-                'upgrade_message': message_info.get('upgrade_message', ''),
-                'alternatives': message_info.get('alternatives', [])
-            }
-            
-            # Add rate limit headers for debugging
-            response = jsonify(response_data)
-            response.status_code = 429
-            response.headers['X-RateLimit-Limit'] = str(info.get('adjusted_limits', {}).get('per_minute', 3))
-            response.headers['X-RateLimit-Remaining'] = '0'
-            response.headers['X-RateLimit-Reset'] = str(int(time.time() + message_info.get('wait_time', 60)))
-            response.headers['Retry-After'] = str(message_info.get('wait_time', 60))
-            
-            return response
-        
-        # Log successful request for monitoring
-        app.logger.info(f"Adaptive rate limit check passed for user {user_id or 'anonymous'} from IP {ip}")
-        
-        # Request is allowed, proceed with the original function
-        return f(*args, **kwargs)
-    
-    return decorated_function
 
 # Connection pooling for Qwen service requests
 def create_qwen_session():
@@ -620,18 +476,6 @@ def get_potential_abusers():
             
     return jsonify(potential_abusers)
 
-@app.route('/admin/api/resource-status', methods=['GET'])
-@admin_required
-def get_resource_status():
-    """API endpoint to get current resource monitoring status."""
-    try:
-        from resource_monitor import get_system_status
-        status = get_system_status()
-        return jsonify(status)
-    except Exception as e:
-        app.logger.error(f"Error getting resource status: {e}")
-        return jsonify({"error": "Failed to get resource status"}), 500
-
 @app.route('/admin/qwen-keys', methods=['GET', 'POST'])
 def admin_qwen_keys():
     secret_key = request.args.get('secret')
@@ -681,8 +525,6 @@ def admin_delete_qwen_key(key_id):
 # Text to Video API Endpoints
 @app.route('/api/text-to-video/generate', methods=['POST'])
 @limiter.limit("10 per hour")
-@adaptive_rate_limit
-@queue_aware_endpoint("api_text_to_video_generate", processor_func=None)
 def api_text_to_video_generate():
     """API endpoint for text-to-video generation"""
     try:
@@ -1372,7 +1214,6 @@ def text_to_image():
                           firebase_project_id=firebase_config.get('projectId'),
                           firebase_app_id=firebase_config.get('appId'))
 
-
 @app.route('/image-to-image')
 def image_to_image():
     """Render the image-to-image page"""
@@ -1619,8 +1460,6 @@ def dashboard():
 
 @app.route('/generate-txt2img-ui', methods=['POST'])
 @token_required
-@adaptive_rate_limit
-@queue_aware_endpoint("generate_image", processor_func=None)
 def generate_image():
     """Generate an image based on the description provided"""
 
@@ -1630,23 +1469,13 @@ def generate_image():
 
     client_ip = request.headers.get("CF-Connecting-IP")
     if not verify_turnstile(turnstile_token, client_ip):
-        from user_friendly_errors import create_validation_error
-        response_dict, status_code = create_validation_error(
-            field="security verification",
-            issue="Please complete the security verification and try again"
-        )
-        return jsonify(response_dict), 403
+        return jsonify({'error': 'The provided Turnstile token was not valid!'}), 403
 
     # Honeypot field check (should be empty)
     honeypot = request.form.get('website_url', '')
     if honeypot:
         app.logger.warning(f"Honeypot triggered from IP: {get_remote_address()}")
-        from user_friendly_errors import create_validation_error
-        response_dict, status_code = create_validation_error(
-            field="request validation",
-            issue="Invalid request detected. Please try again"
-        )
-        return jsonify(response_dict), 400
+        return jsonify({'error': 'Invalid request detected.'}), 400
 
     # Get the image description from the form
     image_description = request.form.get('video_description')
@@ -1660,12 +1489,7 @@ def generate_image():
     test_mode = request.form.get('test_mode') == 'true'
 
     if not image_description:
-        from user_friendly_errors import create_validation_error
-        response_dict, status_code = create_validation_error(
-            field="prompt",
-            issue="Please provide a description for your image"
-        )
-        return jsonify(response_dict), status_code
+        return jsonify({'error': 'Image description is required'}), 400
 
     # Get advanced options
     negative_prompt = request.form.get('negative_prompt', '')
@@ -1714,37 +1538,14 @@ def generate_image():
         if len(ip_data['minute_timestamps']) >= IMAGEN4_MINUTE_LIMIT:
             time_left = (ip_data['minute_timestamps'][0] + IMAGEN4_MINUTE_WINDOW) - now
             retry_after = int(time_left.total_seconds()) + 1 # Add 1 second buffer
-            
-            # Use user-friendly error handling
-            from user_friendly_errors import get_error_handler, ErrorType
-            error_handler = get_error_handler()
-            
-            response = error_handler.create_rate_limit_response(
-                user_tier='anonymous',  # Imagen 4 is available to all users
-                wait_time=retry_after,
-                server_load=0.0
-            )
-            
-            # Customize message for Imagen 4 specific limits
-            response.message = (
-                f"🎨 You're creating amazing art with Imagen 4! "
-                f"You can generate up to {IMAGEN4_MINUTE_LIMIT} images per minute. "
-                f"Please wait {retry_after} seconds and try again."
-            )
-            
-            response.alternatives = [
-                "Switch to Stable Diffusion 3.5 Ultra for unlimited generation",
-                "Visit https://api.infip.pro/docs for direct API access",
-                "Try https://chat.infip.pro/ for the UI interface",
-                "Use this time to refine your prompt",
-                "Browse the gallery for inspiration"
-            ]
-            
-            response_dict = response.to_dict()
-            response_dict['rate_limit_type'] = 'minute'
-            response_dict['retry_after'] = retry_after
-            
-            return jsonify(response_dict), 429
+            return jsonify({
+                'error': f"""Rate limit exceeded for Imagen 4. You can generate up to {IMAGEN4_MINUTE_LIMIT} images per minute and at most {IMAGEN4_DAY_LIMIT} images per day using Imagen 4.
+                 Please try again in {retry_after} seconds. 
+                 For more usage, please visit https://api.infip.pro/docs (for Imagen 4 API), or https://chat.infip.pro/ (for UI).
+                 Or, switch to Stable Diffusion 3.5 Ultra to enjoy unlimited image generation.""",
+                'rate_limit_type': 'minute',
+                'retry_after': retry_after
+            }), 429
 
         # Check daily limit
         if ip_data['day_count'] >= IMAGEN4_DAY_LIMIT:
@@ -1752,38 +1553,11 @@ def generate_image():
             next_day = (now + IMAGEN4_DAY_WINDOW).replace(hour=0, minute=0, second=0, microsecond=0)
             time_left = next_day - now
             retry_after = int(time_left.total_seconds()) + 1 # Add 1 second buffer
-            
-            # Use user-friendly error handling
-            from user_friendly_errors import get_error_handler, ErrorType
-            error_handler = get_error_handler()
-            
-            response = error_handler.create_rate_limit_response(
-                user_tier='anonymous',
-                wait_time=retry_after,
-                server_load=0.0
-            )
-            
-            # Customize message for Imagen 4 daily limits
-            hours_left = retry_after // 3600
-            response.message = (
-                f"🌟 You've been very creative today with Imagen 4! "
-                f"You've reached your daily limit of {IMAGEN4_DAY_LIMIT} images. "
-                f"Your limit resets in about {hours_left} hours."
-            )
-            
-            response.alternatives = [
-                "Switch to Stable Diffusion 3.5 Ultra for unlimited generation",
-                "Visit https://api.infip.pro/docs for higher limits with direct API",
-                "Try https://chat.infip.pro/ for the UI interface",
-                "Plan your next creations for tomorrow",
-                "Share your today's creations on social media"
-            ]
-            
-            response_dict = response.to_dict()
-            response_dict['rate_limit_type'] = 'daily'
-            response_dict['retry_after'] = retry_after
-            
-            return jsonify(response_dict), 429
+            return jsonify({
+                'error': f'Daily rate limit exceeded for Imagen 4. You can generate up to {IMAGEN4_DAY_LIMIT} images per day using Imagen 4 in AiArt. For more usage, please visit https://api.infip.pro/docs (for Imagen 4 API), or https://chat.infip.pro/ (for UI), or, switch to Stable Diffusion 3.5 Ultra.',
+                'rate_limit_type': 'daily',
+                'retry_after': retry_after
+            }), 429
 
         # If limits not exceeded, record the request
         ip_data['minute_timestamps'].append(now)
@@ -1830,37 +1604,17 @@ def generate_image():
                     })
                 else:
                     print("GhostAPI response missing image URL in data.")
-                    from user_friendly_errors import create_generation_failed_error
-                    response_dict, status_code = create_generation_failed_error(
-                        service_name="Imagen 4",
-                        retry_count=0
-                    )
-                    return jsonify(response_dict), status_code
+                    return jsonify({'error': 'GhostAPI response missing image URL'}), 500
             else:
                  print(f"GhostAPI response indicates failure or no data: {ghost_api_result}")
-                 from user_friendly_errors import create_generation_failed_error
-                 response_dict, status_code = create_generation_failed_error(
-                     service_name="Imagen 4",
-                     retry_count=0
-                 )
-                 return jsonify(response_dict), status_code
+                 return jsonify({'error': ghost_api_result.get('detail', 'GhostAPI returned no image data')}), 500
 
         except requests.exceptions.RequestException as e:
             print(f"Error calling GhostAPI: {e}")
-            from user_friendly_errors import create_api_error
-            response_dict, status_code = create_api_error(
-                original_error=str(e),
-                service_name="Imagen 4"
-            )
-            return jsonify(response_dict), status_code
+            return jsonify({'error': f'Error communicating with Imagen 4 API: {e}'}), 500
         except Exception as e:
             print(f"Unexpected error processing GhostAPI response: {e}")
-            from user_friendly_errors import create_generation_failed_error
-            response_dict, status_code = create_generation_failed_error(
-                service_name="Imagen 4",
-                retry_count=0
-            )
-            return jsonify(response_dict), status_code
+            return jsonify({'error': f'Unexpected error processing Imagen 4 response: {e}'}), 500
 
     else:
         # --- Stable Diffusion 3.5 Ultra Generation Logic (Existing) ---
@@ -1911,8 +1665,6 @@ def generate_image():
 
 @app.route('/api/generate', methods=['POST'])
 @limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
-@adaptive_rate_limit  # Apply adaptive rate limiting
-@queue_aware_endpoint("api_generate_image", processor_func=None)
 def api_generate_image():
     """API endpoint to generate an image"""
     # Get JSON data
@@ -2017,8 +1769,6 @@ def serve_processed_video(filename):
 
 @app.route('/img2img', methods=['POST'])
 @token_required
-@adaptive_rate_limit
-@queue_aware_endpoint("img2img_transform", processor_func=None)
 def img2img_transform():
 
     """Transform an image based on text prompt and uploaded image"""
@@ -2153,8 +1903,6 @@ def img2img_transform():
 
 @app.route('/api/img2img', methods=['POST'])
 @limiter.limit("3/minute")  # Apply rate limit: 3 requests per minute per IP
-@adaptive_rate_limit  # Apply adaptive rate limiting
-@queue_aware_endpoint("api_img2img_transform", processor_func=None)
 def api_img2img_transform():
     """API endpoint to transform an image"""
     # Check if file was uploaded
@@ -2450,8 +2198,6 @@ def donate():
 
 @app.route('/img2video-ui', methods=['POST'])
 @token_required
-@adaptive_rate_limit
-@queue_aware_endpoint("img2video_generate", processor_func=None)
 def img2video_generate():
     """API endpoint to generate a video from an image"""
     # Turnstile verification
@@ -2710,9 +2456,7 @@ def img2video_result(generation_id):
 
 
 @app.route('/api/img2video', methods=['POST'])
-@limiter.limit("500/day")  # Apply rate limit: 500 requests per day per IP
-@adaptive_rate_limit
-@queue_aware_endpoint("api_img2video_generate", processor_func=None)
+@limiter.limit("500/day")  # Apply rate limit: 500 requests per day per IP for UI users
 def api_img2video_generate():
     """API endpoint to generate a video from an image"""
     temp_image_path = None # Initialize temp_image_path here for cleanup in outer except
@@ -3045,8 +2789,6 @@ def process_qwen_video_task(app, task_id):
 
 @app.route('/generate-text-to-video-ui', methods=['POST'])
 @token_required
-@adaptive_rate_limit
-@queue_aware_endpoint("generate_qwen_video_route", processor_func=None)
 def generate_qwen_video_route():
     """
     API endpoint to queue a video generation task using a background thread.

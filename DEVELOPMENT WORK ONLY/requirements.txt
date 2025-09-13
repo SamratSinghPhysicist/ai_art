@@ -29,5 +29,3 @@ Flask-Limiter==3.5.0
 #For Translation
 googletrans==4.0.0-rc1
 PyJWT==2.8.0
-# Added for resource monitoring
-psutil==5.9.6
