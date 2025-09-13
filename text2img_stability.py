@@ -221,6 +221,7 @@ def generate_image_stability(prompt, testMode, negative_prompt="", aspect_ratio=
     
     try:
         # Get API key from the database
+        # api_key = "sk-gdT7NLW3BTWmue3ICebNy7VZRwN9Pg7iqGPXp0XVWy3iNZDz"
         api_key = get_api_key()
         if not api_key:
             print("No API keys available in the database. Using placeholder image.")
